@@ -1,24 +1,31 @@
-# ================================================================
-#  synthetic_multiblock()  — test‑set generator
-# ================================================================
-#
-#  Returns a list with
-#    $data_list      list of X_s  (n × p_s)
-#    $coords_list    3‑D coords for clusterwise variant  (optional)
-#    $V_true         list of true loadings  (p_s × r)
-#    $F_true         shared factor scores   (n  × r)
-#    $Sadj           sparse Laplacian used for smoothness penalty
-#
-#  Parameters:
-#    S       number of blocks/subjects
-#    n       rows per block
-#    p       columns per block   (single value or length‑S vector)
-#    r       rank (latent components)
-#    sigma   N(0,σ²) noise level
-#    sphere  if TRUE generate coords on unit sphere and build k‑NN graph
-#    k_nn    number of neighbours for graph
-#    seed    reproducible RNG seed
-#
+#' Generate synthetic multiblock data
+#'
+#' This helper function creates several blocks of multivariate data that share
+#' a common set of latent factor scores.  Optionally the variables can be placed
+#' on the unit sphere to yield spatial coordinates and a sparse k-nearest-neighbour
+#' graph.  The returned object also contains the ground-truth loadings and scores
+#' used for simulation.
+#'
+#' @param S Number of blocks/subjects.
+#' @param n Number of rows (observations) per block.
+#' @param p Number of columns (variables) per block. Can be a single value or a
+#'   vector of length `S`.
+#' @param r Rank (number of latent components).
+#' @param sigma Standard deviation of the Gaussian noise.
+#' @param sphere Logical; if `TRUE`, generate coordinates on the unit sphere and
+#'   build a k-nearest-neighbour graph.
+#' @param k_nn Number of neighbours for the graph when `sphere = TRUE`.
+#' @param seed Integer seed for reproducible generation.
+#'
+#' @return A list with the following elements:
+#' \itemize{
+#'   \item `data_list` — centred data matrices `X_s` of size `n` \times `p_s`;
+#'   \item `coords_list` — 3-D coordinates for each block when `sphere = TRUE`;
+#'   \item `V_true` — list of true loading matrices (`p_s` \times `r`);
+#'   \item `F_true` — matrix of shared factor scores (`n` \times `r`);
+#'   \item `Sadj` — sparse Laplacian matrix for smoothness penalties.
+#' }
+#' @export
 synthetic_multiblock <- function(S       = 5,
                                  n       = 100,
                                  p       = 200,
