@@ -142,7 +142,7 @@ covstatis.list <- function(data, ncomp=2,
   
   # RV-matrix and weights
   C <- compute_prodmat(S, normalize = (norm_method == "frobenius"))
-  alpha <- abs(eigen(C)$vectors[,1])
+  alpha <- abs(eigen(C, symmetric = TRUE)$vectors[,1])
   alpha <- alpha/(sum(alpha))
   
   # Compromise and eigen-decomposition
