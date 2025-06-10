@@ -16,7 +16,7 @@
 #    r       rank (latent components)
 #    sigma   N(0,σ²) noise level
 #    sphere  if TRUE generate coords on unit sphere and build k‑NN graph
-#    k_nn    number of neighbours for graph
+#    k_nn    number of neighbours for graph (must be < available coords)
 #    seed    reproducible RNG seed
 #
 synthetic_multiblock <- function(S       = 5,
@@ -69,6 +69,11 @@ synthetic_multiblock <- function(S       = 5,
       mat / sqrt(rowSums(mat^2))
     })
     coords_all <- do.call(rbind, coords_lst)
+
+    # maximum number of points available
+    max_pts <- nrow(coords_all)
+    if (k_nn >= max_pts)
+      stop("`k_nn` must be less than the number of available coordinates")
 
     # k‑NN adjacency (sparse)
     nn   <- RANN::nn2(coords_all, k = k_nn + 1)$nn.idx[, -1]  # drop self
