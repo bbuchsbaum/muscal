@@ -335,10 +335,18 @@ project_subjects.covstatis <- function(x, new_data, subject_ids = NULL, ...) {
   )
 }
 
-# Internal helper to retrieve subject (G) scores
+#' Retrieve Subject G-Scores from a covstatis object
+#'
+#' This internal helper function calculates the subject-level G-scores from a
+#' fitted `covstatis` model. The G-scores represent the coordinates of each subject
+#' in the compromise space and are computed as the barycentric mean of the ROI-level
+#' partial factor scores for each subject.
+#'
+#' @param x A fitted `covstatis` object, which contains `partial_scores`.
+#' @return A numeric matrix of G-scores with dimensions `n_subjects` x `n_components`.
+#' @noRd
+#' @keywords internal
 .get_G_scores <- function(x) {
-  # x$partial_scores is a list of R × D matrices (one per subject)
-  # Take barycentric mean of ROIs ⇒ G-scores (subjects × D)
   do.call(rbind, lapply(x$partial_scores, colMeans))
 }
 
