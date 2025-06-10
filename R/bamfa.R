@@ -327,15 +327,18 @@ bamfa.multiblock <- function(data, k_g = 2, k_l = 2, niter = 10, preproc = cente
     if (is.null(svd_res)) {
       warning(paste0("SVD failed for block ", i, ", using alternative local basis."), call. = FALSE)
       # Fallback: random orthogonal matrix
-      B_i <- matrix(rnorm(ncol(res_i) * min(k_l, min(dim(res_i)))), 
+      B_i <- matrix(rnorm(ncol(res_i) * min(k_l, min(dim(res_i)))),
                     ncol = min(k_l, min(dim(res_i))))
       B_i <- qr.Q(qr(B_i))
       U_i <- matrix(0, nrow = nrow(res_i), ncol = ncol(B_i))
     } else {
+      # Determine actual number of local components from SVD
+      k_l_actual <- min(k_l, length(svd_res$d))
       # Local loadings (features x k_l)
-      B_i <- svd_res$v
-      # Local scores (observations x k_l)
-      U_i <- svd_res$u %*% diag(svd_res$d)
+      B_i <- svd_res$v[, seq_len(k_l_actual), drop = FALSE]
+      # Local scores scaled by singular values (observations x k_l)
+      U_i <- svd_res$u[, seq_len(k_l_actual), drop = FALSE] *
+        svd_res$d[seq_len(k_l_actual)]
     }
     
     B_list[[i]] <- B_i
@@ -384,16 +387,11 @@ bamfa.multiblock <- function(data, k_g = 2, k_l = 2, niter = 10, preproc = cente
         # Update local basis (loadings)
         k_l_actual <- min(k_l, length(svd_res$d))
         B_list[[i]] <- svd_res$v[, seq_len(k_l_actual), drop = FALSE]
-        
-        # Update local scores with ridge penalty
+
+        # Local scores from SVD scaled by singular values
         if (k_l_actual > 0) {
-          if (lambda_l > 0) {
-            # Use ridge regression if regularization is needed
-            U_list[[i]] <- res_i %*% B_list[[i]]
-          } else {
-            # Direct projection if no regularization
-            U_list[[i]] <- res_i %*% B_list[[i]]
-          }
+          U_list[[i]] <- svd_res$u[, seq_len(k_l_actual), drop = FALSE] *
+            svd_res$d[seq_len(k_l_actual)]
         } else {
           U_list[[i]] <- matrix(0, nrow = nrow(res_i), ncol = 0)
         }
