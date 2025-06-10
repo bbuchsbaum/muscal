@@ -151,7 +151,7 @@ bada.multidesign <- function(data, y, subject, preproc=center(), ncomp=2,
 
   
   ## data split by subject
-  sdat <- split(data, subject)
+  sdat <- multidesign::split(data, !!subject_quo)
   
   
   ## pre-processors, one per subject
