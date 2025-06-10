@@ -102,19 +102,20 @@ ls_ridge <- function(Z, X, lambda = 0) {
 #'   multidesign object. Required only for the multidesign method.
 #' @param ... Additional arguments (currently unused).
 #'
-#' @return An object of class `bamfa`, which is a list containing:
-#'   * `G` (matrix): The final global loading matrix (features x `k_g`).
-#'   * `B` (list): A list of block-specific local loading matrices (features_i x `k_l_i`), where `k_l_i <= k_l`.
-#'   * `S` (list): A list of block-specific global score matrices (observations x `k_g`).
-#'   * `U` (list): A list of block-specific local score matrices (observations x `k_l_i`).
-#'   * `block_indices` (list): A list mapping columns in `G` back to the original blocks.
-#'   * `niter_actual` (integer): Actual number of iterations performed.
-#'   * `k_g` (integer): Number of global components in the final model.
-#'   * `k_l` (integer): Requested number of local components (actual components per block may be lower).
-#'   * `lambda_l` (numeric): Regularization parameter used for local scores U_i.
-#'   * `preproc` (list): List of fitted preprocessing objects for each block.
-#'   * `data_names` (character): Names of the input blocks/subjects.
-#'   * `objective_trace` (numeric): Vector tracking the objective function value (Mean Squared Error **per feature**, averaged over observations) at each iteration.
+#' @return A `multiblock_projector` object with class `"bamfa"`.
+#'   The base projector stores the global loading matrix in `v`, the
+#'   concatenated preprocessor in `preproc`, and block mappings in
+#'   `block_indices`. Additional named elements passed via `...` include:
+#'   * `B_list` -- block-specific local loading matrices.
+#'   * `S_list` -- block-specific global score matrices.
+#'   * `U_list` -- block-specific local score matrices.
+#'   * `k_g` -- number of global components in the final model.
+#'   * `k_l` -- requested number of local components.
+#'   * `lambda_l` -- regularization parameter used for local scores `U_i`.
+#'   * `niter_actual` -- actual number of iterations performed.
+#'   * `objective_trace` -- objective function value at each iteration.
+#'   * `data_names` -- names of the input blocks/subjects.
+#'   * `proclist_fitted` -- list of fitted preprocessors for each block.
 #'
 #' @section Caveats and Limitations:
 #' * **Model Choice:** Assumes a linear factor model with orthogonal global and local components.
