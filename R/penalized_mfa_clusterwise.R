@@ -103,6 +103,13 @@ penalized_mfa_clusterwise <- function(data_list,
   if(!all(sapply(coords_list, nrow) == k_s_vec)) {
       stop("Number of rows in each coords_list element must match number of columns in corresponding data_list element.")
   }
+
+  coord_ncol <- sapply(coords_list, ncol)
+  if (!all(coord_ncol == 3)) {
+      bad_idx <- which(coord_ncol != 3)[1]
+      stop(sprintf("coords_list element %d must have exactly 3 columns (x, y, z coordinates).",
+                   bad_idx))
+  }
   
   # Allow different number of columns k_s_vec per block initially
   # Preprocessing check below ensures consistency if needed by later steps
