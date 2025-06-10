@@ -19,7 +19,8 @@ Imports:
     irlba,
     multivarious,
     assertthat,
-    chk
+    chk,
+    crayon
 Suggests:
     testthat (>= 3.0.0),
     knitr,

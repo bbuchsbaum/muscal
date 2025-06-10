@@ -43,6 +43,7 @@
 #' }
 #' @importFrom Matrix Diagonal rowSums
 #' @importFrom pracma orth
+#' @importFrom crayon bold blue green yellow red cyan
 #' @export
 penalized_mfa_clusterwise <- function(data_list,
                                       coords_list,
