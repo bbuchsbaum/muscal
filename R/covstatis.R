@@ -233,21 +233,14 @@ reconstruct.covstatis <- function(x, comp = 1:multivarious::ncomp(x)) {
   V %*% (lambda * t(V))                       # fast diag trick
 }
 
-#' Project and Summarize New Data in a COVSTATIS Space
-#' 
+#' @rdname project_subjects
 #' @description 
 #' This function provides a comprehensive analysis for one or more new subject matrices 
 #' by projecting them into the compromise space of a fitted `covstatis` model. It
 #' computes several key metrics for each new matrix, following the projection logic
 #' of `DISTATIS`.
-#' 
-#' @param x A fitted `covstatis` object.
-#' @param new_data A single matrix or a list of matrices to project. Each matrix must
-#'   have the same dimensions as the data used to train the model.
 #' @param subject_ids Optional character vector of identifiers for the new subjects.
 #'   If not provided, names will be taken from `new_data` or generated automatically.
-#' @param ... other arguments (not used).
-#' 
 #' @details
 #' The function performs the following steps for each new matrix:
 #' 1.  Applies the same pre-processing (double-centering, normalization) as the original model.
@@ -265,12 +258,6 @@ reconstruct.covstatis <- function(x, comp = 1:multivarious::ncomp(x)) {
 #'
 #' @export
 #' @md
-project_subjects <- function(x, ...) {
-  UseMethod("project_subjects")
-}
-
-#' @rdname project_subjects
-#' @export
 project_subjects.covstatis <- function(x, new_data, subject_ids = NULL, ...) {
   if (!is.list(new_data)) {
     new_data <- list(new_data)
@@ -346,5 +333,83 @@ project_subjects.covstatis <- function(x, new_data, subject_ids = NULL, ...) {
     scalar_summaries = scalar_stats,
     roi_scores = roi_scores_list
   )
+}
+
+# Internal helper to retrieve subject (G) scores
+.get_G_scores <- function(x) {
+  # x$partial_scores is a list of R × D matrices (one per subject)
+  # Take barycentric mean of ROIs ⇒ G-scores (subjects × D)
+  do.call(rbind, lapply(x$partial_scores, colMeans))
+}
+
+#' @rdname project_covariate
+#' @description
+#' This function projects a subject-level covariate into the space of a fitted `covstatis` model,
+#' treating it as a supplementary variable without re-fitting the model.
+#' @param what  `"dimension"` (default) returns cosine / β per compromise
+#'              dimension; `"observation"` returns an ROI-wise pattern.
+#' @param scale  `"cosine"` (−1…1) or `"beta"` (regression coeff.).
+#' @return If `what = "dimension"`, a named numeric vector of length `ncomp(x)`.
+#'         If `what = "observation"`, an `R × ncomp` matrix.
+#' @details
+#' The interpretation of the output depends on the `what` parameter:
+#' - **Dimension-wise cosine**: This is the correlation between the covariate `y` and the subject G-scores. It indicates which compromise dimensions are most strongly associated with the covariate.
+#' - **Observation matrix**: This is a weighted sum of each subject's partial factor scores (`Partial-F`). It represents the spatial signature in the compromise space associated with a one-unit change in the covariate.
+#' 
+#' @examples
+#' # Create a list of correlation matrices
+#' Xs <- lapply(1:5, function(i) matrix(rnorm(10*10), 10, 10))
+#' Xs <- lapply(Xs, cor)
+#' 
+#' # Apply COVSTATIS
+#' res <- covstatis(Xs, ncomp=3)
+#' 
+#' # Create a random covariate vector (e.g., episodic memory scores)
+#' y <- rnorm(length(Xs))
+#' 
+#' # Project the covariate to get dimension-wise coordinates
+#' dim_cos <- project_covariate(res, y, what = "dimension", scale = "cosine")
+#' 
+#' # Project the covariate to get an ROI-wise pattern
+#' roi_beta <- project_covariate(res, y, what = "observation", scale = "beta")
+#'
+#' @export
+project_covariate.covstatis <- function(x, y,
+                              what = c("dimension", "observation"),
+                              scale = c("cosine", "beta"), ...) {
+  what  <- match.arg(what)
+  scale <- match.arg(scale)
+  
+  ns <- length(x$partial_scores)
+  chk::chk_vector(y)
+  chk::chk_equal(length(y), ns)
+  
+  G <- .get_G_scores(x)        # ns × D
+  if (what == "dimension") {
+    if (scale == "cosine") {
+      numer <- as.numeric(t(G) %*% y)            # length D
+      denom <- sqrt(colSums(G^2)) * sqrt(sum(y^2))
+      out   <- numer / denom
+    } else { # beta
+      out <- as.numeric(t(G) %*% y / colSums(G^2))
+    }
+    names(out) <- paste0("Dim", seq_along(out))
+    return(out)
+  }
+  
+  ## --- observation-wise pattern ------------------------------------
+  R  <- nrow(x$partial_scores[[1]])
+  D  <- ncol(x$partial_scores[[1]])
+  out <- matrix(0, R, D)
+  for (k in seq_len(ns)) out <- out + y[k] * x$partial_scores[[k]]
+  if (scale == "cosine") {
+    norm_out <- sqrt(sum(out^2))
+    if (norm_out > 1e-12) out <- out / norm_out
+  } else {                     # beta-style scaling
+    denom <- colSums(G^2)      # D-vector
+    out   <- out / matrix(denom, R, D, byrow = TRUE)
+  }
+  dimnames(out) <- list(x$labels, paste0("Dim", 1:D))
+  out
 }
 

@@ -109,6 +109,48 @@ project_cov <- function(x, new_data, ...) {
 }
 
 
+#' Project and Summarize New Subject Data (generic)
+#'
+#' @description
+#' Generic for projecting one or more new subject-level data instances (e.g., matrices)
+#' into the compromise space of a fitted model. This function provides a comprehensive
+#' analysis by computing several key metrics for each new instance.
+#'
+#' @param x A fitted model object (e.g., `covstatis`).
+#' @param new_data A single data instance or a list of instances to project. Each instance
+#'   must have dimensions compatible with the training data of the model.
+#' @param ... Other arguments passed to methods.
+#'
+#' @return A list containing scores, projections, and summary statistics. The exact
+#'   contents depend on the specific method.
+#'
+#' @export
+#' @rdname project_subjects
+project_subjects <- function(x, new_data, ...) {
+  UseMethod("project_subjects")
+}
+
+
+#' Project a Subject-Level Covariate (generic)
+#'
+#' @description
+#' Generic for projecting a subject-level covariate into the space of a fitted model,
+#' treating it as a supplementary variable without re-fitting the model.
+#'
+#' @param x A fitted model object (e.g., `covstatis`).
+#' @param y Numeric vector representing the covariate, with length equal to the number of subjects in the model.
+#' @param ... other arguments passed to methods.
+#'
+#' @return The return value depends on the method, but is typically a projection
+#'   of the covariate onto the model's components or a spatial pattern.
+#'
+#' @export
+#' @rdname project_covariate
+project_covariate <- function(x, y, ...) {
+  UseMethod("project_covariate")
+}
+
+
 #' Re‑export selected generics from **multivarious**
 #'
 #' The package extends the `project()` and `reprocess()` generics defined in
