@@ -13,7 +13,7 @@
 #    S       number of blocks/subjects
 #    n       rows per block
 #    p       columns per block   (single value or length‑S vector)
-#    r       rank (latent components)
+#    r       rank (latent components; must be <= n)
 #    sigma   N(0,σ²) noise level
 #    sphere  if TRUE generate coords on unit sphere and build k‑NN graph
 #    k_nn    number of neighbours for graph
@@ -29,7 +29,7 @@ synthetic_multiblock <- function(S       = 5,
                                  seed    = 1)
 {
   if (length(p) == 1) p <- rep(p, S)
-  stopifnot(length(p) == S, r < min(p))
+  stopifnot(length(p) == S, r <= n, r < min(p))
 
   set.seed(seed)
 
