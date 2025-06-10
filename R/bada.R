@@ -58,6 +58,8 @@ summarize_boot <- function(boot_ret, alpha=.05){
 #' @param data The dataset on which the bootstrap resampling should be performed.
 #' @param nboot An integer specifying the number of bootstrap resamples to perform (default is 500).
 #' @param alpha The percentile level for the computation of the lower and upper percentiles (default is 0.05).
+#' @param verbose Logical; if `TRUE`, progress information is printed during
+#'   resampling. Defaults to `FALSE`.
 #' @param ... Additional arguments to be passed to the specific model implementation of `bootstrap`.
 #' @details The function returns a list containing the summarized bootstrap resampled components and scores for the model. 
 #' The returned list contains eight elements:
@@ -78,7 +80,7 @@ summarize_boot <- function(boot_ret, alpha=.05){
 #' @rdname bada
 #' @export
 #' @method bootstrap bada
-bootstrap.bada <- function(x, data, nboot=500, alpha=.05, ...) {
+bootstrap.bada <- function(x, data, nboot=500, alpha=.05, verbose = FALSE, ...) {
   sdat <- split(data, x$subjects)
   ## subject-split and preprocessed data
   strata <- seq_along(sdat) %>% purrr::map(function(i) {
@@ -90,7 +92,7 @@ bootstrap.bada <- function(x, data, nboot=500, alpha=.05, ...) {
 
 
   boot_ret <- furrr::future_map(1:nboot, function(i) {
-    print(i)
+    if (isTRUE(verbose)) message(i)
     boot_indices <- sample(1:length(strata), replace=TRUE)
     boot_strata <- strata[boot_indices]
     ## group designs
@@ -151,7 +153,7 @@ bada.multidesign <- function(data, y, subject, preproc=center(), ncomp=2,
 
   
   ## data split by subject
-  sdat <- split(data, subject)
+  sdat <- multidesign::split(data, !!subject_quo)
   
   
   ## pre-processors, one per subject
