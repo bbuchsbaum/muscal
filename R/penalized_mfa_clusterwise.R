@@ -35,12 +35,17 @@
 #' @param preproc Optional preprocessing for each block. Can be NULL (default), a single `prepper` object (applied independently to each block), or a list of `prepper` objects (one per block).
 #' @param memory_budget_mb Numeric (default 1024). Maximum memory (in MB) allocated per block for pre-computing `XtX`. If exceeded, gradient is computed on-the-fly, and objective uses a different formula.
 #'
-#' @return A list with:
-#' \itemize{
-#'   \item \code{V_list}: A list of \eqn{S} final loadings \(\mathbf{V}_s\).
-#'   \item \code{Sadj}: The graph Laplacian matrix \eqn{L=D-A} used for the penalty.
-#'   \item \code{obj_values}: Outer iteration objective values.
-#' }
+#' @return A `multiblock_projector` object with class `"penalized_mfa_clusterwise"`.
+#'   The base projector stores the concatenated loading matrix in `v`, the
+#'   block mapping in `block_indices`, and a pass-through preprocessor in `preproc`.
+#'   Additional elements accessible via `$` include:
+#'   * `Sadj`          -- graph Laplacian used for the smoothness penalty.
+#'   * `LV`            -- product `Sadj %*% v` from the final iteration.
+#'   * `obj_values`    -- objective value at each outer iteration.
+#'   * `lambda`        -- smoothness penalty weight.
+#'   * `precompute_info` -- logical vector indicating which blocks used precomputed gradients.
+#'   * `iterations_run` -- number of iterations actually performed.
+#'   * `V_list`        -- list of per-block loading matrices.
 #' @importFrom Matrix Diagonal rowSums
 #' @importFrom pracma orth
 #' @export
@@ -552,23 +557,20 @@ penalized_mfa_clusterwise <- function(data_list,
   # Create a pass() preprocessor, as this function assumes pre-processed input
   final_preproc <- multivarious::prep(multivarious::pass())
 
-  # Construct the multiblock_projector
+  # Construct the multiblock_projector and pass auxiliary results via '...'
   result_projector <- multivarious::multiblock_projector(
       v = v_concat,
       preproc = final_preproc,
       block_indices = row_indices_list,
+      Sadj = Sadj,
+      LV = LV_current,
+      obj_values = obj_values,
+      lambda = lambda,
+      precompute_info = precompute_info,
+      iterations_run = iter,
+      V_list = V_list,
       classes = "penalized_mfa_clusterwise" # Add original class back
   )
-
-  # Add other specific results as attributes
-  attr(result_projector, "Sadj") <- Sadj
-  attr(result_projector, "LV") <- LV_current
-  attr(result_projector, "obj_values") <- obj_values
-  attr(result_projector, "lambda") <- lambda
-  attr(result_projector, "precompute_info") <- precompute_info
-  attr(result_projector, "iterations_run") <- iter
-  # Store original V_list for potential inspection
-  attr(result_projector, "V_list") <- V_list
   
   return(result_projector)
 }
@@ -597,17 +599,17 @@ print.penalized_mfa_clusterwise <- function(x, ...) {
   header <- crayon::bold(crayon::blue("Penalized MFA with Clusterwise Smoothness"))
   cat(header, "\n\n")
   
-  # Extract info from object and attributes
-  ncomp <- ncol(x$v) 
-  lambda_val <- attr(x, "lambda")
-  V_list_internal <- attr(x, "V_list") 
-  obj_values_val <- attr(x, "obj_values")
-  n_blocks <- length(x$block_indices) 
+  # Extract info from object and named elements
+  ncomp <- ncol(x$v)
+  lambda_val <- x$lambda
+  V_list_internal <- x$V_list
+  obj_values_val <- x$obj_values
+  n_blocks <- length(x$block_indices)
   block_names <- names(x$block_indices)
   if (is.null(block_names)) block_names <- paste("Block", 1:n_blocks)
-  iterations_run <- attr(x, "iterations_run")
+  iterations_run <- x$iterations_run
   if (is.null(iterations_run)) iterations_run <- length(obj_values_val) - 1 # Estimate if missing
-  precompute_info <- attr(x, "precompute_info")
+  precompute_info <- x$precompute_info
   if (is.null(precompute_info)) precompute_info <- rep(NA, n_blocks) # Handle if missing
   
   # Model parameters
