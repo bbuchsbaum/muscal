@@ -8,7 +8,7 @@
 #' @importFrom MASS ginv
 #' @importFrom crayon bold magenta green blue yellow
 #' @importFrom purrr map map2
-#' @importFrom multivarious init_transform prep fresh center
+#' @importFrom multivarious init_transform prep fresh center concat_pre_processors
 #' @importFrom multidesign multiblock
 NULL
 
@@ -493,10 +493,7 @@ bamfa.multiblock <- function(data, k_g = 2, k_l = 2, niter = 10, preproc = cente
   # Create concatenated preprocessor
   final_preproc <- NULL
   if (!is.null(proclist)) {
-       if (!exists("concat_pre_processors", mode = "function")) {
-          stop("Function 'concat_pre_processors' not found. Ensure multivarious package is loaded correctly.", call.=FALSE)
-      }
-      final_preproc <- concat_pre_processors(proclist, block_indices)
+      final_preproc <- multivarious::concat_pre_processors(proclist, block_indices)
   } else {
       # Should not happen if default preproc=center() was used, but handle defensively
       pass_proc <- multivarious::prep(multivarious::pass())
