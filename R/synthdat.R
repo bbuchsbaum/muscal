@@ -1,3 +1,26 @@
+
+# ================================================================
+#  synthetic_multiblock()  — test‑set generator
+# ================================================================
+#
+#  Returns a list with
+#    $data_list      list of X_s  (n × p_s)
+#    $coords_list    3‑D coords for clusterwise variant  (optional)
+#    $V_true         list of true loadings  (p_s × r)
+#    $F_true         shared factor scores   (n  × r)
+#    $Sadj           sparse Laplacian used for smoothness penalty
+#
+#  Parameters:
+#    S       number of blocks/subjects
+#    n       rows per block
+#    p       columns per block   (single value or length‑S vector)
+#    r       rank (latent components; must be <= n)
+#    sigma   N(0,σ²) noise level
+#    sphere  if TRUE generate coords on unit sphere and build k‑NN graph
+#    k_nn    number of neighbours for graph
+#    seed    reproducible RNG seed
+#
+
 #' Generate synthetic multiblock data
 #'
 #' This helper function creates several blocks of multivariate data that share
@@ -36,7 +59,7 @@ synthetic_multiblock <- function(S       = 5,
                                  seed    = 1)
 {
   if (length(p) == 1) p <- rep(p, S)
-  stopifnot(length(p) == S, r < min(p))
+  stopifnot(length(p) == S, r <= n, r < min(p))
 
   set.seed(seed)
 
