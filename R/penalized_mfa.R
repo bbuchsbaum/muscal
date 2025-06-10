@@ -42,7 +42,7 @@ adam_update_block <- function(V, G, M, V2, step_count,
 #' @importFrom chk chk_numeric chk_list chk_integer chk_gte chk_lte chk_flag
 #' @importFrom stats svd qr qr.Q qr.R
 #' @importFrom purrr map
-#' @importFrom multivarious fresh prep init_transform center
+#' @importFrom multivarious fresh prep init_transform center concat_pre_processors
 #' @importFrom dplyr pull select
 #' @importFrom rlang enquo
 NULL
@@ -605,11 +605,7 @@ penalized_mfa.list <- function(data,
   # Create the final preprocessor using concat_pre_processors
   final_preproc <- NULL
   if (!is.null(proclist)) {
-      # Ensure concat_pre_processors is available
-      if (!exists("concat_pre_processors", mode = "function")) {
-          stop("Function 'concat_pre_processors' not found. Ensure multivarious package is loaded correctly.", call.=FALSE)
-      }
-      final_preproc <- concat_pre_processors(proclist, block_indices)
+      final_preproc <- multivarious::concat_pre_processors(proclist, block_indices)
   } else {
       # Create a pass() preprocessor if no preprocessing was done
       # Need to ensure it's a finalized pre_processor object
