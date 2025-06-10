@@ -271,14 +271,11 @@ bamfa.multiblock <- function(data, k_g = 2, k_l = 2, niter = 10, preproc = cente
   # Apply preprocessing to each block
   Xp <- vector("list", length(data))
   names(Xp) <- names(data)
-  X_dims <- vector("list", length(data))
-  names(X_dims) <- names(data)
   
   for (i in seq_along(data)) {
     Xi <- data[[i]]
     p <- proclist[[i]]
     Xp[[i]] <- multivarious::init_transform(p, Xi)
-    X_dims[[i]] <- dim(Xp[[i]])
   }
   
   # -----------------------------------------------------------------------
