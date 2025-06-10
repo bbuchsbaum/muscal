@@ -1,0 +1,30 @@
+Package: muscal
+Type: Package
+Title: Core Multivariate Statistical Analyses and Utilities
+Version: 0.1.0
+Authors@R: person("First", "Last", email = "first.last@example.com", role = c("aut", "cre")) # TODO: UPDATE AUTHORS
+Description: Provides core 'French school' multivariate analysis methods including
+    Multiple Factor Analysis (MFA), Penalized MFA, STATIS, variants of
+    Correspondence Analysis (BADA, BAMFA), and Generalized Procrustes Analysis.
+    Also includes essential utility functions for data simulation, testing,
+    and processing potentially used by related statistical packages.
+License: TODO - Specify License (e.g., MIT, GPL-3)
+Encoding: UTF-8
+LazyData: true
+Imports:
+    Matrix,
+    stats,
+    graphics,
+    MASS,
+    irlba,
+    multivarious,
+    assertthat,
+    chk
+Suggests:
+    testthat (>= 3.0.0),
+    knitr,
+    rmarkdown
+Depends:
+    R (>= 3.5.0)
+RoxygenNote: 7.0.0 # Update if needed
+LinkingTo: Rcpp, RcppArmadillo # Assuming C++ backend exists or is planned
