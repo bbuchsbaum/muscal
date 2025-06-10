@@ -1,3 +1,4 @@
+
 # ================================================================
 #  synthetic_multiblock()  — test‑set generator
 # ================================================================
@@ -19,6 +20,34 @@
 #    k_nn    number of neighbours for graph (must be < available coords)
 #    seed    reproducible RNG seed
 #
+#' Generate synthetic multiblock data
+#'
+#' This helper function creates several blocks of multivariate data that share
+#' a common set of latent factor scores.  Optionally the variables can be placed
+#' on the unit sphere to yield spatial coordinates and a sparse k-nearest-neighbour
+#' graph.  The returned object also contains the ground-truth loadings and scores
+#' used for simulation.
+#'
+#' @param S Number of blocks/subjects.
+#' @param n Number of rows (observations) per block.
+#' @param p Number of columns (variables) per block. Can be a single value or a
+#'   vector of length `S`.
+#' @param r Rank (number of latent components).
+#' @param sigma Standard deviation of the Gaussian noise.
+#' @param sphere Logical; if `TRUE`, generate coordinates on the unit sphere and
+#'   build a k-nearest-neighbour graph.
+#' @param k_nn Number of neighbours for the graph when `sphere = TRUE`.
+#' @param seed Integer seed for reproducible generation.
+#'
+#' @return A list with the following elements:
+#' \itemize{
+#'   \item `data_list` — centred data matrices `X_s` of size `n` \times `p_s`;
+#'   \item `coords_list` — 3-D coordinates for each block when `sphere = TRUE`;
+#'   \item `V_true` — list of true loading matrices (`p_s` \times `r`);
+#'   \item `F_true` — matrix of shared factor scores (`n` \times `r`);
+#'   \item `Sadj` — sparse Laplacian matrix for smoothness penalties.
+#' }
+#' @export
 synthetic_multiblock <- function(S       = 5,
                                  n       = 100,
                                  p       = 200,
