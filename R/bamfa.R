@@ -3,12 +3,13 @@
 #' @import RcppArmadillo
 #' @import RcppEigen
 #' @importFrom stats rnorm sd svd qr.coef
-#' @importFrom chk chk_list chk_integer chk_numeric chk_gte chk_flag chk_matrix chk_true
+#' @importFrom chk chk_list chk_integer chk_numeric chk_gte chk_flag chk_matrix
+#' @importFrom chk chk_true
 #' @importFrom Matrix tcrossprod Diagonal sparseMatrix rankMatrix
 #' @importFrom MASS ginv
 #' @importFrom crayon bold magenta green blue yellow
 #' @importFrom purrr map map2
-#' @importFrom multivarious init_transform prep fresh center
+#' @importFrom multivarious init_transform prep fresh center concat_pre_processors
 #' @importFrom multidesign multiblock
 NULL
 
@@ -102,19 +103,20 @@ ls_ridge <- function(Z, X, lambda = 0) {
 #'   multidesign object. Required only for the multidesign method.
 #' @param ... Additional arguments (currently unused).
 #'
-#' @return An object of class `bamfa`, which is a list containing:
-#'   * `G` (matrix): The final global loading matrix (features x `k_g`).
-#'   * `B` (list): A list of block-specific local loading matrices (features_i x `k_l_i`), where `k_l_i <= k_l`.
-#'   * `S` (list): A list of block-specific global score matrices (observations x `k_g`).
-#'   * `U` (list): A list of block-specific local score matrices (observations x `k_l_i`).
-#'   * `block_indices` (list): A list mapping columns in `G` back to the original blocks.
-#'   * `niter_actual` (integer): Actual number of iterations performed.
-#'   * `k_g` (integer): Number of global components in the final model.
-#'   * `k_l` (integer): Requested number of local components (actual components per block may be lower).
-#'   * `lambda_l` (numeric): Regularization parameter used for local scores U_i.
-#'   * `preproc` (list): List of fitted preprocessing objects for each block.
-#'   * `data_names` (character): Names of the input blocks/subjects.
-#'   * `objective_trace` (numeric): Vector tracking the objective function value (Mean Squared Error **per feature**, averaged over observations) at each iteration.
+#' @return A `multiblock_projector` object with class `"bamfa"`.
+#'   The base projector stores the global loading matrix in `v`, the
+#'   concatenated preprocessor in `preproc`, and block mappings in
+#'   `block_indices`. Additional named elements passed via `...` include:
+#'   * `B_list` -- block-specific local loading matrices.
+#'   * `S_list` -- block-specific global score matrices.
+#'   * `U_list` -- block-specific local score matrices.
+#'   * `k_g` -- number of global components in the final model.
+#'   * `k_l` -- requested number of local components.
+#'   * `lambda_l` -- regularization parameter used for local scores `U_i`.
+#'   * `niter_actual` -- actual number of iterations performed.
+#'   * `objective_trace` -- objective function value at each iteration.
+#'   * `data_names` -- names of the input blocks/subjects.
+#'   * `proclist_fitted` -- list of fitted preprocessors for each block.
 #'
 #' @section Caveats and Limitations:
 #' * **Model Choice:** Assumes a linear factor model with orthogonal global and local components.
@@ -271,14 +273,11 @@ bamfa.multiblock <- function(data, k_g = 2, k_l = 2, niter = 10, preproc = cente
   # Apply preprocessing to each block
   Xp <- vector("list", length(data))
   names(Xp) <- names(data)
-  X_dims <- vector("list", length(data))
-  names(X_dims) <- names(data)
   
   for (i in seq_along(data)) {
     Xi <- data[[i]]
     p <- proclist[[i]]
     Xp[[i]] <- multivarious::init_transform(p, Xi)
-    X_dims[[i]] <- dim(Xp[[i]])
   }
   
   # -----------------------------------------------------------------------
@@ -327,15 +326,18 @@ bamfa.multiblock <- function(data, k_g = 2, k_l = 2, niter = 10, preproc = cente
     if (is.null(svd_res)) {
       warning(paste0("SVD failed for block ", i, ", using alternative local basis."), call. = FALSE)
       # Fallback: random orthogonal matrix
-      B_i <- matrix(rnorm(ncol(res_i) * min(k_l, min(dim(res_i)))), 
+      B_i <- matrix(rnorm(ncol(res_i) * min(k_l, min(dim(res_i)))),
                     ncol = min(k_l, min(dim(res_i))))
       B_i <- qr.Q(qr(B_i))
       U_i <- matrix(0, nrow = nrow(res_i), ncol = ncol(B_i))
     } else {
+      # Determine actual number of local components from SVD
+      k_l_actual <- min(k_l, length(svd_res$d))
       # Local loadings (features x k_l)
-      B_i <- svd_res$v
-      # Local scores (observations x k_l)
-      U_i <- svd_res$u %*% diag(svd_res$d)
+      B_i <- svd_res$v[, seq_len(k_l_actual), drop = FALSE]
+      # Local scores scaled by singular values (observations x k_l)
+      U_i <- svd_res$u[, seq_len(k_l_actual), drop = FALSE] *
+        svd_res$d[seq_len(k_l_actual)]
     }
     
     B_list[[i]] <- B_i
@@ -384,16 +386,11 @@ bamfa.multiblock <- function(data, k_g = 2, k_l = 2, niter = 10, preproc = cente
         # Update local basis (loadings)
         k_l_actual <- min(k_l, length(svd_res$d))
         B_list[[i]] <- svd_res$v[, seq_len(k_l_actual), drop = FALSE]
-        
-        # Update local scores with ridge penalty
+
+        # Local scores from SVD scaled by singular values
         if (k_l_actual > 0) {
-          if (lambda_l > 0) {
-            # Use ridge regression if regularization is needed
-            U_list[[i]] <- res_i %*% B_list[[i]]
-          } else {
-            # Direct projection if no regularization
-            U_list[[i]] <- res_i %*% B_list[[i]]
-          }
+          U_list[[i]] <- svd_res$u[, seq_len(k_l_actual), drop = FALSE] *
+            svd_res$d[seq_len(k_l_actual)]
         } else {
           U_list[[i]] <- matrix(0, nrow = nrow(res_i), ncol = 0)
         }
@@ -493,10 +490,7 @@ bamfa.multiblock <- function(data, k_g = 2, k_l = 2, niter = 10, preproc = cente
   # Create concatenated preprocessor
   final_preproc <- NULL
   if (!is.null(proclist)) {
-       if (!exists("concat_pre_processors", mode = "function")) {
-          stop("Function 'concat_pre_processors' not found. Ensure multivarious package is loaded correctly.", call.=FALSE)
-      }
-      final_preproc <- concat_pre_processors(proclist, block_indices)
+      final_preproc <- multivarious::concat_pre_processors(proclist, block_indices)
   } else {
       # Should not happen if default preproc=center() was used, but handle defensively
       pass_proc <- multivarious::prep(multivarious::pass())
