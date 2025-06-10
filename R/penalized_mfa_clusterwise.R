@@ -97,8 +97,7 @@ penalized_mfa_clusterwise <- function(data_list,
   if (S < 2) stop("Need >=2 subjects.")
   if (length(coords_list) != S) stop("coords_list must match data_list length.")
   
-  # Check data dimensions early - requires n_s from data_list
-  n_s_vec <- sapply(data_list, nrow)
+  # Check data dimensions early using number of columns only
   k_s_vec <- sapply(data_list, ncol) # Number of columns (clusters) per subject
   if(!all(sapply(coords_list, nrow) == k_s_vec)) {
       stop("Number of rows in each coords_list element must match number of columns in corresponding data_list element.")
