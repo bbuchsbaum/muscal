@@ -68,10 +68,10 @@ normalization_factors <- function(blocks, type=c("MFA", "RV", "RV2", "None", "Fr
 #' 
 #' @export
 mfa.list <- function(data, preproc=center(), ncomp=2,
-                     normalization=c("MFA", "RV", "None", "Frob", "custom"), 
-                     M=NULL, A=NULL, ...) {
+                     normalization=c("MFA", "RV", "None", "Frob", "custom"),
+                     A=NULL, M=NULL, ...) {
   data <- multiblock(data)
-  mfa.multiblock(data, preproc, ncomp, normalization, M, A,...)
+  mfa.multiblock(data, preproc, ncomp, normalization, A, M,...)
 }
 
 
@@ -113,8 +113,8 @@ mfa.list <- function(data, preproc=center(), ncomp=2,
 #' pred2 <- predict(cfier2, X[1:2,res$block_indices[[2]]])
 #' @export
 mfa.multiblock <- function(data, preproc=center(), ncomp=2,
-                normalization=c("MFA", "RV", "None", "Frob", "custom"), 
-                M=NULL, A=NULL, ...) {
+                normalization=c("MFA", "RV", "None", "Frob", "custom"),
+                A=NULL, M=NULL, ...) {
   
   
   chk::chk_true(length(data) > 1)
