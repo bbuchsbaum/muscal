@@ -130,16 +130,14 @@ bootstrap.bada <- function(x, data, nboot=500, alpha=.05, verbose = FALSE, ...) 
 #' @param resdim pca dimensionality for residual analysis (only relevant if `rescomp` > 0)
 #' @param rescomp number of final residual components (default = 0, no residual aanalysis)
 #' @param ... Additional arguments passed to methods (currently unused).
-#' @inheritParams bada
 #' @rdname bada
 #' @importFrom multidesign summarize_by
-#' @importFrom multivarious pca sdev pass init_transform prep discriminant_projector within_class_scatter between_class_scatter scores
-#' @importFrom stats prcomp qr qr.Q eigen solve interaction colMeans sd
+#' @importFrom multivarious pca sdev pass init_transform prep discriminant_projector scores
 #' @importFrom rlang enquo quo_get_expr
-#' @importFrom dplyr select pull
+#' @importFrom dplyr select pull %>%
 #' @importFrom chk chk_true
 #' @export
-bada.multidesign <- function(data, y, subject, preproc=center(), ncomp=2,
+bada.multidesign <- function(data, y, subject, preproc=multivarious::center(), ncomp=2,
                              resdim=20, rescomp=0, ...) {
   y_quo <- rlang::enquo(y)
   subject_quo <- rlang::enquo(subject)
@@ -153,21 +151,20 @@ bada.multidesign <- function(data, y, subject, preproc=center(), ncomp=2,
 
   
   ## data split by subject
-  sdat <- multidesign::split(data, !!subject_quo)
+  sdat <- base::split(data, !!subject_quo)
   
   
   ## pre-processors, one per subject
   proclist <- lapply(seq_along(sdat), function(sd) {
-    multivarious:::fresh(preproc) %>% prep()
+    multivarious:::fresh(preproc) %>% multivarious::prep()
   })
   
   names(proclist) <- as.character(subject_set)
   
   ## subject-split and preprocessed data
   strata <- seq_along(sdat) %>% purrr::map(function(i) {
-    p <- multivarious::prep(proclist[[i]], sdat[[i]]$x) 
-    Xi <- sdat[[i]]$x
-    Xout <- multivarious::init_transform(p, Xi)
+    p <- proclist[[i]]
+    Xout <- multivarious::init_transform(p, sdat[[i]]$x)
     multidesign(Xout, sdat[[i]]$design)
   })
   
@@ -208,10 +205,10 @@ bada.multidesign <- function(data, y, subject, preproc=center(), ncomp=2,
     Xresid <- do.call(rbind, residual_strata %>% purrr::map( ~ .x$x))
   
     pca_resid <- pca(Xresid, ncomp=resdim, method="irlba")
-    Xpca_resid <- multivarious::scores(pca_resid)
+    Xpca_resid <- scores(pca_resid)
   
-    Sw <- multivarious::within_class_scatter(Xpca_resid, interaction(subjects, labels))
-    Sb <- multivarious::between_class_scatter(Xpca_resid, interaction(subjects, labels), 
+    Sw <- within_class_scatter(Xpca_resid, interaction(subjects, labels))
+    Sb <- between_class_scatter(Xpca_resid, interaction(subjects, labels), 
                               colMeans(Xpca_resid))
   
     eigout <- eigen(solve(Sw, Sb))
@@ -246,9 +243,9 @@ bada.multidesign <- function(data, y, subject, preproc=center(), ncomp=2,
                                         subjects=subjects,
                                         barycenters=Xc,
                                         block_indices=block_indices,
-                                        subject_var=subject,
-                                        y_var=y,
-                                        classes="bada")
+                                        subject_var=subject_quo,
+                                        y_var=y_quo,
+                                        classes=c("bada", "projector"))
  
 }
 

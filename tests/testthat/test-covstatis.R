@@ -1,5 +1,5 @@
 library(testthat)
-library(musca)
+library(muscal)
 library(multivarious)
 
 # Helper to create a random symmetric matrix
@@ -18,19 +18,19 @@ context("covstatis: helper functions")
 
 test_that("double_center works correctly", {
   M <- matrix(1:9, 3, 3)
-  M_dc <- musca:::double_center(M)
+  M_dc <- muscal:::double_center(M)
   
   # Row and column sums should be zero
   expect_true(all(abs(rowSums(M_dc)) < 1e-12))
   expect_true(all(abs(colSums(M_dc)) < 1e-12))
   
   # It should be idempotent
-  expect_equal(M_dc, musca:::double_center(M_dc))
+  expect_equal(M_dc, muscal:::double_center(M_dc), tolerance = 1e-12)
 })
 
 test_that("norm_crossprod normalizes to unit Frobenius norm", {
   S <- make_sym_matrix(10)
-  S_norm <- musca:::norm_crossprod(S)
+  S_norm <- muscal:::norm_crossprod(S)
   expect_equal(frobenius_norm(S_norm), 1)
 })
 
@@ -40,17 +40,17 @@ test_that("compute_prodmat is correct", {
   S_list <- list(S1 = S1, S2 = S2)
   
   # Test fast vs slow paths
-  C_fast <- musca:::compute_prodmat(S_list, fast = TRUE, normalize = FALSE)
-  C_slow <- musca:::compute_prodmat(S_list, fast = FALSE, normalize = FALSE)
+  C_fast <- muscal:::compute_prodmat(S_list, fast = TRUE, normalize = FALSE)
+  C_slow <- muscal:::compute_prodmat(S_list, fast = FALSE, normalize = FALSE)
   expect_equal(C_fast, C_slow)
   
   # Test with normalization
-  S_list_norm <- lapply(S_list, musca:::norm_crossprod)
-  C_norm <- musca:::compute_prodmat(S_list_norm, normalize = TRUE)
+  S_list_norm <- lapply(S_list, muscal:::norm_crossprod)
+  C_norm <- muscal:::compute_prodmat(S_list_norm, normalize = TRUE)
   expect_equal(diag(C_norm), c(1, 1))
   
   # Test without normalization
-  C_no_norm <- musca:::compute_prodmat(S_list, normalize = FALSE)
+  C_no_norm <- muscal:::compute_prodmat(S_list, normalize = FALSE)
   expect_equal(diag(C_no_norm), c(sum(S1^2), sum(S2^2)))
 })
 
@@ -166,7 +166,7 @@ test_that("project_subjects works correctly for known cases", {
   S_ortho_raw <- U_ortho_basis %*% diag(rnorm(p - ncomp(res))) %*% t(U_ortho_basis)
   
   proj_ortho <- project_subjects(res, S_ortho_raw)
-  S_ortho_processed <- musca:::.pre_process_new_cov(res, S_ortho_raw)
+  S_ortho_processed <- muscal:::.pre_process_new_cov(res, S_ortho_raw)
   
   # RV should be 0, distance should be the matrix's full norm, and scores should be 0
   expect_equal(proj_ortho$scalar_summaries$rv_coefficient, 0, tolerance = 1e-9)

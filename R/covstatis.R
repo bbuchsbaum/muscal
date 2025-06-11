@@ -26,7 +26,10 @@ double_center <- function(x) {
 #' @noRd
 #' @keywords internal
 norm_crossprod <- function(S) {
-  S / sqrt(c(crossprod(c(S))))     # ~15% quicker than sum(S^2)
+  if ((ss <- c(crossprod(c(S)))) < 1e-12) {
+    stop("Matrix has a zero Frobenius norm, cannot normalize.")
+  }
+  S / sqrt(ss)     # ~15% quicker than sum(S^2)
 }
 
 #' Compute a matrix of pairwise inner products
@@ -74,9 +77,11 @@ compute_prodmat <- function(S, fast = TRUE, normalize = TRUE) {
 #' 1. Optionally double-centers each matrix (Gower transformation)
 #' 2. Optionally normalizes each matrix to unit Frobenius norm
 #' 3. Computes an RV matrix of inner products between matrices
-#' 4. Determines optimal weights via first eigenvector of the RV matrix
+#' 4. Determines optimal weights (`alpha`) via first eigenvector of the RV matrix. These weights are accessible in the output and can be useful for outlier diagnostics.
 #' 5. Creates a compromise matrix as weighted sum of normalized matrices
 #' 6. Performs eigendecomposition on the compromise matrix
+#' 
+#' The `partial_scores` in the returned object are a list of matrices (one for each subject), with each matrix containing the ROI-level factor scores (ROI x D).
 #' 
 #' @param labels Optional character vector of labels for the rows/columns of the
 #'               covariance matrices. If NULL, tries to use row names from the 
@@ -102,6 +107,7 @@ compute_prodmat <- function(S, fast = TRUE, normalize = TRUE) {
 #' new_mat <- cor(matrix(rnorm(10*10), 10, 10))
 #' proj <- project_cov(res, new_mat)
 #' 
+#' @importFrom stats coefficients
 #' @export
 covstatis.list <- function(data, ncomp=2, 
                            norm_method=c("frobenius", "mfa", "none"), 
@@ -142,7 +148,8 @@ covstatis.list <- function(data, ncomp=2,
   
   # RV-matrix and weights
   C <- compute_prodmat(S, normalize = (norm_method == "frobenius"))
-  alpha <- abs(eigen(C, symmetric = TRUE)$vectors[,1])
+  eigC <- eigen(C, symmetric = TRUE)
+  alpha <- abs(eigC$vectors[,1])
   alpha <- alpha/(sum(alpha))
   
   # Compromise and eigen-decomposition
@@ -162,13 +169,14 @@ covstatis.list <- function(data, ncomp=2,
   
   # Create result object using projector - using 'basis' instead of 'v' for clarity
   ret <- multivarious::projector(fit$vectors[,keep,drop=FALSE], classes="covstatis", 
-                                 s=scores,
+                                 roi_scores=scores,
                                  projmat=projmat,
                                  sdev=sqrt(fit$values[keep]),
                                  norm_method=norm_method, 
                                  dcenter=dcenter, 
                                  alpha=alpha, 
                                  C=C,
+                                 eigC=eigC,
                                  partial_scores=partial_scores,
                                  block_labels=block_labels, 
                                  labels=labels)
@@ -223,6 +231,7 @@ project_cov.covstatis <- function(x, new_data) {
 #' @return A matrix of the same size as each input matrix, representing 
 #'         a low-rank approximation of the compromise matrix in the preprocessed space
 #'         (after double-centering and normalization, if they were applied)
+#' @importFrom multivarious ncomp reconstruct
 #' @export
 reconstruct.covstatis <- function(x, comp = 1:multivarious::ncomp(x)) {
   chk::chk_numeric(comp)
@@ -419,5 +428,72 @@ project_covariate.covstatis <- function(x, y,
   }
   dimnames(out) <- list(x$labels, paste0("Dim", 1:D))
   out
+}
+
+#' Subject coordinates in the RV/table space
+#'
+#' Returns a K × D matrix whose columns are the subject (table) scores
+#' associated with each compromise dimension.
+#'
+#' @param x A fitted `covstatis` object.
+#' @return A K x D matrix of subject scores in the RV space.
+#' @keywords internal
+#' @noRd
+rv_subject_scores <- function(x) {
+  eigC <- x$eigC
+  V    <- eigC$vectors[, seq_len(ncol(coefficients(x))), drop = FALSE]
+  sigma <- x$sdev[seq_len(ncol(coefficients(x)))]
+  sweep(V, 2, sigma, `*`)            # K × D  (same Σ as in ROI space)
+}
+
+#' Verify duality between ROI- and RV-space coordinates
+#' 
+#' This function checks whether the squared norms of the ROI-space coordinates 
+#' (F-scores) are equal to the squared norms of the RV-space coordinates 
+#' (T-scores) for each dimension, which is a fundamental property of COVSTATIS.
+#'
+#' @param x A fitted `covstatis` object.
+#' @param tol The tolerance for the comparison.
+#' @return `TRUE` if the duality property holds within the given tolerance.
+#' @export
+#' @examples
+#' # Create a list of correlation matrices
+#' Xs <- lapply(1:5, function(i) matrix(rnorm(10*10), 10, 10))
+#' Xs <- lapply(Xs, cor)
+#' # Apply COVSTATIS
+#' res <- covstatis(Xs, ncomp=3)
+#' # Check duality
+#' check_duality(res)
+check_duality <- function(x, tol = 1e-10) {
+  F_scores  <- x$roi_scores                         # ROI × D  (U Σ)
+  T_scores  <- rv_subject_scores(x)        # subj × D (V Σ)
+  isTRUE(all.equal(colSums(F_scores^2),
+                   colSums(T_scores^2),
+                   tolerance = tol))
+}
+
+#' Extract ROI map for a compromise dimension
+#' 
+#' @param x A fitted `covstatis` object.
+#' @param d The dimension to extract.
+#' @return A numeric vector representing the ROI map for the specified dimension.
+#' @export
+roi_map <- function(x, d) {
+  x$roi_scores[, d]
+}
+
+#' Plot subject clouds in RV and ROI spaces
+#'
+#' @param x A fitted `covstatis` object.
+#' @param dim A numeric vector of length 2 specifying the dimensions to plot.
+#' @importFrom graphics par plot
+#' @export
+plot_subjects <- function(x, dim = c(1,2)) {
+  G <- .get_G_scores(x)
+  T_scores <- rv_subject_scores(x)
+  old_par <- par(mfrow = c(1,2))
+  on.exit(par(old_par))
+  plot(G[,dim], main = "G-scores (compromise space)", xlab = paste("Dim", dim[1]), ylab = paste("Dim", dim[2]))
+  plot(T_scores[,dim], main = "T-scores (RV space)",   xlab = paste("Dim", dim[1]), ylab = paste("Dim", dim[2]))
 }
 

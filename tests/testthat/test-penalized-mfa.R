@@ -1,38 +1,39 @@
 library(testthat)
-library(musca)
+library(muscal)
 
-# --- should_precompute ------------------------------------------------------
+# Test data setup
+set.seed(123)
+X1 <- scale(matrix(rnorm(100 * 4), 100, 4), scale = FALSE)
+X2 <- scale(matrix(rnorm(100 * 16), 100, 16), scale = FALSE)
+data_list_uneven <- list(B1 = X1, B2 = X2)
+data_list_even <- list(B1 = X1, B2 = X1)
 
-test_that("should_precompute respects memory budget", {
-  expect_true(musca:::should_precompute(p = 10, mem_mb = 1))
-  expect_false(musca:::should_precompute(p = 1000, mem_mb = 1))
+test_that("penalized_mfa.list handles uneven and even blocks correctly", {
+  # Test with uneven blocks: should warn and produce no consensus matrix
+  expect_warning(
+    res_uneven <- penalized_mfa.list(data_list_uneven, ncomp = 2, lambda = 1, compute_consensus = TRUE, verbose = FALSE, penalty_method = "projection"),
+    "Cannot compute consensus"
+  )
+  expect_s3_class(res_uneven, "penalized_mfa")
+  expect_null(attr(res_uneven, "consensus"))
+
+  # Test with even blocks: should produce a consensus matrix
+  res_even <- penalized_mfa.list(data_list_even, ncomp = 2, lambda = 1, compute_consensus = TRUE, verbose = FALSE, penalty_method = "projection")
+  expect_s3_class(res_even, "penalized_mfa")
+  expect_true(!is.null(attr(res_even, "consensus")))
+  expect_equal(dim(attr(res_even, "consensus")), c(4, 2))
 })
 
-# --- make_grad_fun ---------------------------------------------------------
-
-test_that("make_grad_fun with XtX and on-the-fly agree", {
-  set.seed(1)
-  X <- matrix(rnorm(6), nrow = 2)
-  XtX <- crossprod(X)
-  V <- matrix(rnorm(6), nrow = 3)
-  grad_pre <- musca:::make_grad_fun(X, XtX)
-  grad_fly <- musca:::make_grad_fun(X)
-  expect_equal(grad_pre(V), grad_fly(V))
+test_that("penalized_mfa works with multiblock input", {
+  mb <- multiblock(data_list_uneven)
+  # Should warn about falling back from projection penalty
+  expect_warning(
+    res <- penalized_mfa(mb, ncomp = 2, lambda = 1, penalty_method = "projection"),
+    "Falling back to 'pairwise'"
+  )
+  expect_s3_class(res, "penalized_mfa")
 })
 
-# --- penalized_mfa.list output --------------------------------------------
-
-
-test_that("penalized_mfa.list returns a projector with expected attributes", {
-  skip_if_not_installed("multivarious")
-  dl <- list(matrix(rnorm(20), 5, 4), matrix(rnorm(20), 5, 4))
-  res <- musca:::penalized_mfa.list(dl, ncomp = 2, lambda = 0.1,
-                                     max_iter = 1, nsteps_inner = 1,
-                                     learning_rate = 0.01,
-                                     compute_consensus = TRUE)
-  expect_s3_class(res, "multiblock_projector")
-  expect_true(!is.null(attr(res, "obj_values")))
-  expect_equal(ncol(res$v), 2)
-  expect_length(attr(res, "precompute_info"), 2)
-  expect_true(!is.null(attr(res, "consensus")))
+test_that("penalized_mfa stops with fewer than 2 blocks", {
+  expect_error(penalized_mfa.list(list(X1), ncomp = 2), "requires at least 2 data blocks")
 })

@@ -210,9 +210,6 @@ significant_components <- function(fit, n, k_vec = NULL,
               } else {
                   mp_edge <- sigma2_est * (1 + sqrt(gamma))^2
                   pass_rmt <- lambda > mp_edge
-                  if (sum(pass_rmt) == 0 && verbose) { # Optional verbose feedback
-                      message("RMT test did not find any components above the noise edge.")
-                  }
               }
           }
       }
@@ -318,4 +315,67 @@ significant_components <- function(fit, n, k_vec = NULL,
 #' @noRd
 `%||%` <- function(a, b) {
   if (is.null(a)) b else a
+}
+
+#' Calculate Within-Class Scatter Matrix
+#'
+#' Computes the within-class scatter matrix (Sw), which is the sum of scatter
+#' matrices for each class.
+#'
+#' @param X A numeric matrix where rows are observations and columns are features.
+#' @param class_vector A factor or vector specifying the class for each row of X.
+#' @return The within-class scatter matrix (p x p).
+#' @importFrom stats scale
+#' @noRd
+#' @keywords internal
+within_class_scatter <- function(X, class_vector) {
+  p <- ncol(X)
+  # Using as.data.frame is necessary for split to work on a matrix by rows
+  X_split_by_class <- split(as.data.frame(X), class_vector)
+  
+  # Calculate scatter matrix for each class and sum them up
+  scatter_matrices <- lapply(X_split_by_class, function(class_df) {
+    # scale() is efficient for centering
+    crossprod(scale(as.matrix(class_df), center = TRUE, scale = FALSE))
+  })
+  
+  # Sum the scatter matrices from all classes
+  Reduce("+", scatter_matrices)
+}
+
+
+#' Calculate Between-Class Scatter Matrix
+#'
+#' Computes the between-class scatter matrix (Sb), which measures the scatter
+#' of class means around the grand mean.
+#'
+#' @param X A numeric matrix where rows are observations and columns are features.
+#' @param class_vector A factor or vector specifying the class for each row of X.
+#' @param grand_mean A numeric vector representing the grand mean of X.
+#' @return The between-class scatter matrix (p x p).
+#' @importFrom stats aggregate
+#' @noRd
+#' @keywords internal
+between_class_scatter <- function(X, class_vector, grand_mean) {
+  p <- ncol(X)
+  Sb <- matrix(0, p, p)
+  
+  # Get class counts and means efficiently
+  class_counts <- table(class_vector)
+  # aggregate is a good way to get class means
+  class_means <- aggregate(X ~ class_vector, FUN = mean)
+  
+  # Iterate over classes to compute Sb
+  for (i in seq_along(class_counts)) {
+    class_name <- names(class_counts)[i]
+    n_c <- class_counts[class_name]
+    # class_means has 'class_vector' as first column
+    mu_c <- as.numeric(class_means[i, -1])
+    
+    diff_vec <- mu_c - grand_mean
+    # Add this class's contribution to Sb
+    Sb <- Sb + n_c * tcrossprod(diff_vec)
+  }
+  
+  Sb
 }

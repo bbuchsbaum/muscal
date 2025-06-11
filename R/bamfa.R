@@ -1,21 +1,30 @@
-#' @useDynLib multivarious, .registration = TRUE
+#' @useDynLib muscal, .registration = TRUE
 #' @importFrom Rcpp sourceCpp
 #' @import RcppArmadillo
 #' @import RcppEigen
-#' @importFrom stats rnorm sd svd qr.coef
-#' @importFrom chk chk_list chk_integer chk_numeric chk_gte chk_flag chk_matrix
+#' @importFrom stats rnorm sd
+#' @importFrom chk chk_list chk_integer chk_numeric chk_gte chk_flag chk_matrix chk_not_empty
 #' @importFrom chk chk_true
 #' @importFrom Matrix tcrossprod Diagonal sparseMatrix rankMatrix
 #' @importFrom MASS ginv
 #' @importFrom crayon bold magenta green blue yellow
 #' @importFrom purrr map map2
-#' @importFrom multivarious init_transform prep fresh center concat_pre_processors
+#' @importFrom multivarious init_transform prep fresh center concat_pre_processors pass
 #' @importFrom multidesign multiblock
+#' @importFrom RSpectra svds
+#' @importFrom rlang enquo quo_is_missing quo_get_expr
+#' @importFrom dplyr select pull
+#' @importFrom multivarious multiblock_projector
+#' @importFrom RSpectra svds
+#' @importFrom stats rnorm
+#' @import Rcpp
+#' @importFrom rlang .data
 NULL
 
 #' Internal ridge least-squares fit
 #'
 #' Solves min ||X - ZB||_F^2 + lambda*||B||_F^2 for B.
+#' Regularizes the unpenalized case with a tiny ridge penalty for stability.
 #'
 #' @param Z Predictor matrix (n x k)
 #' @param X Response matrix (n x p)
@@ -29,37 +38,55 @@ ls_ridge <- function(Z, X, lambda = 0) {
     return(matrix(0.0, 0, ncol(X)))
   }
 
-  # Assuming Z and X are already centered if necessary by preproc
+  # Add tiny ridge for stability in unpenalized case
+  effective_lambda <- if (lambda == 0) 1e-8 else lambda
+  
+  # Call the fast Rcpp implementation
+  coefs <- tryCatch(
+    ridge_solve(Z, X, effective_lambda),
+    error = function(e) {
+      warning("Rcpp ridge_solve failed: ", e$message, ". Falling back to R.", call. = FALSE)
+      # Fallback R implementation
+      ZtZ <- crossprod(Z)
+      ZtX <- crossprod(Z, X)
+      I_k <- diag(k)
+      solve(ZtZ + effective_lambda * I_k, ZtX)
+    }
+  )
 
-  if (lambda == 0) {
-    # Use QR decomposition for unpenalized least squares
-    coefs <- tryCatch(stats::qr.coef(stats::qr(Z), X), error = function(e) NULL)
-    if (is.null(coefs)) {
-        warning("QR decomposition failed in ls_ridge, using pseudoinverse.", call. = FALSE)
-        Zplus <- tryCatch(MASS::ginv(Z), error = function(e) {
-             warning("ginv failed: " , e$message, call. = FALSE)
-             NULL
-             })
-        if(is.null(Zplus)) return(matrix(0.0, k, ncol(X))) # Fallback
-        coefs <- Zplus %*% X
-    }
-  } else {
-    # Ridge regression: solve(t(Z)Z + lambda*I, t(Z)X)
-    tZ <- t(Z) # k x n
-    ZtZ <- tZ %*% Z # k x k
-    ZtX <- tZ %*% X # k x p
-    I_k <- diag(k)
-    coefs <- tryCatch(solve(ZtZ + lambda * I_k, ZtX), error = function(e) NULL)
-    if (is.null(coefs)) {
-        warning("Solve failed in ridge regression, returning zero coefficients.", call. = FALSE)
-        coefs <- matrix(0.0, k, ncol(X))
-    }
-  }
-  # Ensure coefs is a matrix
   if (!is.matrix(coefs)) {
       coefs <- matrix(coefs, nrow = k, ncol = ncol(X))
   }
   return(coefs) # Returns B (k x p)
+}
+
+
+#' @keywords internal
+prep_bamfa_blocks <- function(data, preproc) {
+  proclist_fitted <- lapply(seq_along(data), function(i) {
+    multivarious::fresh(preproc) %>% multivarious::prep(data[[i]])
+  })
+  
+  X_p <- lapply(seq_along(data), function(i) {
+    multivarious::init_transform(proclist_fitted[[i]], data[[i]])
+  })
+  
+  p_vec <- vapply(X_p, ncol, integer(1))
+  
+  block_indices <- list()
+  current_start <- 1
+  for (i in seq_along(p_vec)) {
+    block_indices[[i]] <- current_start:(current_start + p_vec[i] - 1)
+    current_start <- current_start + p_vec[i]
+  }
+  names(block_indices) <- names(data)
+  
+  list(
+    X_p = X_p,
+    proclist_fitted = proclist_fitted,
+    block_indices = block_indices,
+    p_vec = p_vec
+  )
 }
 
 #' Barycentric Multiple Factor Analysis (BaMFA)
@@ -72,14 +99,14 @@ ls_ridge <- function(Z, X, lambda = 0) {
 #' subspace (`G`) and block-specific subspaces (`B_i`).
 #'
 #' @details
-#' The algorithm models each data block \(X_i\) as:
-#' \[ X_i = S_i G^T + U_i B_i^T + E_i \]
-#' where \(G\) represents shared global loadings, \(B_i\) represents block-specific
-#' local loadings, \(S_i\) and \(U_i\) are the corresponding scores, and \(E_i\) is noise.
-#' Loadings are constrained to be orthonormal (\(G^T G = I, B_i^T B_i = I\)).
+#' The algorithm models each data block \\(X_i\\) as:
+#' \\\[ X_i = S_i G^T + U_i B_i^T + E_i \\\]
+#' where \\(G\\) represents shared global loadings, \\(B_i\\) represents block-specific
+#' local loadings, \\(S_i\\) and \\(U_i\\) are the corresponding scores, and \\(E_i\\) is noise.
+#' Loadings are constrained to be orthonormal (\\(G^T G = I, B_i^T B_i = I\\)).
 #'
 #' The algorithm aims to minimize the total reconstruction error:
-#' \[ \sum_{i=1}^{m} \|X_i - S_i G^T - U_i B_i^T \|_F^2 \]
+#' \\\[ \\sum_{i=1}^{m} ||X_i - S_i G^T - U_i B_i^T ||_F^2 \\\]
 #' using an iterative alternating optimization strategy (similar to Expectation-Maximization):
 #' 1. **Preprocessing:** Each block is preprocessed using the provided `preproc` pipeline.
 #' 2. **Initialization:** Initialize global loadings `G` (via SVD on the mean block).
@@ -98,7 +125,7 @@ ls_ridge <- function(Z, X, lambda = 0) {
 #' @param lambda_l Numeric: Non-negative ridge penalty applied when estimating the local scores `U_i`
 #'   using the internal `ls_ridge` function. Default: 0 (no penalty).
 #' @param tol Numeric: Convergence tolerance. Stops if the relative change in the objective function
-#'   (Mean Squared Error) is less than `tol`. Default: 1e-5.
+#'   (Mean Squared Error) and/or the global loadings `G` is less than `tol`. Default: 1e-5.
 #' @param subject Optional: A variable name identifying the blocking/subject variable when using a
 #'   multidesign object. Required only for the multidesign method.
 #' @param ... Additional arguments (currently unused).
@@ -115,6 +142,7 @@ ls_ridge <- function(Z, X, lambda = 0) {
 #'   * `lambda_l` -- regularization parameter used for local scores `U_i`.
 #'   * `niter_actual` -- actual number of iterations performed.
 #'   * `objective_trace` -- objective function value at each iteration.
+#'   * `g_change_trace` -- relative change in global loadings at each iteration.
 #'   * `data_names` -- names of the input blocks/subjects.
 #'   * `proclist_fitted` -- list of fitted preprocessors for each block.
 #'
@@ -154,20 +182,194 @@ bamfa <- function(data, k_g = 2, k_l = 2, niter = 10,
 #' @md
 #' @rdname bamfa
 #' @export
+bamfa.default <- function(data, k_g = 2, k_l = 2, niter = 10,
+                          preproc = multivarious::center(), lambda_l = 0, tol = 1e-5, ...) {
+  # -----------------------------------------------------------------------
+  # 0. Basic checks and setup
+  # -----------------------------------------------------------------------
+  # Input validation
+  chk::chk_not_empty(data)
+  chk::chk_list(data)
+  k_g <- as.integer(k_g)
+  k_l <- as.integer(k_l)
+  niter <- as.integer(niter)
+  chk::chk_integer(k_g)
+  chk::chk_integer(k_l)
+  chk::chk_integer(niter)
+  chk::chk_numeric(lambda_l)
+  chk::chk_gte(lambda_l, 0)
+  chk::chk_numeric(tol)
+  chk::chk_gte(tol, 0)
+  
+  # Check for consistent number of rows
+  row_counts <- vapply(data, nrow, integer(1))
+  if (length(unique(row_counts)) > 1) {
+    stop("All blocks must have the same number of rows (observations).")
+  }
+  n_obs <- row_counts[1]
+  
+  # Preprocessing
+  prep_res <- prep_bamfa_blocks(data, preproc)
+  X_p <- prep_res$X_p
+  proclist_fitted <- prep_res$proclist_fitted
+  block_indices <- prep_res$block_indices
+  p_vec <- prep_res$p_vec
+  p_tot <- sum(p_vec)
+  
+  # Check if k_g is too large
+  k_g <- min(k_g, n_obs, p_tot)
+  
+  # Check if k_l is too large for any block
+  k_l <- min(k_l, n_obs, min(p_vec))
+  
+  # -----------------------------------------------------------------------
+  # 1. Initialization
+  # -----------------------------------------------------------------------
+  # Initialize G from a random orthogonal matrix
+  G <- matrix(rnorm(p_tot * k_g), p_tot, k_g)
+  G <- qr.Q(qr(G))
+  
+  # Lists to store block-specific components
+  B_list <- vector("list", length(data)) # Local loadings
+  S_list <- vector("list", length(data)) # Global scores
+  U_list <- vector("list", length(data)) # Local scores
+  
+  obj_trace <- numeric(niter) # To track convergence
+  g_change_trace <- numeric(niter) # To track G convergence
+  
+  # -----------------------------------------------------------------------
+  # 2. Iterative Optimization
+  # -----------------------------------------------------------------------
+  for (iter in 1:niter) {
+    
+    # E-step: Update scores (S_i, U_i) and local bases (B_i) for each block
+    obj_sum <- 0
+    G_old <- G
+    
+    for (i in seq_along(X_p)) {
+      G_i <- G[block_indices[[i]], , drop = FALSE]
+      S_list[[i]] <- X_p[[i]] %*% G_i # n_obs x k_g
+      R_i <- X_p[[i]] - S_list[[i]] %*% t(G_i)
+      
+      # Use RSpectra for faster SVD on wide residual matrices, with fallback
+      if (min(dim(R_i)) >= 3 && k_l <= min(dim(R_i))) {
+        svd_R <- tryCatch(
+          RSpectra::svds(R_i, k = k_l, nu = k_l, nv = k_l),
+          error = function(e) svd(R_i, nu = k_l, nv = k_l)
+        )
+      } else {
+        svd_R <- svd(R_i, nu = k_l, nv = k_l)
+      }
+      B_list[[i]] <- svd_R$v # p_i x k_l
+      
+      # Estimate local scores: U_i = R_i * B_i (direct projection)
+      U_list[[i]] <- R_i %*% B_list[[i]]
+      
+      recon_i <- S_list[[i]] %*% t(G_i) + U_list[[i]] %*% t(B_list[[i]])
+      obj_sum <- obj_sum + sum((X_p[[i]] - recon_i)^2)
+    }
+    
+    obj_trace[iter] <- obj_sum / (n_obs * p_tot) # Mean Squared Error
+    
+    # M-step: Update global basis G
+    C <- matrix(0, p_tot, k_g)
+    for (i in seq_along(X_p)) {
+      C[block_indices[[i]], ] <- crossprod(X_p[[i]], S_list[[i]])
+    }
+    
+    svd_C <- svd(C, nu = k_g)
+    G <- svd_C$u # Update G with orthogonal vectors
+    
+    # Convergence check
+    g_change_trace[iter] <- norm(G - G_old, "F") / norm(G_old, "F")
+    if (iter > 1) {
+      rel_change_obj <- abs(obj_trace[iter] - obj_trace[iter - 1]) / obj_trace[iter - 1]
+      if (rel_change_obj < tol && g_change_trace[iter] < tol) {
+        obj_trace <- obj_trace[1:iter]
+        g_change_trace <- g_change_trace[1:iter]
+        break
+      }
+    }
+  }
+  
+  # -----------------------------------------------------------------------
+  # 3. Construct result object
+  # -----------------------------------------------------------------------
+  preproc_concat <- multivarious::concat_pre_processors(proclist_fitted, block_indices)
+  
+  multivarious::multiblock_projector(
+    v = G,
+    preproc = preproc_concat,
+    B_list = B_list,
+    S_list = S_list,
+    U_list = U_list,
+    k_g = k_g,
+    k_l = k_l,
+    lambda_l = lambda_l,
+    niter_actual = iter,
+    objective_trace = obj_trace,
+    g_change_trace = g_change_trace,
+    data_names = names(data),
+    proclist_fitted = proclist_fitted,
+    block_indices = block_indices,
+    classes = "bamfa"
+  )
+}
+
+
+#' @md
+#' @rdname bamfa
+#' @export
 bamfa.list <- function(data, k_g = 2, k_l = 2, niter = 10,
                        preproc = multivarious::center(), lambda_l = 0, tol = 1e-5, ...) {
-  # Ensure list elements have names
   if (is.null(names(data))) {
     names(data) <- paste0("Block_", seq_along(data))
   } else if (any(names(data) == "")) {
      names(data)[names(data) == ""] <- paste0("Block_", which(names(data) == ""))
   }
-  # Convert list to multiblock object
-  mb <- multidesign::multiblock(data)
+  
+  bamfa.default(
+    data = data, k_g = k_g, k_l = k_l, niter = niter,
+    preproc = preproc, lambda_l = lambda_l, tol = tol, ...
+  )
+}
 
-  # Call the multiblock method
-  bamfa.multiblock(
-    data     = mb,
+#' @md
+#' @rdname bamfa
+#' @export
+bamfa.multiblock <- function(data, k_g = 2, k_l = 2, niter = 10,
+                             preproc = multivarious::center(), lambda_l = 0, tol = 1e-5, ...) {
+  
+  data_list <- as.list(data)
+  
+  bamfa.list(
+    data = data_list, k_g = k_g, k_l = k_l, niter = niter,
+    preproc = preproc, lambda_l = lambda_l, tol = tol, ...
+  )
+}
+
+#' @md
+#' @rdname bamfa
+#' @importFrom rlang enquo quo_is_missing quo_get_expr
+#' @importFrom dplyr select pull
+#' @export
+bamfa.multidesign <- function(data, k_g = 2, k_l = 2, niter = 10,
+                              preproc = multivarious::center(), lambda_l = 0, 
+                              tol = 1e-5, subject, ...) {
+  subject_quo <- rlang::enquo(subject)
+  
+  if (rlang::quo_is_missing(subject_quo)) {
+    stop("The 'subject' parameter is required for bamfa.multidesign(). Please specify the subject variable to split the data by.")
+  }
+  
+  subjects <- factor(data$design %>% dplyr::pull(!!subject_quo))
+  sdat <- split(as.list(data), subjects, drop = TRUE)
+  
+  # Since multidesign objects handle preprocessing internally, we pass preprocessed data
+  # and a 'pass-through' preprocessor to the next method.
+  
+  result <- bamfa.list(
+    data     = sdat,
     k_g      = k_g,
     k_l      = k_l,
     niter    = niter,
@@ -176,354 +378,80 @@ bamfa.list <- function(data, k_g = 2, k_l = 2, niter = 10,
     tol      = tol,
     ...
   )
-}
-
-#' @md
-#' @rdname bamfa
-#' @importFrom rlang enquo
-#' @importFrom dplyr select pull
-#' @export
-bamfa.multidesign <- function(data, k_g = 2, k_l = 2, niter = 10,
-                              preproc = multivarious::center(), lambda_l = 0, 
-                              tol = 1e-5, subject, ...) {
-  # Get the subject quo for consistent handling
-  subject_quo <- rlang::enquo(subject)
   
-  # Check if subject is missing (unevaluated quo)
-  if (rlang::quo_is_missing(subject_quo)) {
-    stop("The 'subject' parameter is required for bamfa.multidesign(). Please specify the subject variable to split the data by.")
-  }
-  
-  # Extract subject variable from design
-  subjects <- factor(data$design %>% 
-                     dplyr::select(!!subject_quo) %>% 
-                     dplyr::pull(!!subject_quo))
-  subject_set <- levels(subjects)
-  
-  # Split data by subject
-  sdat <- split(data, subject)
-  
-  # Create preprocessors, one per subject
-  proclist <- lapply(seq_along(sdat), function(sd) {
-    multivarious:::fresh(preproc) %>% prep()
-  })
-  names(proclist) <- as.character(subject_set)
-  
-  # Preprocess data for each subject
-  strata <- seq_along(sdat) %>% purrr::map(function(i) {
-    p <- multivarious::prep(proclist[[i]], sdat[[i]]$x)
-    Xi <- sdat[[i]]$x
-    Xout <- multivarious::init_transform(p, Xi)
-    Xout
-  })
-  names(strata) <- subject_set
-  
-  # Call the list method with the extracted data
-  result <- bamfa.list(
-    data     = strata,
-    k_g      = k_g,
-    k_l      = k_l,
-    niter    = niter,
-    preproc  = multivarious::pass(), # Data is already preprocessed
-    lambda_l = lambda_l,
-    tol      = tol,
-    ...
-  )
-  
-  # Store additional information about the multidesign input
   result$subject_variable <- as.character(rlang::quo_get_expr(subject_quo))
-  result$subject_levels <- subject_set
+  result$subject_levels <- levels(subjects)
   
   return(result)
 }
 
-#' @md
-#' @rdname bamfa
+
+#' Predict method for BaMFA objects
+#' 
+#' Reconstructs data blocks from a fitted BaMFA model.
+#' 
+#' @param object A fitted `bamfa` object.
+#' @param new_data Optional new data to reconstruct. If NULL (default), reconstructs the training data.
+#' @param ... Additional arguments (unused).
+#' @return A list of reconstructed data matrices.
 #' @export
-bamfa.multiblock <- function(data, k_g = 2, k_l = 2, niter = 10, preproc = center(),
-                             lambda_l = 0, tol = 1e-5, ...) {
-  # -----------------------------------------------------------------------
-  # 0. Basic checks and setup
-  # -----------------------------------------------------------------------
-  # Input validation
-  chk::chk_true(length(data) > 0)
-  chk::chk_integer(k_g)
-  chk::chk_integer(k_l)
-  chk::chk_integer(niter)
-  chk::chk_numeric(lambda_l)
-  chk::chk_gte(lambda_l, 0)
-  chk::chk_numeric(tol)
-  chk::chk_gt(tol, 0)
+predict.bamfa <- function(object, new_data = NULL, ...) {
   
-  # Ensure consistent row counts across blocks
-  n_rows <- sapply(data, nrow)
-  chk::chk_true(all(n_rows == n_rows[1]))
-  n <- n_rows[1]  # Number of observations
+  if (is.null(new_data)) {
+    # Reconstruct training data
+    G <- object$v
+    recon_list <- lapply(seq_along(object$data_names), function(i) {
+      G_i <- G[object$block_indices[[i]], , drop = FALSE]
+      S_i <- object$S_list[[i]]
+      U_i <- object$U_list[[i]]
+      B_i <- object$B_list[[i]]
+      
+      recon <- S_i %*% t(G_i) + U_i %*% t(B_i)
+      
+      # Inverse transform to original data space
+      multivarious::reverse_transform(object$proclist_fitted[[i]], recon)
+    })
+    names(recon_list) <- object$data_names
+    return(recon_list)
+  }
   
-  # -----------------------------------------------------------------------
-  # 1. Preprocess blocks
-  # -----------------------------------------------------------------------
-  # Set up preprocessors (one for each block)
-  proclist <- lapply(seq_along(data), function(i) {
-    multivarious:::fresh(preproc) %>% prep(data[[i]])
+  # Reconstruct new data
+  if (!is.list(new_data)) {
+    new_data <- list(new_data)
+  }
+  
+  # Preprocess new data using fitted preprocessors
+  X_p <- lapply(seq_along(new_data), function(i) {
+    multivarious::apply_transform(object$proclist_fitted[[i]], new_data[[i]])
   })
   
-  names(proclist) <- names(data)
+  G <- object$v
+  k_l <- object$k_l
   
-  # Apply preprocessing to each block
-  Xp <- vector("list", length(data))
-  names(Xp) <- names(data)
-  
-  for (i in seq_along(data)) {
-    Xi <- data[[i]]
-    p <- proclist[[i]]
-    Xp[[i]] <- multivarious::init_transform(p, Xi)
-  }
-  
-  # -----------------------------------------------------------------------
-  # 2. Iterative alternating optimization
-  # -----------------------------------------------------------------------
-  # Setup progress tracking and convergence metrics
-  objective_trace <- numeric(niter + 1)
-  mean_block_sizes <- mean(sapply(Xp, ncol))  # For per-feature MSE calculation
-  
-  # Initialize global loadings G using SVD on the mean block
-  X_mean <- Reduce("+", Xp) / length(Xp)
-  svd_result <- tryCatch(
-    svd(X_mean, nu = 0, nv = min(k_g, min(dim(X_mean)))),
-    error = function(e) NULL
-  )
-  
-  if (is.null(svd_result)) {
-    warning("SVD failed on mean block, using alternative initialization.", call. = FALSE)
-    # Fallback to a small random matrix
-    set.seed(42)  # For reproducibility
-    G_current <- matrix(rnorm(ncol(X_mean) * min(k_g, min(dim(X_mean)))), 
-                        ncol = min(k_g, min(dim(X_mean))))
-    G_current <- qr.Q(qr(G_current))  # Orthonormalize
-  } else {
-    G_current <- svd_result$v[, seq_len(min(k_g, length(svd_result$d))), drop = FALSE]
-  }
-  
-  # Initialize lists for storing block-specific data
-  S_list <- vector("list", length(Xp))  # Global scores
-  U_list <- vector("list", length(Xp))  # Local scores
-  B_list <- vector("list", length(Xp))  # Local loadings
-  
-  # Initial projection to global space
-  for (i in seq_along(Xp)) {
-    S_list[[i]] <- Xp[[i]] %*% G_current
+  recon_list <- lapply(seq_along(X_p), function(i) {
+    G_i <- G[object$block_indices[[i]], , drop = FALSE]
+    S_new <- X_p[[i]] %*% G_i
+    R_new <- X_p[[i]] - S_new %*% t(G_i)
     
-    # Calculate residuals
-    res_i <- Xp[[i]] - S_list[[i]] %*% t(G_current)
-    
-    # Find local components via SVD of residuals
-    svd_res <- tryCatch(
-      svd(res_i, nu = min(k_l, min(dim(res_i))), nv = min(k_l, min(dim(res_i)))),
-      error = function(e) NULL
-    )
-    
-    if (is.null(svd_res)) {
-      warning(paste0("SVD failed for block ", i, ", using alternative local basis."), call. = FALSE)
-      # Fallback: random orthogonal matrix
-      B_i <- matrix(rnorm(ncol(res_i) * min(k_l, min(dim(res_i)))),
-                    ncol = min(k_l, min(dim(res_i))))
-      B_i <- qr.Q(qr(B_i))
-      U_i <- matrix(0, nrow = nrow(res_i), ncol = ncol(B_i))
-    } else {
-      # Determine actual number of local components from SVD
-      k_l_actual <- min(k_l, length(svd_res$d))
-      # Local loadings (features x k_l)
-      B_i <- svd_res$v[, seq_len(k_l_actual), drop = FALSE]
-      # Local scores scaled by singular values (observations x k_l)
-      U_i <- svd_res$u[, seq_len(k_l_actual), drop = FALSE] *
-        svd_res$d[seq_len(k_l_actual)]
-    }
-    
-    B_list[[i]] <- B_i
-    U_list[[i]] <- U_i
-  }
-  
-  # Calculate initial objective value (mean squared error per feature)
-  total_mse <- 0
-  total_features <- 0
-  for (i in seq_along(Xp)) {
-    res_norm <- norm(Xp[[i]] - S_list[[i]] %*% t(G_current) - U_list[[i]] %*% t(B_list[[i]]), "F")^2
-    total_mse <- total_mse + res_norm
-    total_features <- total_features + prod(dim(Xp[[i]]))
-  }
-  objective_trace[1] <- total_mse / total_features
-  
-  # Main iteration loop
-  iter_actual <- 0
-  for (iter in 1:niter) {
-    iter_actual <- iter
-    
-    # -----------------------------------------------------------------------
-    # 2.1. Local update (block-specific parameters, E-step like)
-    # -----------------------------------------------------------------------
-    for (i in seq_along(Xp)) {
-      # Project to global space
-      S_list[[i]] <- Xp[[i]] %*% G_current
-      
-      # Calculate residuals
-      res_i <- Xp[[i]] - S_list[[i]] %*% t(G_current)
-      
-      # Find local components via SVD of residuals
-      svd_res <- tryCatch(
-        svd(res_i, nu = min(k_l, min(dim(res_i))), nv = min(k_l, min(dim(res_i)))),
-        error = function(e) NULL
+    if (min(dim(R_new)) >= 3 && k_l <= min(dim(R_new))) {
+      svd_R <- tryCatch(
+        RSpectra::svds(R_new, k = k_l, nu = k_l, nv = k_l),
+        error = function(e) svd(R_new, nu = k_l, nv = k_l)
       )
-      
-      if (is.null(svd_res)) {
-        # Keep previous loadings if SVD fails
-        warning(paste0("SVD failed for block ", i, " in iteration ", iter, ", keeping previous local basis."), call. = FALSE)
-        if (ncol(B_list[[i]]) > 0) {
-          # Estimate local scores with ridge regression
-          U_list[[i]] <- res_i %*% B_list[[i]]
-        }
-      } else {
-        # Update local basis (loadings)
-        k_l_actual <- min(k_l, length(svd_res$d))
-        B_list[[i]] <- svd_res$v[, seq_len(k_l_actual), drop = FALSE]
-
-        # Local scores from SVD scaled by singular values
-        if (k_l_actual > 0) {
-          U_list[[i]] <- svd_res$u[, seq_len(k_l_actual), drop = FALSE] *
-            svd_res$d[seq_len(k_l_actual)]
-        } else {
-          U_list[[i]] <- matrix(0, nrow = nrow(res_i), ncol = 0)
-        }
-      }
-    }
-    
-    # -----------------------------------------------------------------------
-    # 2.2. Global update (shared parameters, M-step like)
-    # -----------------------------------------------------------------------
-    # Create the cross-product matrix for global update
-    XtS_sum <- matrix(0, nrow = ncol(X_mean), ncol = k_g)
-    
-    for (i in seq_along(Xp)) {
-      # Calculate residual after removing local component
-      res_i <- Xp[[i]] - U_list[[i]] %*% t(B_list[[i]])
-      
-      # Accumulate cross-product for global update
-      XtS_sum <- XtS_sum + t(res_i) %*% S_list[[i]]
-    }
-    
-    # Update global loadings via SVD
-    svd_global <- tryCatch(
-      svd(XtS_sum, nu = min(k_g, min(dim(XtS_sum))), nv = min(k_g, min(dim(XtS_sum)))),
-      error = function(e) NULL
-    )
-    
-    if (is.null(svd_global)) {
-      warning(paste0("SVD failed for global update in iteration ", iter, ", keeping previous global basis."), call. = FALSE)
     } else {
-      # Extract new global basis
-      V_new <- svd_global$u
-      U_new <- svd_global$v
-      
-      # Update global loadings
-      G_new <- V_new %*% t(U_new)
-      
-      # Ensure orthogonality of global loadings
-      qr_res <- qr(G_new)
-      G_current <- qr.Q(qr_res)[, seq_len(min(k_g, qr_res$rank)), drop = FALSE]
+      svd_R <- svd(R_new, nu = k_l, nv = k_l)
     }
+    B_new <- svd_R$v
+    U_new <- R_new %*% B_new
     
-    # -----------------------------------------------------------------------
-    # 2.3. Evaluate convergence
-    # -----------------------------------------------------------------------
-    # Calculate current objective value (mean squared error per feature)
-    total_mse <- 0
-    total_features <- 0
-    for (i in seq_along(Xp)) {
-      res_norm <- norm(Xp[[i]] - S_list[[i]] %*% t(G_current) - U_list[[i]] %*% t(B_list[[i]]), "F")^2
-      total_mse <- total_mse + res_norm
-      total_features <- total_features + prod(dim(Xp[[i]]))
-    }
-    objective_trace[iter + 1] <- total_mse / total_features
+    recon <- S_new %*% t(G_i) + U_new %*% t(B_new)
     
-    # Check convergence
-    rel_change <- abs(objective_trace[iter + 1] - objective_trace[iter]) / (objective_trace[iter] + .Machine$double.eps)
-    if (rel_change < tol) {
-      message(sprintf("Converged at iteration %d with relative change %.6f < %.6f (tolerance)", 
-                     iter, rel_change, tol))
-      break
-    }
-  }
+    # Inverse transform to original data space
+    multivarious::reverse_transform(object$proclist_fitted[[i]], recon)
+  })
+  names(recon_list) <- names(new_data) %||% paste0("Block_", seq_along(new_data))
   
-  # Handle the case where no components could be extracted
-  if (is.null(G_current)) G_current <- matrix(0.0, p_tot, 0)
-  k_g_final <- ncol(G_current)
-
-  # -----------------------------------------------------------------------
-  # 3. Assemble Final Output Object
-  # -----------------------------------------------------------------------
-  # Ensure block_indices is correctly computed/available before this point
-  # Assuming p_tot is the total number of features after concatenation
-  # We need block_indices that map 1:p_tot back to the original blocks
-  p_vec <- sapply(Xp, ncol) # Number of features per block (post-preprocessing)
-  p_tot <- sum(p_vec)
-  if (nrow(G_current) != p_tot) {
-      warning(sprintf("Dimension mismatch: nrow(G)=%d but expected sum(ncol(Xp))=%d. Returning raw list.", 
-                       nrow(G_current), p_tot), call.=FALSE)
-       # Fallback to raw list
-       return(list(
-          G = G_current, B = B_list, S = S_list, U = U_list,
-          block_indices = NULL, # Indicate failure
-          niter_actual = iter_actual, k_g = k_g_final, k_l = k_l,
-          lambda_l = lambda_l, preproc = proclist, data_names = names(data),
-          objective_trace = objective_trace[1:(iter_actual + 1)]
-      ))
-  }
-  
-  block_indices <- list()
-  current_start <- 1
-  for(i in seq_along(p_vec)) {
-      block_indices[[i]] <- current_start:(current_start + p_vec[i] - 1)
-      current_start <- current_start + p_vec[i]
-  }
-  names(block_indices) <- names(Xp)
-
-  # Create concatenated preprocessor
-  final_preproc <- NULL
-  if (!is.null(proclist)) {
-      final_preproc <- multivarious::concat_pre_processors(proclist, block_indices)
-  } else {
-      # Should not happen if default preproc=center() was used, but handle defensively
-      pass_proc <- multivarious::prep(multivarious::pass())
-      final_preproc <- concat_pre_processors(rep(list(pass_proc), length(data)), block_indices)
-  }
-
-  # Construct the multiblock_projector based on Global components G
-  # Pass BaMFA specific results via '...' to be stored as list elements
-  result_projector <- multivarious::multiblock_projector(
-      v = G_current,             
-      preproc = final_preproc,   
-      block_indices = block_indices,
-      # BaMFA specific elements passed via ...
-      B_list = B_list,         
-      S_list = S_list,         
-      U_list = U_list,         
-      k_g = k_g_final,        
-      k_l = k_l,              
-      lambda_l = lambda_l,    
-      niter_actual = iter_actual,  
-      objective_trace = objective_trace[1:(iter_actual + 1)], 
-      data_names = names(data),
-      proclist_fitted = proclist,
-      # Add class
-      classes = "bamfa"          
-  )
-
-  # Remove old class "bamfa_em" if present, keep "bamfa", "multiblock_projector"
-  # The projector function already adds "multiblock_projector", we added "bamfa"
-  # Ensure no duplicates and remove list/bamfa_em if they existed before
-  class(result_projector) <- unique(class(result_projector)[!class(result_projector) %in% c("bamfa_em", "list")])
-  
-  return(result_projector)
+  recon_list
 }
 
 
@@ -541,40 +469,17 @@ bamfa.multiblock <- function(data, k_g = 2, k_l = 2, niter = 10, preproc = cente
 #'
 #' @export
 print.bamfa <- function(x, ...) {
-  # Check if it's the new multiblock_projector structure
-  is_projector <- inherits(x, "multiblock_projector")
-  
   header <- crayon::bold(crayon::blue("Barycentric Multiple Factor Analysis (BaMFA)"))
   cat(header, "\n\n")
+
+  k_g_val <- x$k_g
+  k_l_val <- x$k_l
+  niter_actual_val <- x$niter_actual
+  lambda_l_val <- x$lambda_l
+  data_names_val <- x$data_names
+  objective_trace_val <- x$objective_trace
+  n_blocks <- length(x$block_indices)
   
-  # Extract info based on structure
-  if (is_projector && inherits(x, "bamfa")) {
-      # Access elements directly using $
-      k_g_val <- x$k_g
-      k_l_val <- x$k_l
-      niter_actual_val <- x$niter_actual
-      lambda_l_val <- x$lambda_l
-      data_names_val <- x$data_names
-      objective_trace_val <- x$objective_trace
-      B_list_internal <- x$B_list
-      block_indices_internal <- x$block_indices 
-      if (is.null(data_names_val)) data_names_val <- names(block_indices_internal)
-      if (is.null(data_names_val)) data_names_val <- paste("Block", seq_along(block_indices_internal))
-      n_blocks <- length(block_indices_internal)
-      
-  } else {
-      # Fallback for old list structure or unexpected format
-      warning("Object format not recognized as standard BaMFA projector. Printing basic info.", call.=FALSE)
-      print(unclass(x))
-      return(invisible(x))
-  }
-
-  # Ensure values are not NULL before printing
-  k_g_val <- ifelse(is.null(k_g_val), NA, k_g_val)
-  k_l_val <- ifelse(is.null(k_l_val), NA, k_l_val)
-  niter_actual_val <- ifelse(is.null(niter_actual_val), NA, niter_actual_val)
-  lambda_l_val <- ifelse(is.null(lambda_l_val), NA, lambda_l_val)
-
   # Model structure
   cat(crayon::green("Model Structure:"), "\n")
   cat("  Global components (k_g):", crayon::bold(k_g_val), "\n")
@@ -584,26 +489,18 @@ print.bamfa <- function(x, ...) {
   
   # Block information
   cat(crayon::green("Block Information:"), "\n")
-  if (!is.null(block_indices_internal) && !is.null(B_list_internal) && length(block_indices_internal) == length(B_list_internal)) {
-      for (i in seq_len(n_blocks)) {
-        cat("  Block", crayon::bold(i), "(", crayon::blue(data_names_val[i]), "):", "\n")
-        num_features <- length(block_indices_internal[[i]])
-        num_local_comp <- if (!is.null(B_list_internal[[i]])) ncol(B_list_internal[[i]]) else NA
-        cat("    Features:", crayon::yellow(num_features), "\n")
-        cat("    Local components retained:", crayon::yellow(num_local_comp), "\n")
-      }
-  } else {
-       cat(crayon::red("  Block information (indices or B_list) missing or inconsistent."), "\n")
+  for (i in seq_len(n_blocks)) {
+    cat("  Block", crayon::bold(i), "(", crayon::blue(data_names_val[i]), "):", "\n")
+    num_features <- length(x$block_indices[[i]])
+    num_local_comp <- if (!is.null(x$B_list[[i]])) ncol(x$B_list[[i]]) else NA
+    cat("    Features:", crayon::yellow(num_features), "\n")
+    cat("    Local components retained:", crayon::yellow(num_local_comp), "\n")
   }
-  
+
   # Final objective
-  if (!is.null(objective_trace_val) && length(objective_trace_val) > 0) {
-      final_obj_idx <- length(objective_trace_val)
-      cat("\nFinal reconstruction error (per feature):", 
-          crayon::bold(format(objective_trace_val[final_obj_idx], digits=6)), "\n")
-  } else {
-      cat("\nObjective trace not available.\n")
-  }
+  final_obj_idx <- length(objective_trace_val)
+  cat("\nFinal reconstruction error (per feature):", 
+      crayon::bold(format(objective_trace_val[final_obj_idx], digits=6)), "\n")
   
   invisible(x)
 }

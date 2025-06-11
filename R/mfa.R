@@ -7,6 +7,7 @@
 #' @param FUN Function to compute similarity between two blocks
 #' @param ... Additional arguments passed to FUN
 #' @return A symmetric similarity matrix with dimensions length(blocks) × length(blocks)
+#' @importFrom utils combn
 #' @noRd
 #' @keywords internal
 compute_sim_mat <- function(blocks, FUN, ...) {
@@ -41,11 +42,11 @@ normalization_factors <- function(blocks, type=c("MFA", "RV", "RV2", "None", "Fr
   } else if (type == "RV" && length(blocks) > 2) {
     smat <- compute_sim_mat(blocks, function(x1,x2) MatrixCorrelation::RV2(x1,x2))
     diag(smat) <- 1
-    abs(svd_wrapper(smat, ncomp=1, method="svds")$u[,1])
+    abs(multivarious::svd_wrapper(smat, ncomp=1, method="svds")$u[,1])
   } else if (type == "RV2" && length(blocks) > 2) {
     smat <- compute_sim_mat(blocks, function(x1,x2) MatrixCorrelation::RV(x1,x2))
     diag(smat) <- 1
-    abs(svd_wrapper(smat, ncomp=1, method="svds")$u[,1])
+    abs(multivarious::svd_wrapper(smat, ncomp=1, method="svds")$u[,1])
   } else if (type == "Frob") {
     unlist(lapply(as.list(blocks), function(X) sum(X^2)))
   } else {
@@ -160,14 +161,17 @@ mfa.multiblock <- function(data, preproc=center(), ncomp=2,
   
   proc <- multivarious::concat_pre_processors(proclist, block_indices)
 
-  ## fit genpca
+    ## fit genpca
+  if (!requireNamespace("genpca", quietly = TRUE)) {
+    stop("Package 'genpca' needed for MFA analysis. Please install it.", call. = FALSE)
+  }
   Xp <- do.call(cbind, strata)
   fit <- genpca::genpca(Xp, 
-                preproc=multivarious::pass(),
-                A=A, 
-                M=M,
-                ncomp=ncomp,
-                ...)
+            preproc=multivarious::pass(),
+            A=A, 
+            M=M,
+            ncomp=ncomp,
+            ...)
   
   fit[["block_indices"]] <- block_indices
   fit[["alpha"]] <- alpha
