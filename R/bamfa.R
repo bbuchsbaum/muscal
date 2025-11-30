@@ -251,8 +251,8 @@ bamfa.default <- function(data, k_g = 2, k_l = 2, niter = 10,
       S_list[[i]] <- X_p[[i]] %*% G_i # n_obs x k_g
       R_i <- X_p[[i]] - S_list[[i]] %*% t(G_i)
       
-      # Use RSpectra for faster SVD on wide residual matrices, with fallback
-      if (min(dim(R_i)) >= 3 && k_l <= min(dim(R_i))) {
+      # Use RSpectra for faster SVD when k_l is smaller than both dims, with fallback
+      if (k_l > 0 && k_l < min(dim(R_i))) {
         svd_R <- tryCatch(
           RSpectra::svds(R_i, k = k_l, nu = k_l, nv = k_l),
           error = function(e) svd(R_i, nu = k_l, nv = k_l)
@@ -262,8 +262,17 @@ bamfa.default <- function(data, k_g = 2, k_l = 2, niter = 10,
       }
       B_list[[i]] <- svd_R$v # p_i x k_l
       
-      # Estimate local scores: U_i = R_i * B_i (direct projection)
-      U_list[[i]] <- R_i %*% B_list[[i]]
+      # Estimate local scores with optional ridge shrinkage
+      if (k_l > 0) {
+        U_proj <- R_i %*% B_list[[i]]
+        if (lambda_l > 0) {
+          U_list[[i]] <- U_proj / (1 + lambda_l)  # B_i is orthonormal
+        } else {
+          U_list[[i]] <- U_proj
+        }
+      } else {
+        U_list[[i]] <- matrix(0, n_obs, 0)
+      }
       
       recon_i <- S_list[[i]] %*% t(G_i) + U_list[[i]] %*% t(B_list[[i]])
       obj_sum <- obj_sum + sum((X_p[[i]] - recon_i)^2)
@@ -281,7 +290,8 @@ bamfa.default <- function(data, k_g = 2, k_l = 2, niter = 10,
     G <- svd_C$u # Update G with orthogonal vectors
     
     # Convergence check
-    g_change_trace[iter] <- norm(G - G_old, "F") / norm(G_old, "F")
+    denom_g <- max(norm(G_old, "F"), 1e-12)
+    g_change_trace[iter] <- norm(G - G_old, "F") / denom_g
     if (iter > 1) {
       rel_change_obj <- abs(obj_trace[iter] - obj_trace[iter - 1]) / obj_trace[iter - 1]
       if (rel_change_obj < tol && g_change_trace[iter] < tol) {
@@ -363,7 +373,7 @@ bamfa.multidesign <- function(data, k_g = 2, k_l = 2, niter = 10,
   }
   
   subjects <- factor(data$design %>% dplyr::pull(!!subject_quo))
-  sdat <- split(as.list(data), subjects, drop = TRUE)
+  sdat <- split(data, subjects, drop = TRUE)
   
   # Since multidesign objects handle preprocessing internally, we pass preprocessed data
   # and a 'pass-through' preprocessor to the next method.
@@ -427,24 +437,33 @@ predict.bamfa <- function(object, new_data = NULL, ...) {
   
   G <- object$v
   k_l <- object$k_l
+  lambda_l <- object$lambda_l
   
   recon_list <- lapply(seq_along(X_p), function(i) {
     G_i <- G[object$block_indices[[i]], , drop = FALSE]
+    B_i <- object$B_list[[i]]
+    if (!is.null(B_i) && ncol(B_i) != k_l) {
+      stop("Stored local loadings B_list[[", i, "]] do not match k_l.")
+    }
     S_new <- X_p[[i]] %*% G_i
     R_new <- X_p[[i]] - S_new %*% t(G_i)
     
-    if (min(dim(R_new)) >= 3 && k_l <= min(dim(R_new))) {
-      svd_R <- tryCatch(
-        RSpectra::svds(R_new, k = k_l, nu = k_l, nv = k_l),
-        error = function(e) svd(R_new, nu = k_l, nv = k_l)
-      )
+    if (k_l > 0) {
+      if (is.null(B_i)) {
+        stop("Stored local loadings missing; cannot project new data without refitting.")
+      }
+      U_proj <- R_new %*% B_i
+      if (lambda_l > 0) {
+        U_new <- U_proj / (1 + lambda_l)
+      } else {
+        U_new <- U_proj
+      }
     } else {
-      svd_R <- svd(R_new, nu = k_l, nv = k_l)
+      B_i <- matrix(0, ncol(R_new), 0)
+      U_new <- matrix(0, nrow(R_new), 0)
     }
-    B_new <- svd_R$v
-    U_new <- R_new %*% B_new
     
-    recon <- S_new %*% t(G_i) + U_new %*% t(B_new)
+    recon <- S_new %*% t(G_i) + U_new %*% t(B_i)
     
     # Inverse transform to original data space
     multivarious::reverse_transform(object$proclist_fitted[[i]], recon)

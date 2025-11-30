@@ -13,8 +13,8 @@ mfa(data, preproc, ncomp = 2, normalization = "MFA", A = NULL, M = NULL, ...)
   preproc = center(),
   ncomp = 2,
   normalization = c("MFA", "RV", "None", "Frob", "custom"),
-  M = NULL,
   A = NULL,
+  M = NULL,
   ...
 )
 
@@ -23,8 +23,8 @@ mfa(data, preproc, ncomp = 2, normalization = "MFA", A = NULL, M = NULL, ...)
   preproc = center(),
   ncomp = 2,
   normalization = c("MFA", "RV", "None", "Frob", "custom"),
-  M = NULL,
   A = NULL,
+  M = NULL,
   ...
 )
 }

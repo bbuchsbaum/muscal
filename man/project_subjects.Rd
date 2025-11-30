@@ -27,7 +27,7 @@ A list containing scores, projections, and summary statistics. The exact
 A list containing the following elements:
 \item{subject_scores}{A matrix (\code{n_subjects} × \code{ncomp}) of subject-level coordinates in the compromise space.}
 \item{subject_cosines}{A matrix (\code{n_subjects} × \code{ncomp}) of cosines, indicating alignment with each dimension.}
-\item{scalar_summaries}{A \code{data.frame} with one row per subject, containing the \code{rv_coefficient} and \code{distance_to_compromise}.}
+\item{scalar_summaries}{A \code{data.frame} with one row per subject, containing the \code{rv_coefficient} and \code{distance_to_compromise} (Frobenius distance to the full compromise).}
 \item{roi_scores}{A list of matrices, where each element contains the ROI-level scores for a subject.}
 }
 \description{
@@ -48,6 +48,6 @@ The function performs the following steps for each new matrix:
 \item Calculates subject-level scores (\code{subject_scores} or "g-scores") as the barycentric mean of the ROI scores.
 \item Calculates \code{subject_cosines} indicating the alignment of the subject's scores with each compromise dimension.
 \item Calculates a global \code{rv_coefficient} measuring the overall similarity between the new matrix and the group compromise matrix.
-\item Calculates the \code{distance_to_compromise}, the Frobenius distance between the new matrix and its projection onto the compromise subspace.
+\item Calculates the \code{distance_to_compromise}, the Frobenius distance between the new matrix and the full compromise matrix.
 }
 }

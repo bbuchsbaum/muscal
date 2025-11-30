@@ -1,5 +1,5 @@
 library(testthat)
-library(musca)
+library(muscal)
 
 skip_if_not_installed("abind")
 
@@ -7,7 +7,7 @@ skip_if_not_installed("abind")
 
 test_that("summarize_matrix computes element-wise function", {
   mats <- list(matrix(1:4, nrow = 2), matrix(2:5, nrow = 2))
-  res_mean <- musca:::summarize_matrix(mats, mean)
+  res_mean <- muscal:::summarize_matrix(mats, mean)
   expected_mean <- (mats[[1]] + mats[[2]]) / 2
   expect_equal(res_mean, expected_mean)
 })
@@ -18,7 +18,7 @@ test_that("summarize_boot aggregates bootstrap results", {
   boot_i <- list(matrix(1:4, nrow = 2), matrix(2:5, nrow = 2))
   boot_j <- list(matrix(10:13, nrow = 2), matrix(11:14, nrow = 2))
   boot_ret <- list(boot_i = boot_i, boot_j = boot_j)
-  res <- musca:::summarize_boot(boot_ret, alpha = 0.25)
+  res <- muscal:::summarize_boot(boot_ret, alpha = 0.25)
 
   mean_i <- (boot_i[[1]] + boot_i[[2]]) / 2
   sd_val <- matrix(sqrt(0.5), 2, 2)
@@ -50,4 +50,3 @@ test_that("significant_components performs RMT and ICC", {
   expect_equal(res$icc, c(0, 0))
   expect_equal(res$mp_edge, 0.625, tolerance = 1e-6)
 })
-

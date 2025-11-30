@@ -1,5 +1,5 @@
 library(testthat)
-library(musca)
+library(muscal)
 
 # Tests for synthetic_multiblock
 

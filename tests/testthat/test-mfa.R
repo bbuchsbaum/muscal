@@ -1,5 +1,5 @@
 library(testthat)
-library(musca)
+library(muscal)
 
 # Basic MFA run should produce a valid object
 
@@ -35,7 +35,7 @@ test_that("mfa.multiblock validates input", {
 test_that("normalization_factors MFA matches svd", {
   X1 <- matrix(1:4, nrow = 2)
   X2 <- matrix(2:5, nrow = 2)
-  nf <- musca:::normalization_factors(list(X1, X2), type = "MFA")
+  nf <- muscal:::normalization_factors(list(X1, X2), type = "MFA")
   expect_equal(nf[1], 1/(svd(X1)$d[1]^2))
   expect_equal(nf[2], 1/(svd(X2)$d[1]^2))
 })

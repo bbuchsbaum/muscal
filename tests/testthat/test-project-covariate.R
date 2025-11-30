@@ -1,5 +1,5 @@
 library(testthat)
-library(musca)
+library(muscal)
 
 set.seed(42)
 # create a simple set of covariance matrices

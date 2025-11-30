@@ -52,8 +52,9 @@ synthetic_multiblock <- function(S       = 5,
     V_true[[s]] <- B %*% Q                               # p_s × r   orthonormal
     # synthesise data
     Xs <- F_true %*% t(V_true[[s]]) + sigma * matrix(rnorm(n * p[s]), n, p[s])
-    # column‑centre (as assumed by MFA code)
-    data_lst[[s]] <- scale(Xs, scale = FALSE)
+    # column‑centre without adding scale() attributes
+    Xs <- sweep(Xs, 2, colMeans(Xs), "-")
+    data_lst[[s]] <- Xs
   }
 
   # ------------------------------------------------ optional spatial coords

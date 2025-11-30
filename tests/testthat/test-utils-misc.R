@@ -1,5 +1,5 @@
 library(testthat)
-library(musca)
+library(muscal)
 
 # Tests for %||% operator
 expect_equal(NULL %||% 5, 5)
@@ -11,7 +11,7 @@ V <- matrix(rnorm(4),2,2)
 G <- matrix(rnorm(4),2,2)
 M <- matrix(0,2,2)
 V2 <- matrix(0,2,2)
-res <- musca:::adam_update_block(V,G,M,V2,step_count=1,beta1=0.9,beta2=0.999,adam_epsilon=1e-8,learning_rate=0.01)
+res <- muscal:::adam_update_block(V,G,M,V2,step_count=1,beta1=0.9,beta2=0.999,adam_epsilon=1e-8,learning_rate=0.01)
 
 # manual computation
 exp_M <- 0.1*G

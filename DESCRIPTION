@@ -37,12 +37,13 @@ Imports:
     genpca,
     MatrixCorrelation,
     RANN,
-    deflist
+    deflist,
+    tibble
 Suggests:
     testthat (>= 3.0.0),
     knitr,
     rmarkdown
 Depends:
     R (>= 3.5.0)
-RoxygenNote: 7.3.2.9000
+RoxygenNote: 7.3.3
 LinkingTo: Rcpp, RcppArmadillo, RcppEigen

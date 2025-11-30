@@ -3,10 +3,8 @@
 #' @noRd
 # A helper function to summarize a matrix
 summarize_matrix <- function(matrices, .f) {
-  # Stack matrices
   stacked_mat <- abind::abind(matrices, along = 3)
-  # Apply function along the third dimension
-  apply(stacked_mat, c(1, 2), .f)
+  unname(apply(stacked_mat, c(1, 2), .f))
 }
 
 
@@ -23,28 +21,29 @@ summarize_matrix <- function(matrices, .f) {
 #' @importFrom stats quantile sd
 #' @noRd
 summarize_boot <- function(boot_ret, alpha=.05){
+  # stack once per type to avoid repeated abind allocations
+  boot_i_stack <- abind::abind(boot_ret$boot_i, along = 3)
+  boot_j_stack <- abind::abind(boot_ret$boot_j, along = 3)
   
-  # Apply summarize_matrix for mean, sd, and percentiles
-  boot_i_mean <- summarize_matrix(boot_ret$boot_i, mean)
-  boot_i_sd <- summarize_matrix(boot_ret$boot_i, sd)
-  boot_i_upper <- summarize_matrix(boot_ret$boot_i, function(x) quantile(x, 1-alpha))
-  boot_i_lower <- summarize_matrix(boot_ret$boot_i, function(x) quantile(x, alpha))
+  boot_i_mean  <- unname(apply(boot_i_stack, c(1, 2), mean))
+  boot_i_sd    <- unname(apply(boot_i_stack, c(1, 2), sd))
+  boot_i_upper <- unname(apply(boot_i_stack, c(1, 2), quantile, probs = 1 - alpha, type = 1))
+  boot_i_lower <- unname(apply(boot_i_stack, c(1, 2), quantile, probs = alpha, type = 1))
   
-  boot_j_mean <- summarize_matrix(boot_ret$boot_j, mean)
-  boot_j_sd <- summarize_matrix(boot_ret$boot_j, sd)
-  boot_j_upper <- summarize_matrix(boot_ret$boot_j, function(x) quantile(x, 1-alpha))
-  boot_j_lower <- summarize_matrix(boot_ret$boot_j, function(x) quantile(x, alpha))
+  boot_j_mean  <- unname(apply(boot_j_stack, c(1, 2), mean))
+  boot_j_sd    <- unname(apply(boot_j_stack, c(1, 2), sd))
+  boot_j_upper <- unname(apply(boot_j_stack, c(1, 2), quantile, probs = 1 - alpha, type = 1))
+  boot_j_lower <- unname(apply(boot_j_stack, c(1, 2), quantile, probs = alpha, type = 1))
   
-  # Create a list of results
   list(
-    boot_scores_mean = boot_i_mean,
-    boot_scores_sd = boot_i_sd,
+    boot_scores_mean  = boot_i_mean,
+    boot_scores_sd    = boot_i_sd,
     boot_scores_upper = boot_i_upper,
     boot_scores_lower = boot_i_lower,
-    boot_lds_mean = boot_j_mean,
-    boot_lds_sd = boot_j_sd,
-    boot_lds_upper = boot_j_upper,
-    boot_lds_lower = boot_j_lower
+    boot_lds_mean     = boot_j_mean,
+    boot_lds_sd       = boot_j_sd,
+    boot_lds_upper    = boot_j_upper,
+    boot_lds_lower    = boot_j_lower
   )
 }
 
@@ -107,12 +106,15 @@ bootstrap.bada <- function(x, data, nboot=500, alpha=.05, verbose = FALSE, ...) 
     row.names(Xc) <- x$label_set
     ncomp <- min(x$ncomp, nrow(Xc))
     
-    boot_i <- Xc %*% x$v
+    comp_idx <- seq_len(ncomp)
+    v_boot   <- x$v[, comp_idx, drop = FALSE]
+    boot_i   <- Xc %*% v_boot
     
     variance <- sdev(x)^2
-    #sc <- x$fscores
-    #sc <- boot_j
-    boot_j <- t(Xc) %*% (x$fscores) %*% diag(1/variance, nrow=length(variance), ncol=length(variance))
+    inv_var  <- ifelse(variance > 1e-12, 1/variance, 0)
+    inv_var  <- inv_var[comp_idx]
+    fs_boot  <- x$fscores[, comp_idx, drop = FALSE]
+    boot_j   <- t(Xc) %*% fs_boot %*% diag(inv_var, nrow = ncomp, ncol = ncomp)
     
     dplyr::tibble(i=i, boot_i=list(boot_i), boot_j=list(boot_j))
     
@@ -165,7 +167,7 @@ bada.multidesign <- function(data, y, subject, preproc=multivarious::center(), n
   strata <- seq_along(sdat) %>% purrr::map(function(i) {
     p <- proclist[[i]]
     Xout <- multivarious::init_transform(p, sdat[[i]]$x)
-    multidesign(Xout, sdat[[i]]$design)
+    multidesign::multidesign(Xout, sdat[[i]]$design)
   })
   
   block_indices <- list()
@@ -185,17 +187,22 @@ bada.multidesign <- function(data, y, subject, preproc=multivarious::center(), n
   
   ## group barycenters
   Xc <-Reduce("+", lapply(Dc, "[[", "x"))/length(Dc)
+  Xc[!is.finite(Xc)] <- 0
+  if (max(abs(Xc)) < 1e-12) {
+    Xc <- Xc + diag(1e-8, nrow(Xc))
+  }
   
   ## requires consistent ordering. Better to extract from design
   row.names(Xc) <- label_set
   ncomp <- min(ncomp, nrow(Xc))
 
   ## group pca
-  pca_group <- multivarious::pca(Xc, ncomp=ncomp, preproc=multivarious::pass())
+  pca_group <- multivarious::pca(Xc, ncomp=ncomp, preproc=multivarious::pass(), method = "base")
   
   ## residual analysis
   if (rescomp > 0) {
     chk::chk_true(resdim > 0)
+    chk::chk_true(rescomp <= resdim)
     residual_strata <- strata %>% purrr::map(function(s) {
       levs <- s$design %>% dplyr::pull(!!y_quo)
       s$x <- s$x - Xc[levs,,drop=FALSE]
@@ -212,11 +219,10 @@ bada.multidesign <- function(data, y, subject, preproc=multivarious::center(), n
                               colMeans(Xpca_resid))
   
     eigout <- eigen(solve(Sw, Sb))
-    #scores <- Xpca_resid %*% eigout$vectors
-    resid_v <- pca_resid$v %*% eigout$vectors
-    v <- cbind(pca_group$v, resid_v)
-    vq <- qr(v)
-    v <- qr.Q(vq)
+    resid_vecs <- eigout$vectors[, seq_len(rescomp), drop = FALSE]
+    resid_v <- pca_resid$v %*% resid_vecs
+    v_pre <- cbind(pca_group$v, resid_v)
+    v <- qr.Q(qr(v_pre))
   } else {
     resdim <- 0
     rescomp <- 0
@@ -232,7 +238,7 @@ bada.multidesign <- function(data, y, subject, preproc=multivarious::center(), n
   
   multivarious:::discriminant_projector(v=v, 
                                         s=s, 
-                                        fscores=pca_group$s,
+                                        fscores=Xc %*% v,
                                         sdev=apply(s, 2, stats::sd),
                                         preproc = proc,
                                         proclist = proclist,
@@ -295,13 +301,16 @@ reprocess.bada <- function(x, new_data, colind=NULL, block=NULL) {
     sind <- x$block_indices[[block]]
     if (!is.null(colind)) {
       ## relative subset using colind
+      chk::chk_true(max(colind) <= length(sind))
       sind <- sind[colind]
     }
     multivarious::apply_transform(x$preproc, new_data, colind=sind)
   } else {
     ## colind not null. pre-process every which way using colind per block
     Reduce("+", lapply(seq_along(x$block_indices), function(i) {
-      multivarious::apply_transform(x$preproc, new_data, colind=colind)
+      sind <- x$block_indices[[i]]
+      chk::chk_true(max(colind) <= length(sind))
+      multivarious::apply_transform(x$preproc, new_data, colind=sind[colind])
     }))/length(x$block_indices)
   }
   
@@ -328,10 +337,9 @@ reprocess.bada <- function(x, new_data, colind=NULL, block=NULL) {
 #' @export
 project.bada <- function(x, new_data, block) {
   if (missing(block)) {
-    NextMethod(x,new_data)
+    NextMethod()
   } else {
     #Xp <- multivarious::apply_transform(preproc, new_data)
     reprocess(x, new_data, block=block) %*% multivarious::coef.projector(x)
   }
 }
-

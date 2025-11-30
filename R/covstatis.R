@@ -12,9 +12,11 @@
 #' @noRd
 #' @keywords internal
 double_center <- function(x) {
-  n <- nrow(x)
-  H <- diag(n) - matrix(1/n, n, n)          # Ξ with uniform masses
-  H %*% x %*% H                     # (1/2) Ξ R Ξ, 1/2 factor removed for covariance
+  # numerically cheaper than forming H %*% x %*% H
+  r <- rowMeans(x)
+  c <- colMeans(x)
+  m <- mean(x)
+  x - r - matrix(c, nrow(x), ncol(x), byrow = TRUE) + m
 }
 
 #' Normalize a matrix to unit Frobenius norm
@@ -142,15 +144,25 @@ covstatis.list <- function(data, ncomp=2,
   if (norm_method == "frobenius") {
     S <- lapply(S, norm_crossprod)
   } else if (norm_method == "mfa") {
-    mfa_norm <- function(mat) mat / eigen(mat, symmetric = TRUE, only.values = TRUE)$values[1]
+    mfa_norm <- function(mat) {
+      eig1 <- eigen(mat, symmetric = TRUE, only.values = TRUE)$values[1]
+      if (eig1 <= 1e-10) {
+        stop("First eigenvalue too small or non-positive for MFA normalization.")
+      }
+      mat / eig1
+    }
     S <- lapply(S, mfa_norm)
   }
   
   # RV-matrix and weights
   C <- compute_prodmat(S, normalize = (norm_method == "frobenius"))
   eigC <- eigen(C, symmetric = TRUE)
-  alpha <- abs(eigC$vectors[,1])
-  alpha <- alpha/(sum(alpha))
+  alpha_vec <- eigC$vectors[,1]
+  alpha_vec <- alpha_vec * sign(sum(alpha_vec))
+  if (abs(sum(alpha_vec)) < 1e-12) {
+    alpha_vec <- abs(alpha_vec)            # fallback in rare degenerate case
+  }
+  alpha <- alpha_vec / sum(alpha_vec)
   
   # Compromise and eigen-decomposition
   Sall <- Reduce("+", Map(`*`, S, alpha))
@@ -176,7 +188,8 @@ covstatis.list <- function(data, ncomp=2,
                                  dcenter=dcenter, 
                                  alpha=alpha, 
                                  C=C,
-                                 eigC=eigC,
+                                  eigC=eigC,
+                                 compromise_full=Sall,
                                  partial_scores=partial_scores,
                                  block_labels=block_labels, 
                                  labels=labels)
@@ -198,8 +211,8 @@ covstatis.list <- function(data, ncomp=2,
     new_data <- norm_crossprod(new_data)
   } else if (x$norm_method == "mfa") {
     eig1 <- eigen(new_data, symmetric = TRUE, only.values = TRUE)$values[1]
-    if (abs(eig1) < 1e-10) {
-      stop("First eigenvalue of a new matrix is too small for MFA normalization.")
+    if (eig1 <= 1e-10) {
+      stop("First eigenvalue of a new matrix is too small or non-positive for MFA normalization.")
     }
     new_data <- new_data / eig1
   }
@@ -257,12 +270,12 @@ reconstruct.covstatis <- function(x, comp = 1:multivarious::ncomp(x)) {
 #' 3.  Calculates subject-level scores (`subject_scores` or "g-scores") as the barycentric mean of the ROI scores.
 #' 4.  Calculates `subject_cosines` indicating the alignment of the subject's scores with each compromise dimension.
 #' 5.  Calculates a global `rv_coefficient` measuring the overall similarity between the new matrix and the group compromise matrix.
-#' 6.  Calculates the `distance_to_compromise`, the Frobenius distance between the new matrix and its projection onto the compromise subspace.
+#' 6.  Calculates the `distance_to_compromise`, the Frobenius distance between the new matrix and the full compromise matrix.
 #' 
 #' @return A list containing the following elements:
 #'   \item{subject_scores}{A matrix (`n_subjects` × `ncomp`) of subject-level coordinates in the compromise space.}
 #'   \item{subject_cosines}{A matrix (`n_subjects` × `ncomp`) of cosines, indicating alignment with each dimension.}
-#'   \item{scalar_summaries}{A `data.frame` with one row per subject, containing the `rv_coefficient` and `distance_to_compromise`.}
+#'   \item{scalar_summaries}{A `data.frame` with one row per subject, containing the `rv_coefficient` and `distance_to_compromise` (Frobenius distance to the full compromise).}
 #'   \item{roi_scores}{A list of matrices, where each element contains the ROI-level scores for a subject.}
 #'
 #' @export
@@ -298,12 +311,12 @@ project_subjects.covstatis <- function(x, new_data, subject_ids = NULL, ...) {
     norm_g <- sqrt(sum(g_scores^2))
     cosines <- if (norm_g > 1e-9) g_scores / norm_g else g_scores * 0
     
-    # 5A. RV coefficient
+    # 5A. RV coefficient (against compromise)
     numer <- sum(S_new * compromise)
     denom_new <- sum(S_new^2)
     rv <- numer / sqrt(denom_new * denom_compromise)
     
-    # 5B. Euclidean distance
+    # 5B. Euclidean distance to compromise subspace
     S_proj <- P %*% S_new %*% P
     Residual <- S_new - S_proj
     dist <- sqrt(sum(Residual^2))
@@ -406,10 +419,14 @@ project_covariate.covstatis <- function(x, y,
     if (scale == "cosine") {
       numer <- as.numeric(t(G) %*% y)            # length D
       denom <- sqrt(colSums(G^2)) * sqrt(sum(y^2))
+      denom[denom < 1e-12] <- Inf
       out   <- numer / denom
     } else { # beta
-      out <- as.numeric(t(G) %*% y / colSums(G^2))
+      denom <- colSums(G^2)
+      denom[denom < 1e-12] <- Inf
+      out <- as.numeric(t(G) %*% y / denom)
     }
+    out[!is.finite(out)] <- 0
     names(out) <- paste0("Dim", seq_along(out))
     return(out)
   }
@@ -424,7 +441,9 @@ project_covariate.covstatis <- function(x, y,
     if (norm_out > 1e-12) out <- out / norm_out
   } else {                     # beta-style scaling
     denom <- colSums(G^2)      # D-vector
+    denom[denom < 1e-12] <- Inf
     out   <- out / matrix(denom, R, D, byrow = TRUE)
+    out[!is.finite(out)] <- 0
   }
   dimnames(out) <- list(x$labels, paste0("Dim", 1:D))
   out
@@ -496,4 +515,3 @@ plot_subjects <- function(x, dim = c(1,2)) {
   plot(G[,dim], main = "G-scores (compromise space)", xlab = paste("Dim", dim[1]), ylab = paste("Dim", dim[2]))
   plot(T_scores[,dim], main = "T-scores (RV space)",   xlab = paste("Dim", dim[1]), ylab = paste("Dim", dim[2]))
 }
-

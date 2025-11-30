@@ -16,33 +16,32 @@ synthetic_multiblock(
 )
 }
 \arguments{
-\item{S}{Number of blocks/subjects.}
+\item{S}{Number of subjects/blocks to generate.}
 
-\item{n}{Number of rows (observations) per block.}
+\item{n}{Number of observations (rows) per block.}
 
-\item{p}{Number of columns (variables) per block. Can be a single value or a
-vector of length `S`.}
+\item{sigma}{The standard deviation of the noise added to the data.}
 
-\item{r}{Rank (number of latent components).}
+\item{k_nn}{number of nearest neighbors for spatial correlations.}
 
-\item{sigma}{Standard deviation of the Gaussian noise.}
+\item{p_list}{A list of integers specifying the number of variables (columns) for each block.}
 
-\item{sphere}{Logical; if `TRUE`, generate coordinates on the unit sphere and
-build a k-nearest-neighbour graph.}
+\item{ncomp}{The rank of the shared component structure.}
 
-\item{k_nn}{Number of neighbours for the graph when `sphere = TRUE`.}
+\item{g_list}{A list specifying the shared structure for each block, where each element is a matrix of size \eqn{p_i \times ncomp}.}
 
-\item{seed}{Integer seed for reproducible generation.}
+\item{u}{A matrix of size \eqn{n \times ncomp} representing the subject-specific scores on the shared components.}
+
+\item{orthogonal_space}{Logical; if TRUE, the block-specific scores are orthogonal to the shared scores.}
+
+\item{A}{A matrix of size \eqn{p_i \times p_i} used to induce spatial correlation (if `spatial=TRUE`).}
+
+\item{...}{extra arguments.}
+
+\item{spatial}{whether to add spatial correlations.}
 }
 \value{
-A list with the following elements:
-\itemize{
-  \item `data_list` — centred data matrices `X_s` of size `n` \times `p_s`;
-  \item `coords_list` — 3-D coordinates for each block when `sphere = TRUE`;
-  \item `V_true` — list of true loading matrices (`p_s` \times `r`);
-  \item `F_true` — matrix of shared factor scores (`n` \times `r`);
-  \item `Sadj` — sparse Laplacian matrix for smoothness penalties.
-}
+A list of matrices, where each matrix is a data block.
 }
 \description{
 This helper function creates several blocks of multivariate data that share
