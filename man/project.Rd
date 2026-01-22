@@ -9,6 +9,15 @@ project(x, new_data, ...)
 
 reprocess(x, new_data, colind, ...)
 }
+\arguments{
+\item{x}{A fitted model object.}
+
+\item{new_data}{New data to project or reprocess.}
+
+\item{...}{Additional arguments passed to methods.}
+
+\item{colind}{Optional column indices for subsetting.}
+}
 \description{
 The package extends the `project()` and `reprocess()` generics defined in
 \pkg{multivarious}.  Re‑exporting them avoids forcing users to load

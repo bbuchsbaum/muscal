@@ -33,13 +33,14 @@ adam_update_block <- function(V, G, M, V2, step_count,
 }
 
 #' Prepare preprocessors and data for Penalized MFA
-#' 
+#'
 #' @param data list of data blocks
 #' @param preproc a preprocessor object or list of them
 #' @param check_consistent_ncol whether to check for consistent number of columns post-preprocessing.
 #' @return a list containing the preprocessed data `Xp`, the fitted preprocessors `proclist`,
 #'         and the post-preprocessing dimension `p_post`.
 #' @keywords internal
+#' @noRd
 prepare_block_preprocessors <- function(data, preproc, check_consistent_ncol = TRUE) {
   proclist <- if (is.null(preproc)) {
     # If no preproc, create a pass-through preprocessor for each block

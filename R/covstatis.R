@@ -243,7 +243,8 @@ project_cov.covstatis <- function(x, new_data, ...) {
 #'
 #' @param x A fitted `covstatis` model
 #' @param comp Integer vector of component indices to retain
-#' @return A matrix of the same size as each input matrix, representing 
+#' @param ... Additional arguments (currently unused).
+#' @return A matrix of the same size as each input matrix, representing
 #'         a low-rank approximation of the compromise matrix in the preprocessed space
 #'         (after double-centering and normalization, if they were applied)
 #' @importFrom multivarious ncomp reconstruct

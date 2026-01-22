@@ -157,6 +157,11 @@ project_covariate <- function(x, y, ...) {
 #' \pkg{multivarious}.  Re‑exporting them avoids forcing users to load
 #' \pkg{multivarious} explicitly.
 #'
+#' @param x A fitted model object.
+#' @param new_data New data to project or reprocess.
+#' @param ... Additional arguments passed to methods.
+#' @param colind Optional column indices for subsetting.
+#'
 #' @importFrom multivarious project
 #' @export
 #' @rdname project

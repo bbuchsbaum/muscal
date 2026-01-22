@@ -36,7 +36,7 @@ methods for details).}
 \item{subject}{A factor or bare column name identifying repeated‑measures, i.e.
 the subject/block variable.}
 
-\item{preproc}{A \link[multivarious]{preprocessing pipeline}.  Defaults to
+\item{preproc}{A preprocessing pipeline from the multivarious package.  Defaults to
 `multivarious::center()` in the concrete methods.}
 
 \item{ncomp}{Integer; the number of discriminant components to compute.}

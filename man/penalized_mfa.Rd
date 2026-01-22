@@ -137,9 +137,9 @@ A `multiblock_projector` object of class `penalized_mfa` with the following comp
       matrices for each block. Each element is a (p_i × ncomp) matrix.}
     \item{\code{obj_values}}{Numeric vector of objective function values at each
       iteration, including the initial value. Length is (iterations_run + 1).}
-    \item{\code{consensus}}{The consensus loading matrix (ncomp × ncomp) if
+    \item{\code{consensus}}{The consensus loading matrix (p\_post × ncomp) if
       `compute_consensus=TRUE`, otherwise `NULL`. This is the orthonormalized
-      average of block loadings.}
+      average of block loadings over blocks with matching feature dimension.}
     \item{\code{lambda}}{The penalty strength used in the optimization.}
     \item{\code{penalty_method}}{Character string indicating the penalty type used.
       May be "none" if penalty was disabled due to inconsistent block dimensions.}

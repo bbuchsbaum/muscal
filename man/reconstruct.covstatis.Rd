@@ -4,15 +4,17 @@
 \alias{reconstruct.covstatis}
 \title{Low-rank reconstruction of the compromise matrix}
 \usage{
-\method{reconstruct}{covstatis}(x, comp = 1:multivarious::ncomp(x))
+\method{reconstruct}{covstatis}(x, comp = 1:multivarious::ncomp(x), ...)
 }
 \arguments{
 \item{x}{A fitted `covstatis` model}
 
 \item{comp}{Integer vector of component indices to retain}
+
+\item{...}{Additional arguments (currently unused).}
 }
 \value{
-A matrix of the same size as each input matrix, representing 
+A matrix of the same size as each input matrix, representing
         a low-rank approximation of the compromise matrix in the preprocessed space
         (after double-centering and normalization, if they were applied)
 }

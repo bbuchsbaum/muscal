@@ -16,32 +16,34 @@ synthetic_multiblock(
 )
 }
 \arguments{
-\item{S}{Number of subjects/blocks to generate.}
+\item{S}{Number of subjects/blocks to generate (default 5).}
 
-\item{n}{Number of observations (rows) per block.}
+\item{n}{Number of observations (rows) per block (default 100).}
 
-\item{sigma}{The standard deviation of the noise added to the data.}
+\item{p}{Number of variables (columns) per block, or a vector of length S
+specifying different dimensions per block (default 200).}
 
-\item{k_nn}{number of nearest neighbors for spatial correlations.}
+\item{r}{The rank of the shared component structure (default 3).}
 
-\item{p_list}{A list of integers specifying the number of variables (columns) for each block.}
+\item{sigma}{The standard deviation of the noise added to the data (default 0.1).}
 
-\item{ncomp}{The rank of the shared component structure.}
+\item{sphere}{Logical; if TRUE, variables are placed on the unit sphere and
+a k-nearest-neighbour graph is computed (default FALSE).}
 
-\item{g_list}{A list specifying the shared structure for each block, where each element is a matrix of size \eqn{p_i \times ncomp}.}
+\item{k_nn}{Number of nearest neighbors for spatial correlations when
+`sphere = TRUE` (default 6).}
 
-\item{u}{A matrix of size \eqn{n \times ncomp} representing the subject-specific scores on the shared components.}
-
-\item{orthogonal_space}{Logical; if TRUE, the block-specific scores are orthogonal to the shared scores.}
-
-\item{A}{A matrix of size \eqn{p_i \times p_i} used to induce spatial correlation (if `spatial=TRUE`).}
-
-\item{...}{extra arguments.}
-
-\item{spatial}{whether to add spatial correlations.}
+\item{seed}{Random seed for reproducibility (default 1).}
 }
 \value{
-A list of matrices, where each matrix is a data block.
+A list containing:
+  \describe{
+    \item{data_list}{A list of data matrices, one per block.}
+    \item{coords_list}{Coordinates on the unit sphere (if `sphere = TRUE`), otherwise NULL.}
+    \item{V_true}{List of ground-truth loading matrices.}
+    \item{F_true}{Ground-truth factor score matrix.}
+    \item{Sadj}{Spatial adjacency Laplacian matrix (if `sphere = TRUE`), otherwise NULL.}
+  }
 }
 \description{
 This helper function creates several blocks of multivariate data that share

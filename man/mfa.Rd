@@ -32,7 +32,7 @@ mfa(data, preproc, ncomp = 2, normalization = "MFA", A = NULL, M = NULL, ...)
 \item{data}{A data object for which a BaDA method is defined (see individual
 methods for details).}
 
-\item{preproc}{A \link[multivarious]{preprocessing pipeline}.  Defaults to
+\item{preproc}{A preprocessing pipeline from the multivarious package.  Defaults to
 `multivarious::center()` in the concrete methods.}
 
 \item{ncomp}{Integer; the number of discriminant components to compute.}
@@ -92,12 +92,12 @@ stopifnot(ncol(multivarious::scores(res)) == 3)
 # Create a classifier
 labs <- letters[1:10]
 cfier <- multivarious::classifier(res, new_data=do.call(cbind, X), labels=labs)
-pred <- predict(cfier, X[1:2,])
+pred <- predict(cfier, do.call(cbind, X)[1:2,])
 
 # Create a classifier using a specific block
 cfier2 <- multivarious::classifier(res, new_data=X[[2]], labels=labs,
                                   colind=res$block_indices[[2]])
-pred2 <- predict(cfier2, X[1:2,res$block_indices[[2]]])
+pred2 <- predict(cfier2, X[[2]][1:2,])
 }
 }
 \references{

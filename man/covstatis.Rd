@@ -7,37 +7,21 @@
 \usage{
 covstatis(data, ncomp = 2, normalize = TRUE, dcenter = TRUE, ...)
 
-\method{covstatis}{list}(
-  data,
-  ncomp = 2,
-  norm_method = c("frobenius", "mfa", "none"),
-  dcenter = TRUE,
-  labels = NULL
-)
+\method{covstatis}{list}(data, ncomp = 2, normalize = TRUE, dcenter = TRUE, ...)
 }
 \arguments{
-\item{data}{The dataset on which the bootstrap resampling should be performed.}
+\item{data}{A data object for which a BaDA method is defined (see individual
+methods for details).}
 
 \item{ncomp}{Integer; number of components to compute.}
 
 \item{normalize}{Logical; if `TRUE` (default) each covariance matrix is scaled
 to have unit Frobenius norm before analysis.}
 
-\item{dcenter}{Logical; if TRUE (default), each matrix is double-centered before
-analysis. This removes constant modes before cross-table comparison
-(standard in STATIS tradition).}
+\item{dcenter}{Logical; if `TRUE` (default) each covariance matrix is double
+centred (Gower transformation) prior to analysis.}
 
 \item{...}{Additional arguments passed to the method.}
-
-\item{norm_method}{The normalization method to apply to each matrix. One of
-\code{"frobenius"} (default), \code{"mfa"}, or \code{"none"}. Frobenius norm
-scales each matrix to have a total sum-of-squares of 1. MFA
-(multiple factor analysis) scales each matrix so its first
-eigenvalue is 1. \code{"none"} applies no normalization.}
-
-\item{labels}{Optional character vector of labels for the rows/columns of the
-covariance matrices. If NULL, tries to use row names from the
-first matrix, or generates sequential labels.}
 }
 \value{
 An object inheriting from class `covstatis`.
@@ -61,6 +45,18 @@ The method operates as follows:
 }
 
 The \code{partial_scores} in the returned object are a list of matrices (one for each subject), with each matrix containing the ROI-level factor scores (ROI x D).
+
+Additional arguments can be passed via \code{...}:
+\describe{
+\item{labels}{Optional character vector of labels for the rows/columns of the
+covariance matrices. If NULL, tries to use row names from the
+first matrix, or generates sequential labels.}
+\item{norm_method}{The normalization method to apply to each matrix. One of
+\code{"frobenius"} (default when \code{normalize=TRUE}), \code{"mfa"}, or \code{"none"}.
+Frobenius norm scales each matrix to have a total sum-of-squares of 1.
+MFA (multiple factor analysis) scales each matrix so its first
+eigenvalue is 1. \code{"none"} applies no normalization.}
+}
 }
 \examples{
 # Create a list of correlation matrices

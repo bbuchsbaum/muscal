@@ -18,10 +18,16 @@
 #'   splitting \code{fit$v} by \code{block_indices} when present).
 #' @param n Optional number of observations (rows); defaults to \code{nrow}
 #'   of scores if available.
-#' @param alpha Confidence level for bootstrap intervals.
+#' @param tail_q Numeric; fraction of smallest eigenvalues used to estimate
+#'   noise variance for the RMT test (default 0.2). Only used in
+#'   \code{estimate_components} when \code{method = "rmt"}.
+#' @param alpha Confidence level for hypothesis tests or bootstrap intervals.
 #' @param boot_loadings For \code{loading_reliability}: a list of loading
 #'   matrices from bootstrap refits (all same dimensions as the reference
 #'   loadings).
+#' @param V_ref For \code{loading_reliability}: optional reference loading
+#'   matrix. If \code{NULL}, extracted from \code{fit} using the same logic
+#'   as \code{V_list}.
 #' @return
 #'   \item{estimate_components}{A list with \code{keep}, \code{criterion},
 #'   and \code{method_used}.}

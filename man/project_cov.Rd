@@ -7,7 +7,7 @@
 \usage{
 project_cov(x, new_data, ...)
 
-\method{project_cov}{covstatis}(x, new_data)
+\method{project_cov}{covstatis}(x, new_data, ...)
 }
 \arguments{
 \item{x}{A model object for which a `project_cov` method exists (e.g.
