@@ -131,7 +131,7 @@ mfa.multiblock <- function(data, preproc=center(), ncomp=2,
   
   chk::chk_true(length(data) > 1)
   for (i in 1:length(data)) {
-    chk::chkor(chk::chk_matrix(data[[i]]), chk::chk_s4_class(data[[i]], "Matrix"))
+    chk::chkor_vld(chk::vld_matrix(data[[i]]), chk::vld_s4_class(data[[i]], "Matrix"))
   }
   
   nrs <- sapply(data, nrow)
@@ -141,7 +141,7 @@ mfa.multiblock <- function(data, preproc=center(), ncomp=2,
   normalization <- match.arg(normalization)
   
   if (normalization == "custom") {
-    chk::chkor(chk::chk_not_null(A), chk::chk_not_null(M))
+    chk::chkor_vld(chk::vld_not_null(A), chk::vld_not_null(M))
   }
   
   S <- length(data)
