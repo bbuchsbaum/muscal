@@ -81,6 +81,12 @@ Overall: [##........] ~20% (Phase 1 progress)
 
 None currently.
 
+### Quick Tasks Completed
+
+| # | Description | Date | Commit | Directory |
+|---|-------------|------|--------|-----------|
+| 001 | Fix R CMD check warnings | 2026-01-22 | e0ef63c | [001-fix-rcmd-check-warnings](./quick/001-fix-rcmd-check-warnings/) |
+
 ### Warnings
 
 - ~~Private API usage (`multivarious:::`) needs resolution for CRAN~~ RESOLVED
