@@ -140,8 +140,8 @@ mfa.multiblock <- function(data, preproc=center(), ncomp=2,
   
   normalization <- match.arg(normalization)
   
-  if (normalization == "custom") {
-    chk::chkor_vld(chk::vld_not_null(A), chk::vld_not_null(M))
+  if (normalization == "custom" && is.null(A) && is.null(M)) {
+    stop('At least one of A or M must be provided when normalization = "custom"')
   }
   
   S <- length(data)

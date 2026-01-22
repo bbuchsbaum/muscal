@@ -26,10 +26,10 @@ test_that("penalized_mfa.list handles uneven and even blocks correctly", {
 
 test_that("penalized_mfa works with multiblock input", {
   mb <- multiblock(data_list_uneven)
-  # Should warn about falling back from projection penalty
+  # Should warn about disabling penalty when blocks have different dimensions
   expect_warning(
     res <- penalized_mfa(mb, ncomp = 2, lambda = 1, penalty_method = "projection"),
-    "Falling back to 'pairwise'"
+    "Cannot use 'projection' penalty with blocks of different dimensions"
   )
   expect_s3_class(res, "penalized_mfa")
 })
