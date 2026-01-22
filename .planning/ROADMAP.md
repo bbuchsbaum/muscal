@@ -16,6 +16,14 @@ This roadmap delivers test coverage and code quality improvements for the muscal
 
 **Dependencies:** None (starting phase)
 
+**Plans:** 4 plans
+
+Plans:
+- [ ] 01-01-PLAN.md — Fix deprecated chkor() and clean DESCRIPTION imports
+- [ ] 01-02-PLAN.md — Fix S3 signatures and eliminate private API usage
+- [ ] 01-03-PLAN.md — Fix failing test and wrap genpca-dependent examples
+- [ ] 01-04-PLAN.md — Final verification (R CMD check clean)
+
 **Requirements:**
 - TEST-01: All existing tests pass (currently 1 failing)
 - TEST-03: R CMD check passes with no errors
@@ -37,6 +45,11 @@ This roadmap delivers test coverage and code quality improvements for the muscal
 **Goal:** Core analysis modules have comprehensive test coverage
 
 **Dependencies:** Phase 1 (clean baseline needed)
+
+**Plans:** 0 plans
+
+Plans:
+- [ ] TBD - created by /gsd:plan-phase
 
 **Requirements:**
 - CORE-01: mfa.R has comprehensive tests (input validation, normalization types, edge cases)
@@ -60,6 +73,11 @@ This roadmap delivers test coverage and code quality improvements for the muscal
 
 **Dependencies:** Phase 2 (test patterns established)
 
+**Plans:** 0 plans
+
+Plans:
+- [ ] TBD - created by /gsd:plan-phase
+
 **Requirements:**
 - PMFA-01: penalized_mfa.R has comprehensive tests (penalty methods, convergence, edge cases)
 - PMFA-02: penalized_mfa_clusterwise.R has tests for core functionality
@@ -82,6 +100,11 @@ This roadmap delivers test coverage and code quality improvements for the muscal
 
 **Dependencies:** Phase 3 (test safety net in place)
 
+**Plans:** 0 plans
+
+Plans:
+- [ ] TBD - created by /gsd:plan-phase
+
 **Requirements:**
 - REFAC-01: Extract helper functions from penalized_mfa_clusterwise
 - REFAC-02: Separate optimization logic from data preparation
@@ -99,7 +122,7 @@ This roadmap delivers test coverage and code quality improvements for the muscal
 
 | Phase | Status | Requirements | Completed |
 |-------|--------|--------------|-----------|
-| 1 - Foundation Fix | Not Started | 6 | 0 |
+| 1 - Foundation Fix | Planned | 6 | 0 |
 | 2 - Core Module Tests | Not Started | 5 | 0 |
 | 3 - Penalized MFA Tests | Not Started | 5 | 0 |
 | 4 - Refactoring | Not Started | 3 | 0 |
