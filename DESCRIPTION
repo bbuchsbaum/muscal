@@ -17,7 +17,6 @@ Imports:
     graphics,
     utils,
     MASS,
-    irlba,
     multivarious,
     assertthat,
     chk,
@@ -34,15 +33,14 @@ Imports:
     abind,
     furrr,
     pracma,
-    genpca,
     MatrixCorrelation,
     RANN,
-    deflist,
     tibble
 Suggests:
     testthat (>= 3.0.0),
     knitr,
-    rmarkdown
+    rmarkdown,
+    genpca
 Depends:
     R (>= 3.5.0)
 RoxygenNote: 7.3.3
