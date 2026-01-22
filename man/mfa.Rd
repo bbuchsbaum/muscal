@@ -29,7 +29,8 @@ mfa(data, preproc, ncomp = 2, normalization = "MFA", A = NULL, M = NULL, ...)
 )
 }
 \arguments{
-\item{data}{The dataset on which the bootstrap resampling should be performed.}
+\item{data}{A data object for which a BaDA method is defined (see individual
+methods for details).}
 
 \item{preproc}{A \link[multivarious]{preprocessing pipeline}.  Defaults to
 `multivarious::center()` in the concrete methods.}
@@ -70,10 +71,12 @@ Normalization options include:
 }
 }
 \examples{
+\donttest{
 # Apply MFA to a list of matrices
 X <- replicate(5, { matrix(rnorm(10*10), 10, 10) }, simplify=FALSE)
 res <- mfa(X, ncomp=3, normalization="MFA")
-
+}
+\donttest{
 # Create 5 random matrices of the same size
 X <- replicate(5, { matrix(rnorm(10*10), 10, 10) }, simplify=FALSE)
 
@@ -92,9 +95,10 @@ cfier <- multivarious::classifier(res, new_data=do.call(cbind, X), labels=labs)
 pred <- predict(cfier, X[1:2,])
 
 # Create a classifier using a specific block
-cfier2 <- multivarious::classifier(res, new_data=X[[2]], labels=labs, 
+cfier2 <- multivarious::classifier(res, new_data=X[[2]], labels=labs,
                                   colind=res$block_indices[[2]])
 pred2 <- predict(cfier2, X[1:2,res$block_indices[[2]]])
+}
 }
 \references{
 Abdi, H., Williams, L. J., & Valentin, D. (2013). *Multiple factor analysis:

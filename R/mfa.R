@@ -74,10 +74,11 @@ normalization_factors <- function(blocks, type=c("MFA", "RV", "RV2", "None", "Fr
 #' This method first converts the list to a multiblock object and then calls `mfa.multiblock`.
 #'
 #' @examples
+#' \donttest{
 #' # Apply MFA to a list of matrices
 #' X <- replicate(5, { matrix(rnorm(10*10), 10, 10) }, simplify=FALSE)
 #' res <- mfa(X, ncomp=3, normalization="MFA")
-#' 
+#' }
 #' @export
 mfa.list <- function(data, preproc=center(), ncomp=2,
                      normalization=c("MFA", "RV", "None", "Frob", "custom"),
@@ -101,28 +102,30 @@ mfa.list <- function(data, preproc=center(), ncomp=2,
 #' * `Frob`: Uses Frobenius norm for scaling
 #' * `custom`: Uses custom weight matrices provided via A and M parameters
 #'
-#' @examples 
+#' @examples
+#' \donttest{
 #' # Create 5 random matrices of the same size
 #' X <- replicate(5, { matrix(rnorm(10*10), 10, 10) }, simplify=FALSE)
-#' 
+#'
 #' # Apply MFA with MFA normalization
 #' res <- mfa(X, ncomp=3, normalization="MFA")
-#' 
+#'
 #' # Project a block onto the model
 #' p <- multivarious::project_block(res, X[[1]], 1)
-#' 
+#'
 #' # Verify number of components
 #' stopifnot(ncol(multivarious::scores(res)) == 3)
-#' 
+#'
 #' # Create a classifier
 #' labs <- letters[1:10]
 #' cfier <- multivarious::classifier(res, new_data=do.call(cbind, X), labels=labs)
 #' pred <- predict(cfier, X[1:2,])
-#' 
+#'
 #' # Create a classifier using a specific block
-#' cfier2 <- multivarious::classifier(res, new_data=X[[2]], labels=labs, 
+#' cfier2 <- multivarious::classifier(res, new_data=X[[2]], labels=labs,
 #'                                   colind=res$block_indices[[2]])
 #' pred2 <- predict(cfier2, X[1:2,res$block_indices[[2]]])
+#' }
 #' @export
 mfa.multiblock <- function(data, preproc=center(), ncomp=2,
                 normalization=c("MFA", "RV", "None", "Frob", "custom"),
