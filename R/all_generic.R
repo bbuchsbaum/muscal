@@ -16,7 +16,7 @@
 #' @param y       A factor or bare column name giving the grouping variable.
 #' @param subject A factor or bare column name identifying repeated‑measures, i.e.
 #'                the subject/block variable.
-#' @param preproc A \link[multivarious]{preprocessing pipeline}.  Defaults to
+#' @param preproc A preprocessing pipeline from the multivarious package.  Defaults to
 #'                `multivarious::center()` in the concrete methods.
 #' @param ncomp   Integer; the number of discriminant components to compute.
 #' @param ...     Additional arguments passed to the underlying method.
