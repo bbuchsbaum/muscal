@@ -50,17 +50,18 @@ summarize_boot <- function(boot_ret, alpha=.05){
 
 #' Bootstrap Resampling for bada Multivariate Models
 #'
-#' Perform bootstrap resampling on a multivariate bada model to estimate the variability 
+#' Perform bootstrap resampling on a multivariate bada model to estimate the variability
 #' of components and scores.
 #'
 #' @param x A fitted bada model object that has been fit to a training dataset.
-#' @param data The dataset on which the bootstrap resampling should be performed.
 #' @param nboot An integer specifying the number of bootstrap resamples to perform (default is 500).
-#' @param alpha The percentile level for the computation of the lower and upper percentiles (default is 0.05).
-#' @param verbose Logical; if `TRUE`, progress information is printed during
-#'   resampling. Defaults to `FALSE`.
-#' @param ... Additional arguments to be passed to the specific model implementation of `bootstrap`.
-#' @details The function returns a list containing the summarized bootstrap resampled components and scores for the model. 
+#' @param ... Additional arguments:
+#'   \describe{
+#'     \item{data}{The dataset on which the bootstrap resampling should be performed (required).}
+#'     \item{alpha}{The percentile level for the computation of the lower and upper percentiles (default is 0.05).}
+#'     \item{verbose}{Logical; if `TRUE`, progress information is printed during resampling. Defaults to `FALSE`.}
+#'   }
+#' @details The function returns a list containing the summarized bootstrap resampled components and scores for the model.
 #' The returned list contains eight elements:
 #'    * `boot_scores_mean`: A matrix which is the mean of all bootstrapped scores matrices.
 #'    * `boot_scores_sd`: A matrix which is the standard deviation of all bootstrapped scores matrices.
@@ -75,11 +76,21 @@ summarize_boot <- function(boot_ret, alpha=.05){
 #' @importFrom dplyr tibble bind_rows
 #' @importFrom purrr map
 #' @importFrom multivarious bootstrap
+#' @importFrom rlang %||%
 #' @importFrom stats sd
 #' @rdname bada
 #' @export
 #' @method bootstrap bada
-bootstrap.bada <- function(x, data, nboot=500, alpha=.05, verbose = FALSE, ...) {
+bootstrap.bada <- function(x, nboot = 500, ...) {
+  dots <- list(...)
+  data <- dots$data
+  alpha <- dots$alpha %||% 0.05
+  verbose <- dots$verbose %||% FALSE
+
+  if (is.null(data)) {
+    stop("'data' argument is required for bootstrap.bada")
+  }
+
   sdat <- split(data, x$subjects)
   ## subject-split and preprocessed data
   strata <- seq_along(sdat) %>% purrr::map(function(i) {
@@ -266,9 +277,12 @@ bada.multidesign <- function(data, y, subject, preproc=multivarious::center(), n
 #' @param colind An optional integer vector specifying column indices to use within blocks.
 #'   If NULL and block is also NULL, all blocks are used. If NULL but block is provided,
 #'   all columns in the specified block are used.
-#' @param block An optional character string specifying which block's preprocessing to apply.
-#'   If NULL and colind is also NULL, preprocessing is averaged across all blocks.
-#'   If provided, only the specified block's preprocessing is applied.
+#' @param ... Additional arguments:
+#'   \describe{
+#'     \item{block}{An optional character string specifying which block's preprocessing to apply.
+#'       If NULL and colind is also NULL, preprocessing is averaged across all blocks.
+#'       If provided, only the specified block's preprocessing is applied.}
+#'   }
 #'
 #' @details
 #' The function handles three scenarios:
@@ -283,7 +297,10 @@ bada.multidesign <- function(data, y, subject, preproc=multivarious::center(), n
 #'
 #' @rdname bada
 #' @export
-reprocess.bada <- function(x, new_data, colind=NULL, block=NULL) {
+reprocess.bada <- function(x, new_data, colind = NULL, ...) {
+  dots <- list(...)
+  block <- dots$block
+
   if (is.null(colind) && is.null(block)) {
     ## how to pre-process when you don't know the subject?
     ## we pre-process every way and average.
@@ -323,8 +340,11 @@ reprocess.bada <- function(x, new_data, colind=NULL, block=NULL) {
 #'
 #' @param x A fitted BaDA model object.
 #' @param new_data A numeric matrix of new data to be projected.
-#' @param block An optional character string specifying which block's preprocessing
-#'   to apply before projection. If missing, the generic method is used.
+#' @param ... Additional arguments:
+#'   \describe{
+#'     \item{block}{An optional character string specifying which block's preprocessing
+#'       to apply before projection. If not provided, the generic method is used.}
+#'   }
 #'
 #' @details
 #' When a specific block is provided, the function first reprocesses the data using
@@ -335,11 +355,14 @@ reprocess.bada <- function(x, new_data, colind=NULL, block=NULL) {
 #'
 #' @rdname bada
 #' @export
-project.bada <- function(x, new_data, block) {
-  if (missing(block)) {
+project.bada <- function(x, new_data, ...) {
+  dots <- list(...)
+  block <- dots$block
+
+  if (is.null(block)) {
     NextMethod()
   } else {
     #Xp <- multivarious::apply_transform(preproc, new_data)
-    reprocess(x, new_data, block=block) %*% multivarious::coef.projector(x)
+    reprocess(x, new_data, block = block) %*% multivarious::coef.projector(x)
   }
 }

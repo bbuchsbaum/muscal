@@ -10,7 +10,7 @@
 \usage{
 bada(data, y, subject, preproc, ncomp, ...)
 
-\method{bootstrap}{bada}(x, data, nboot = 500, alpha = 0.05, verbose = FALSE, ...)
+\method{bootstrap}{bada}(x, nboot = 500, ...)
 
 \method{bada}{multidesign}(
   data,
@@ -23,12 +23,13 @@ bada(data, y, subject, preproc, ncomp, ...)
   ...
 )
 
-\method{reprocess}{bada}(x, new_data, colind = NULL, block = NULL)
+\method{reprocess}{bada}(x, new_data, colind = NULL, ...)
 
-\method{project}{bada}(x, new_data, block)
+\method{project}{bada}(x, new_data, ...)
 }
 \arguments{
-\item{data}{The dataset on which the bootstrap resampling should be performed.}
+\item{data}{A data object for which a BaDA method is defined (see individual
+methods for details).}
 
 \item{y}{A factor or bare column name giving the grouping variable.}
 
@@ -40,16 +41,15 @@ the subject/block variable.}
 
 \item{ncomp}{Integer; the number of discriminant components to compute.}
 
-\item{...}{Additional arguments passed to methods (currently unused).}
+\item{...}{Additional arguments:
+\describe{
+  \item{block}{An optional character string specifying which block's preprocessing
+    to apply before projection. If not provided, the generic method is used.}
+}}
 
 \item{x}{A fitted BaDA model object.}
 
 \item{nboot}{An integer specifying the number of bootstrap resamples to perform (default is 500).}
-
-\item{alpha}{The percentile level for the computation of the lower and upper percentiles (default is 0.05).}
-
-\item{verbose}{Logical; if `TRUE`, progress information is printed during
-resampling. Defaults to `FALSE`.}
 
 \item{resdim}{pca dimensionality for residual analysis (only relevant if `rescomp` > 0)}
 
@@ -60,9 +60,6 @@ resampling. Defaults to `FALSE`.}
 \item{colind}{An optional integer vector specifying column indices to use within blocks.
 If NULL and block is also NULL, all blocks are used. If NULL but block is provided,
 all columns in the specified block are used.}
-
-\item{block}{An optional character string specifying which block's preprocessing
-to apply before projection. If missing, the generic method is used.}
 }
 \value{
 An object that inherits from class `bada`.  See the help for the
@@ -79,7 +76,7 @@ to multi–subject multivariate data.  Concrete methods (e.g. for objects of cla
 `multidesign`) implement the actual estimation procedure and return an object that
 inherits from class `\code{bada}`.
 
-Perform bootstrap resampling on a multivariate bada model to estimate the variability 
+Perform bootstrap resampling on a multivariate bada model to estimate the variability
 of components and scores.
 
 This function transforms new data using the preprocessing pipeline from a fitted BaDA model.
@@ -89,7 +86,7 @@ This function projects new data onto a previously fitted BaDA model,
 returning the scores of the new data in the space of the original model.
 }
 \details{
-The function returns a list containing the summarized bootstrap resampled components and scores for the model. 
+The function returns a list containing the summarized bootstrap resampled components and scores for the model.
 The returned list contains eight elements:
    * `boot_scores_mean`: A matrix which is the mean of all bootstrapped scores matrices.
    * `boot_scores_sd`: A matrix which is the standard deviation of all bootstrapped scores matrices.
