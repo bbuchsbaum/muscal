@@ -54,7 +54,7 @@ estimate_components <- function(fit,
       n = n,
       k_vec = k_vec,
       check_rmt = TRUE,
-      tail_quantile = tail_q
+      tail_frac = tail_q
     )
     return(list(keep = res$keep, criterion = res$rmt_pass, method_used = "rmt"))
   }
