@@ -85,17 +85,17 @@ compute_prodmat <- function(S, fast = TRUE, normalize = TRUE) {
 #' 
 #' The `partial_scores` in the returned object are a list of matrices (one for each subject), with each matrix containing the ROI-level factor scores (ROI x D).
 #' 
-#' @param labels Optional character vector of labels for the rows/columns of the
-#'               covariance matrices. If NULL, tries to use row names from the 
-#'               first matrix, or generates sequential labels.
-#' @param norm_method The normalization method to apply to each matrix. One of
-#'               `"frobenius"` (default), `"mfa"`, or `"none"`. Frobenius norm
-#'               scales each matrix to have a total sum-of-squares of 1. MFA
-#'               (multiple factor analysis) scales each matrix so its first
-#'               eigenvalue is 1. `"none"` applies no normalization.
-#' @param dcenter Logical; if TRUE (default), each matrix is double-centered before
-#'               analysis. This removes constant modes before cross-table comparison
-#'               (standard in STATIS tradition).
+#' Additional arguments can be passed via `...`:
+#' \describe{
+#'   \item{labels}{Optional character vector of labels for the rows/columns of the
+#'                 covariance matrices. If NULL, tries to use row names from the
+#'                 first matrix, or generates sequential labels.}
+#'   \item{norm_method}{The normalization method to apply to each matrix. One of
+#'                 `"frobenius"` (default when `normalize=TRUE`), `"mfa"`, or `"none"`.
+#'                 Frobenius norm scales each matrix to have a total sum-of-squares of 1.
+#'                 MFA (multiple factor analysis) scales each matrix so its first
+#'                 eigenvalue is 1. `"none"` applies no normalization.}
+#' }
 #'
 #' @examples
 #' # Create a list of correlation matrices
@@ -111,11 +111,13 @@ compute_prodmat <- function(S, fast = TRUE, normalize = TRUE) {
 #' 
 #' @importFrom stats coefficients
 #' @export
-covstatis.list <- function(data, ncomp=2, 
-                           norm_method=c("frobenius", "mfa", "none"), 
-                           dcenter=TRUE, labels=NULL) {
-  
-  norm_method <- match.arg(norm_method)
+covstatis.list <- function(data, ncomp=2, normalize=TRUE, dcenter=TRUE, ...) {
+  # Extract additional arguments from ...
+  dots <- list(...)
+  norm_method <- dots$norm_method %||% (if (isTRUE(normalize)) "frobenius" else "none")
+  labels <- dots$labels
+
+  norm_method <- match.arg(norm_method, c("frobenius", "mfa", "none"))
   nr <- sapply(data, nrow)
   nc <- sapply(data, ncol)
   
@@ -230,7 +232,7 @@ covstatis.list <- function(data, ncomp=2,
 #' 
 #' @return A numeric matrix of projected scores with dimensions `nrow(new_data)` × `ncomp`.
 #' @export
-project_cov.covstatis <- function(x, new_data) {
+project_cov.covstatis <- function(x, new_data, ...) {
   processed_data <- .pre_process_new_cov(x, new_data)
   processed_data %*% x$projmat
 }
@@ -246,7 +248,7 @@ project_cov.covstatis <- function(x, new_data) {
 #'         (after double-centering and normalization, if they were applied)
 #' @importFrom multivarious ncomp reconstruct
 #' @export
-reconstruct.covstatis <- function(x, comp = 1:multivarious::ncomp(x)) {
+reconstruct.covstatis <- function(x, comp = 1:multivarious::ncomp(x), ...) {
   chk::chk_numeric(comp)
   chk::chk_true(max(comp) <= multivarious::ncomp(x))
 

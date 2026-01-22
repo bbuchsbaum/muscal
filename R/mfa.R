@@ -119,12 +119,12 @@ mfa.list <- function(data, preproc=center(), ncomp=2,
 #' # Create a classifier
 #' labs <- letters[1:10]
 #' cfier <- multivarious::classifier(res, new_data=do.call(cbind, X), labels=labs)
-#' pred <- predict(cfier, X[1:2,])
+#' pred <- predict(cfier, do.call(cbind, X)[1:2,])
 #'
 #' # Create a classifier using a specific block
 #' cfier2 <- multivarious::classifier(res, new_data=X[[2]], labels=labs,
 #'                                   colind=res$block_indices[[2]])
-#' pred2 <- predict(cfier2, X[1:2,res$block_indices[[2]]])
+#' pred2 <- predict(cfier2, X[[2]][1:2,])
 #' }
 #' @export
 mfa.multiblock <- function(data, preproc=center(), ncomp=2,
