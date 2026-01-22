@@ -363,6 +363,6 @@ project.bada <- function(x, new_data, ...) {
     NextMethod()
   } else {
     #Xp <- multivarious::apply_transform(preproc, new_data)
-    reprocess(x, new_data, block = block) %*% multivarious::coef.projector(x)
+    reprocess(x, new_data, block = block) %*% coef(x)
   }
 }

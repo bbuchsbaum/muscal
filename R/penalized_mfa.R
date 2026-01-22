@@ -434,8 +434,8 @@ penalized_mfa.multidesign <- function(data, subject, ...) {
   
   subject_quo <- rlang::enquo(subject)
   
-  # `split_by` creates a list of multiblock objects, one per subject.
-  sdat_multiblocks <- multidesign::split_by(data, !!subject_quo)
+  # `split` creates a list of multidesign objects, one per subject.
+  sdat_multiblocks <- split(data, !!subject_quo)
   
   # For this cross-subject analysis, we extract the full data matrix from each subject.
   # This assumes each subject's multiblock should be treated as a single observation matrix.
