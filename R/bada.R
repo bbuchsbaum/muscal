@@ -158,7 +158,7 @@ bada.multidesign <- function(data, y, subject, preproc=multivarious::center(), n
   
   ## pre-processors, one per subject
   proclist <- lapply(seq_along(sdat), function(sd) {
-    multivarious:::fresh(preproc) %>% multivarious::prep()
+    fresh(preproc) %>% prep()
   })
   
   names(proclist) <- as.character(subject_set)
@@ -234,24 +234,24 @@ bada.multidesign <- function(data, y, subject, preproc=multivarious::center(), n
     s$x %*% v
   }))
   
-  proc <- multivarious:::concat_pre_processors(proclist, block_indices)
+  proc <- concat_pre_processors(proclist, block_indices)
   
-  multivarious:::discriminant_projector(v=v, 
-                                        s=s, 
-                                        fscores=Xc %*% v,
-                                        sdev=apply(s, 2, stats::sd),
-                                        preproc = proc,
-                                        proclist = proclist,
-                                        labels=labels, 
-                                        label_set=label_set,
-                                        resdim=resdim,
-                                        rescomp=rescomp,
-                                        subjects=subjects,
-                                        barycenters=Xc,
-                                        block_indices=block_indices,
-                                        subject_var=subject_quo,
-                                        y_var=y_quo,
-                                        classes=c("bada", "projector"))
+  discriminant_projector(v=v,
+                         s=s,
+                         fscores=Xc %*% v,
+                         sdev=apply(s, 2, stats::sd),
+                         preproc = proc,
+                         proclist = proclist,
+                         labels=labels,
+                         label_set=label_set,
+                         resdim=resdim,
+                         rescomp=rescomp,
+                         subjects=subjects,
+                         barycenters=Xc,
+                         block_indices=block_indices,
+                         subject_var=subject_quo,
+                         y_var=y_quo,
+                         classes=c("bada", "projector"))
  
 }
 
