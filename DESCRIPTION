@@ -29,7 +29,6 @@ Imports:
     purrr,
     multidesign,
     cli,
-    RcppEigen,
     abind,
     furrr,
     pracma,

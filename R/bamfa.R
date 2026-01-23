@@ -1,7 +1,6 @@
 #' @useDynLib muscal, .registration = TRUE
 #' @importFrom Rcpp sourceCpp
 #' @import RcppArmadillo
-#' @import RcppEigen
 #' @importFrom stats rnorm sd
 #' @importFrom chk chk_list chk_integer chk_numeric chk_gte chk_flag chk_matrix chk_not_empty
 #' @importFrom chk chk_true
