@@ -12,17 +12,18 @@ This roadmap delivers test coverage and code quality improvements for the muscal
 
 ### Phase 1: Foundation Fix
 
-**Goal:** R CMD check passes and all existing tests pass
+**Goal:** R CMD check passes with 0 errors, 0 warnings and all existing tests pass
 
 **Dependencies:** None (starting phase)
 
-**Plans:** 4 plans
+**Plans:** 5 plans
 
 Plans:
-- [ ] 01-01-PLAN.md — Fix deprecated chkor() and clean DESCRIPTION imports
-- [ ] 01-02-PLAN.md — Fix S3 signatures and eliminate private API usage
-- [ ] 01-03-PLAN.md — Fix failing test and wrap genpca-dependent examples
-- [ ] 01-04-PLAN.md — Final verification (R CMD check clean)
+- [x] 01-01-PLAN.md — Fix deprecated chkor() and clean DESCRIPTION imports
+- [x] 01-02-PLAN.md — Fix S3 signatures and eliminate private API usage
+- [x] 01-03-PLAN.md — Fix failing test and wrap genpca-dependent examples
+- [x] 01-04-PLAN.md — Final verification (R CMD check clean)
+- [ ] 01-05-PLAN.md — Gap closure: Remove RcppEigen import conflict, add missing NAMESPACE imports
 
 **Requirements:**
 - TEST-01: All existing tests pass (currently 1 failing)
@@ -35,8 +36,9 @@ Plans:
 **Success Criteria:**
 1. Running `devtools::test()` reports 0 failures (all 150 tests pass)
 2. Running `R CMD check` reports 0 errors
-3. MFA examples run without requiring genpca (wrapped in dontrun or conditional)
-4. No S3 method signature warnings from R CMD check
+3. Running `R CMD check` reports 0 warnings
+4. MFA examples run without requiring genpca (wrapped in dontrun or conditional)
+5. No S3 method signature warnings from R CMD check
 
 ---
 
@@ -122,12 +124,12 @@ Plans:
 
 | Phase | Status | Requirements | Completed |
 |-------|--------|--------------|-----------|
-| 1 - Foundation Fix | Planned | 6 | 0 |
+| 1 - Foundation Fix | In Progress (gap closure) | 6 | 5 |
 | 2 - Core Module Tests | Not Started | 5 | 0 |
 | 3 - Penalized MFA Tests | Not Started | 5 | 0 |
 | 4 - Refactoring | Not Started | 3 | 0 |
 
-**Total:** 0/19 requirements completed
+**Total:** 5/19 requirements completed
 
 ---
 
@@ -160,3 +162,4 @@ Plans:
 ---
 
 *Roadmap created: 2026-01-22*
+*Updated: 2026-01-22 (gap closure plan 01-05 added)*
