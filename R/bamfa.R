@@ -8,7 +8,7 @@
 #' @importFrom MASS ginv
 #' @importFrom crayon bold magenta green blue yellow
 #' @importFrom purrr map map2
-#' @importFrom multivarious init_transform prep fresh center concat_pre_processors pass
+#' @importFrom multivarious fit fit_transform transform inverse_transform fresh center concat_pre_processors pass
 #' @importFrom multidesign multiblock
 #' @importFrom RSpectra svds
 #' @importFrom rlang enquo quo_is_missing quo_get_expr
@@ -63,11 +63,11 @@ ls_ridge <- function(Z, X, lambda = 0) {
 #' @keywords internal
 prep_bamfa_blocks <- function(data, preproc) {
   proclist_fitted <- lapply(seq_along(data), function(i) {
-    multivarious::fresh(preproc) %>% multivarious::prep(data[[i]])
+    multivarious::fresh(preproc) %>% multivarious::fit(data[[i]])
   })
-  
+
   X_p <- lapply(seq_along(data), function(i) {
-    multivarious::init_transform(proclist_fitted[[i]], data[[i]])
+    multivarious::transform(proclist_fitted[[i]], data[[i]])
   })
   
   p_vec <- vapply(X_p, ncol, integer(1))
@@ -418,7 +418,7 @@ predict.bamfa <- function(object, new_data = NULL, ...) {
       recon <- S_i %*% t(G_i) + U_i %*% t(B_i)
       
       # Inverse transform to original data space
-      multivarious::reverse_transform(object$proclist_fitted[[i]], recon)
+      multivarious::inverse_transform(object$proclist_fitted[[i]], recon)
     })
     names(recon_list) <- object$data_names
     return(recon_list)
@@ -431,7 +431,7 @@ predict.bamfa <- function(object, new_data = NULL, ...) {
   
   # Preprocess new data using fitted preprocessors
   X_p <- lapply(seq_along(new_data), function(i) {
-    multivarious::apply_transform(object$proclist_fitted[[i]], new_data[[i]])
+    multivarious::transform(object$proclist_fitted[[i]], new_data[[i]])
   })
   
   G <- object$v
@@ -465,7 +465,7 @@ predict.bamfa <- function(object, new_data = NULL, ...) {
     recon <- S_new %*% t(G_i) + U_new %*% t(B_i)
     
     # Inverse transform to original data space
-    multivarious::reverse_transform(object$proclist_fitted[[i]], recon)
+    multivarious::inverse_transform(object$proclist_fitted[[i]], recon)
   })
   names(recon_list) <- names(new_data) %||% paste0("Block_", seq_along(new_data))
   

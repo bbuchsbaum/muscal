@@ -44,26 +44,26 @@ adam_update_block <- function(V, G, M, V2, step_count,
 prepare_block_preprocessors <- function(data, preproc, check_consistent_ncol = TRUE) {
   proclist <- if (is.null(preproc)) {
     # If no preproc, create a pass-through preprocessor for each block
-    lapply(seq_along(data), function(i) multivarious::prep(multivarious::pass(), data[[i]]))
-  } else if (inherits(preproc, "pre_processor")) {
+    lapply(seq_along(data), function(i) multivarious::fit(multivarious::pass(), data[[i]]))
+  } else if (inherits(preproc, "pre_processor") || inherits(preproc, "prepper")) {
     # If single preproc, create a fresh copy for each block
-    lapply(seq_along(data), function(i) multivarious::prep(multivarious::fresh(preproc), data[[i]]))
+    lapply(seq_along(data), function(i) multivarious::fit(multivarious::fresh(preproc), data[[i]]))
   } else if (is.list(preproc)) {
     # If list of preprocs, prepare each one on its corresponding block
     chk::chk_equal(length(preproc), length(data))
     lapply(seq_along(data), function(i) {
       p <- preproc[[i]]
-      if (!inherits(p, "pre_processor")) {
-        stop("Each element of 'preproc' list must be a pre_processor.")
+      if (!inherits(p, "pre_processor") && !inherits(p, "prepper")) {
+        stop("Each element of 'preproc' list must be a pre_processor or prepper.")
       }
-      multivarious::prep(multivarious::fresh(p), data[[i]])
+      multivarious::fit(multivarious::fresh(p), data[[i]])
     })
   } else {
-    stop("`preproc` must be NULL, a pre_processor object, or a list of pre_processors.")
+    stop("`preproc` must be NULL, a pre_processor/prepper object, or a list of them.")
   }
-  
+
   # Apply preprocessing
-  Xp <- multivarious::apply_transform(proclist, data)
+  Xp <- lapply(seq_along(data), function(i) multivarious::transform(proclist[[i]], data[[i]]))
   
   # Check for consistent dimensions after preprocessing
   dims_post <- sapply(Xp, dim)

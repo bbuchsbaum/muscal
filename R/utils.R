@@ -39,17 +39,17 @@ prepare_block_preprocessors <- function(data_list, preproc_arg, check_consistent
     if (!is.list(preproc_arg) || inherits(preproc_arg, "prepper")) { # Treat single prepper object as template
       # Case 1: Single preproc definition - replicate for each block
       message("Applying the same preprocessor definition independently to each block.")
-      single_preproc_def <- preproc_arg 
+      single_preproc_def <- preproc_arg
       proclist <- vector("list", S)
       for (i in seq_len(S)) {
-          proclist[[i]] <- multivarious::fresh(single_preproc_def) %>% 
-                               multivarious::prep(data_list[[i]])
+          proclist[[i]] <- multivarious::fresh(single_preproc_def) %>%
+                               multivarious::fit(data_list[[i]])
       }
-      
+
     } else if (is.list(preproc_arg)) {
       # Case 2: List of preproc definitions
       if (length(preproc_arg) != S) {
-          stop(sprintf("If 'preproc' is a list, its length (%d) must match the number of data blocks (%d).", 
+          stop(sprintf("If 'preproc' is a list, its length (%d) must match the number of data blocks (%d).",
                        length(preproc_arg), S), call. = FALSE)
       }
       message("Applying preprocessor list: one definition per block.")
@@ -58,14 +58,14 @@ prepare_block_preprocessors <- function(data_list, preproc_arg, check_consistent
           if (!inherits(preproc_arg[[i]], "prepper")) {
               stop(sprintf("Element %d of 'preproc' list is not a valid prepper object.", i), call.=FALSE)
           }
-          proclist[[i]] <- multivarious::fresh(preproc_arg[[i]]) %>% 
-                               multivarious::prep(data_list[[i]])
+          proclist[[i]] <- multivarious::fresh(preproc_arg[[i]]) %>%
+                               multivarious::fit(data_list[[i]])
       }
-       
+
     } else {
         stop("'preproc' must be NULL, a single prepper object, or a list of prepper objects.", call.=FALSE)
     }
-    
+
     names(proclist) <- block_names
 
     # Apply the fitted preprocessors
@@ -73,7 +73,7 @@ prepare_block_preprocessors <- function(data_list, preproc_arg, check_consistent
     names(Xp) <- block_names
     for (i in seq_along(data_list)) {
       p_i_fitted <- proclist[[i]]
-      Xp[[i]] <- multivarious::init_transform(p_i_fitted, data_list[[i]])
+      Xp[[i]] <- multivarious::transform(p_i_fitted, data_list[[i]])
     }
     
     # Update post-preprocessing dimension

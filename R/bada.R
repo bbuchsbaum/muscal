@@ -96,7 +96,7 @@ bootstrap.bada <- function(x, nboot = 500, ...) {
   strata <- seq_along(sdat) %>% purrr::map(function(i) {
     p <- x$proclist[[i]]
     Xi <- sdat[[i]]$x
-    Xout <- init_transform(p, Xi)
+    Xout <- multivarious::transform(p, Xi)
     multidesign(Xout, sdat[[i]]$design)
   })
 
@@ -145,7 +145,7 @@ bootstrap.bada <- function(x, nboot = 500, ...) {
 #' @param ... Additional arguments passed to methods (currently unused).
 #' @rdname bada
 #' @importFrom multidesign summarize_by multidesign
-#' @importFrom multivarious pca sdev pass init_transform prep discriminant_projector scores shape
+#' @importFrom multivarious pca sdev pass fit fit_transform transform discriminant_projector scores shape
 #' @importFrom stats coef
 #' @importFrom rlang enquo quo_get_expr
 #' @importFrom dplyr select pull %>%
@@ -166,21 +166,18 @@ bada.multidesign <- function(data, y, subject, preproc=multivarious::center(), n
   
   ## data split by subject
   sdat <- base::split(data, !!subject_quo)
-  
-  
-  ## pre-processors, one per subject
-  proclist <- lapply(seq_along(sdat), function(sd) {
-    fresh(preproc) %>% prep()
-  })
-  
-  names(proclist) <- as.character(subject_set)
-  
-  ## subject-split and preprocessed data
+
+
+  ## pre-processors, one per subject - fit and transform in one pass
+  proclist <- vector("list", length(sdat))
   strata <- seq_along(sdat) %>% purrr::map(function(i) {
-    p <- proclist[[i]]
-    Xout <- multivarious::init_transform(p, sdat[[i]]$x)
+    p <- multivarious::fresh(preproc) %>% multivarious::fit(sdat[[i]]$x)
+    proclist[[i]] <<- p
+    Xout <- multivarious::transform(p, sdat[[i]]$x)
     multidesign::multidesign(Xout, sdat[[i]]$design)
   })
+
+  names(proclist) <- as.character(subject_set)
   
   block_indices <- list()
   ind <- 1
@@ -309,7 +306,7 @@ reprocess.bada <- function(x, new_data, colind = NULL, ...) {
     
     ## pre-process every which way...
     Reduce("+", lapply(seq_along(x$block_indices), function(i) {
-      multivarious::apply_transform(x$preproc, new_data, colind=x$block_indices[[i]])
+      multivarious::transform(x$preproc, new_data, colind=x$block_indices[[i]])
     }))/length(x$block_indices)
     
   } else if (!is.null(block)) {
@@ -322,13 +319,13 @@ reprocess.bada <- function(x, new_data, colind = NULL, ...) {
       chk::chk_true(max(colind) <= length(sind))
       sind <- sind[colind]
     }
-    multivarious::apply_transform(x$preproc, new_data, colind=sind)
+    multivarious::transform(x$preproc, new_data, colind=sind)
   } else {
     ## colind not null. pre-process every which way using colind per block
     Reduce("+", lapply(seq_along(x$block_indices), function(i) {
       sind <- x$block_indices[[i]]
       chk::chk_true(max(colind) <= length(sind))
-      multivarious::apply_transform(x$preproc, new_data, colind=sind[colind])
+      multivarious::transform(x$preproc, new_data, colind=sind[colind])
     }))/length(x$block_indices)
   }
   
@@ -363,7 +360,7 @@ project.bada <- function(x, new_data, ...) {
   if (is.null(block)) {
     NextMethod()
   } else {
-    #Xp <- multivarious::apply_transform(preproc, new_data)
+    #Xp <- multivarious::transform(preproc, new_data)
     reprocess(x, new_data, block = block) %*% coef(x)
   }
 }

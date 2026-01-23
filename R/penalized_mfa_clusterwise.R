@@ -1077,7 +1077,8 @@ penalized_mfa_clusterwise <- function(data_list,
   }
 
   # Create a pass() preprocessor, as this function assumes pre-processed input
-  final_preproc <- multivarious::prep(multivarious::pass())
+  # Fit with a dummy matrix since pass() just returns data unchanged
+  final_preproc <- multivarious::fit(multivarious::pass(), matrix(0, 1, nrow(v_concat)))
 
   # Construct the multiblock_projector and pass auxiliary results via '...'
   result_projector <- multivarious::multiblock_projector(
