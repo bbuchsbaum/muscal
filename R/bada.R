@@ -144,8 +144,9 @@ bootstrap.bada <- function(x, nboot = 500, ...) {
 #' @param rescomp number of final residual components (default = 0, no residual aanalysis)
 #' @param ... Additional arguments passed to methods (currently unused).
 #' @rdname bada
-#' @importFrom multidesign summarize_by
-#' @importFrom multivarious pca sdev pass init_transform prep discriminant_projector scores
+#' @importFrom multidesign summarize_by multidesign
+#' @importFrom multivarious pca sdev pass init_transform prep discriminant_projector scores shape
+#' @importFrom stats coef
 #' @importFrom rlang enquo quo_get_expr
 #' @importFrom dplyr select pull %>%
 #' @importFrom chk chk_true
