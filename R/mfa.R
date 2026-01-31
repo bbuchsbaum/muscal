@@ -198,6 +198,44 @@ mfa.multiblock <- function(data, preproc=center(), ncomp=2,
   ## here, we rely on the fact that we use "pass()" pre-processing for inner genpca fit
   fit[["preproc"]] <- proc
 
+  # -------------------------------------------------------------------------
+  # Derived quantities for plotting / diagnostics
+  # -------------------------------------------------------------------------
+  partial_scores <- lapply(seq_along(strata), function(i) {
+    idx <- block_indices[[i]]
+    strata[[i]] %*% fit$v[idx, , drop = FALSE]
+  })
+  names(partial_scores) <- names(data)
+
+  cor_loadings <- tryCatch(
+    {
+      C <- stats::cor(Xp, fit$s)
+      C[!is.finite(C)] <- 0
+      C
+    },
+    error = function(e) NULL
+  )
+
+  rv <- tryCatch(
+    {
+      M <- compute_sim_mat(strata, function(x1, x2) MatrixCorrelation::RV(x1, x2))
+      diag(M) <- 1
+      rownames(M) <- colnames(M) <- names(data)
+      M
+    },
+    error = function(e) NULL
+  )
+
+  rv2 <- tryCatch(
+    {
+      M <- compute_sim_mat(strata, function(x1, x2) MatrixCorrelation::RV2(x1, x2))
+      diag(M) <- 1
+      rownames(M) <- colnames(M) <- names(data)
+      M
+    },
+    error = function(e) NULL
+  )
+
   # Construct the final multiblock_biprojector
   mfa_result <- multivarious::multiblock_biprojector(
       v = fit$v,              # Loadings from genpca (concatenated space)
@@ -209,6 +247,10 @@ mfa.multiblock <- function(data, preproc=center(), ncomp=2,
       alpha = alpha,
       normalization = normalization,
       names = names(data),
+      partial_scores = partial_scores,
+      cor_loadings = cor_loadings,
+      rv = rv,
+      rv2 = rv2,
       # Pass relevant genpca info via ... as well
       ou = fit$ou,
       ov = fit$ov,

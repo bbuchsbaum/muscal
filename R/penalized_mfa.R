@@ -385,6 +385,23 @@ penalized_mfa.list <- function(data,
   
   V_list <- engine_res$V_list
   v_concat <- do.call(rbind, V_list)
+
+  # Per-block scores in the learned subspaces (n x k each); define a simple
+  # "consensus" score matrix as the mean across blocks for plotting.
+  scores_list <- lapply(seq_along(Xp), function(i) Xp[[i]] %*% V_list[[i]])
+  names(scores_list) <- names(Xp)
+  s_consensus <- Reduce(`+`, scores_list) / length(scores_list)
+  sdev <- apply(s_consensus, 2, stats::sd)
+
+  cor_loadings <- tryCatch(
+    {
+      Xp_concat <- do.call(cbind, Xp)
+      C <- stats::cor(Xp_concat, s_consensus)
+      C[!is.finite(C)] <- 0
+      C
+    },
+    error = function(e) NULL
+  )
   
   block_indices <- list()
   current_start <- 1
@@ -397,11 +414,18 @@ penalized_mfa.list <- function(data,
   
   final_preproc <- multivarious::concat_pre_processors(proclist, block_indices)
   
-  result_projector <- multivarious::multiblock_projector(
-      v = v_concat,
-      preproc = final_preproc,
-      block_indices = block_indices,
-      classes = "penalized_mfa"
+  result_projector <- multivarious::multiblock_biprojector(
+    v = v_concat,
+    s = s_consensus,
+    sdev = sdev,
+    preproc = final_preproc,
+    block_indices = block_indices,
+    # extra fields for plotting / diagnostics
+    V_list = V_list,
+    scores_list = scores_list,
+    objective_trace = engine_res$obj_values,
+    cor_loadings = cor_loadings,
+    classes = "penalized_mfa"
   )
   
   attr(result_projector, "V_list") <- V_list

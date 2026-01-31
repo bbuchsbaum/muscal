@@ -1,0 +1,336 @@
+---
+title: "Linked Multiple Factor Analysis"
+output: rmarkdown::html_vignette
+vignette: >
+  %\VignetteIndexEntry{Linked Multiple Factor Analysis}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+```{r setup, include = FALSE}
+knitr::opts_chunk$set(
+  collapse = TRUE,
+  comment = "#>",
+  fig.width = 6,
+  fig.height = 4
+)
+```
+
+## Why Linked MFA?
+
+Standard MFA requires all blocks to share the same observations. This is often unrealistic. Consider neuroimaging: you have a reference dataset (Y) with structural measures on N subjects, but your auxiliary data—task fMRI, resting-state, behavioral assessments—are available for overlapping but different subsets of those subjects. Some subjects completed one scan, others completed two, and the overlap varies by modality.
+
+Linked MFA solves this. It learns a shared score matrix for the reference observations while allowing each auxiliary block to have its own row structure. You simply specify which rows of each auxiliary block correspond to which rows of the reference.
+
+## The Model
+
+Linked MFA fits the following structure:
+
+$$Y \approx S B^\top$$
+$$X_k \approx S[\mathrm{idx}_k,] V_k^\top$$
+
+where:
+
+- **Y** is the reference block (N × q)
+- **S** is the shared score matrix (N × K)
+- **B** contains the loadings for Y
+- Each **X_k** is an auxiliary block with its own dimensions
+- **V_k** contains the loadings for block k
+- **idx_k** maps rows of X_k to rows of Y
+
+The key insight: scores S live in the reference space (N rows), but each auxiliary block contributes information through its row mapping.
+
+## Basic Usage
+
+```{r basic-example, eval = FALSE}
+library(muscal)
+library(multivarious)
+
+set.seed(123)
+
+# Reference block: 100 subjects, 20 variables
+N <- 100
+Y <- matrix(rnorm(N * 20), N, 20)
+
+# Auxiliary block 1: 60 subjects (subset), 30 variables
+X1 <- matrix(rnorm(60 * 30), 60, 30)
+idx1 <- sample.int(N, 60, replace = FALSE)  # which reference subjects
+
+# Auxiliary block 2: 45 subjects (different subset), 25 variables
+X2 <- matrix(rnorm(45 * 25), 45, 25)
+idx2 <- sample.int(N, 45, replace = FALSE)
+
+# Fit linked MFA
+fit <- linked_mfa(
+  Y = Y,
+  X = list(X1 = X1, X2 = X2),
+  row_index = list(X1 = idx1, X2 = idx2),
+  ncomp = 3
+)
+
+# Scores are defined for all N reference subjects
+S <- scores(fit)
+dim(S)  # 100 x 3
+```
+
+## Row Index Mapping
+
+The `row_index` argument is the core of Linked MFA. Each element maps rows of an auxiliary block to rows of the reference Y:
+
+```{r mapping, eval = FALSE}
+# row_index[[k]][i] says: "row i of X[[k]] corresponds to row row_index[[k]][i] of Y"
+
+# Example: X1 has 60 rows, mapping to specific Y rows
+idx1 <- sample.int(N, 60, replace = FALSE)  # length 60, values in 1..N
+
+# Subjects can appear multiple times (repeated measures)
+idx_repeated <- c(rep(1L, 3), rep(2L, 2), 3L)  # subject 1 measured 3 times
+```
+
+This flexibility handles:
+
+- **Subset data**: Not all subjects have all modalities
+- **Repeated measures**: Multiple observations per subject
+- **Unbalanced designs**: Different numbers of measurements per subject
+
+## Feature Similarity Prior
+
+When auxiliary blocks measure conceptually similar features—say, the same brain regions across different tasks—you may want corresponding features to have similar loadings. Linked MFA supports this via a feature grouping prior.
+
+```{r feature-groups, eval = FALSE}
+# Automatic grouping by column name
+# Features with the same name across blocks are grouped together
+fit <- linked_mfa(
+  Y = Y,
+  X = list(X1 = X1, X2 = X2),
+  row_index = list(X1 = idx1, X2 = idx2),
+  ncomp = 3,
+  feature_groups = "colnames",
+  feature_lambda = 0.1
+)
+
+# Manual grouping via data frame
+groups_df <- data.frame(
+  block = c("X1", "X1", "X2", "X2"),
+  feature = c(1, 5, 1, 3),       # feature indices within each block
+  group = c("ROI_A", "ROI_B", "ROI_A", "ROI_B"),
+  weight = c(1, 1, 1, 1)
+)
+
+fit <- linked_mfa(
+  Y = Y,
+  X = list(X1 = X1, X2 = X2),
+  row_index = list(X1 = idx1, X2 = idx2),
+  ncomp = 3,
+  feature_groups = groups_df,
+  feature_lambda = 0.5
+)
+```
+
+The `feature_lambda` parameter controls the strength of the prior. Higher values pull grouped features toward their shared center more strongly.
+
+## Block Normalization
+
+Like standard MFA, Linked MFA supports block weighting:
+
+- **"MFA"** (default): Inverse squared first singular value
+- **"None"**: Uniform weights
+- **"custom"**: User-supplied weights via `alpha`
+
+```{r normalization, eval = FALSE}
+# Custom weights: emphasize the reference block
+fit <- linked_mfa(
+  Y = Y,
+  X = list(X1 = X1, X2 = X2),
+  row_index = list(X1 = idx1, X2 = idx2),
+  ncomp = 3,
+  normalization = "custom",
+  alpha = c(2, 1, 1)  # Y weight, X1 weight, X2 weight
+)
+```
+
+## Algorithm Details
+
+Linked MFA uses alternating least squares (ALS):
+
+1. Initialize S and B from the SVD of Y
+2. Update B (Y loadings) given S
+3. Update each V_k (X_k loadings) given S, with optional group shrinkage
+4. Update S row-by-row, aggregating information from Y and all X_k blocks
+5. Orthonormalize S; rotate all loadings to preserve fitted values
+6. Repeat until convergence
+
+Convergence is monitored via the reconstruction objective. Use `verbose = TRUE` to track progress.
+
+```{r verbose, eval = FALSE}
+fit <- linked_mfa(
+  Y = Y,
+  X = list(X1 = X1, X2 = X2),
+  row_index = list(X1 = idx1, X2 = idx2),
+  ncomp = 3,
+  max_iter = 100,
+  tol = 1e-6,
+  verbose = TRUE
+)
+
+# Inspect convergence
+plot(fit$objective_trace, type = "l",
+     xlab = "Iteration", ylab = "Objective")
+```
+
+## Working with Results
+
+The returned object behaves like a standard `multiblock_biprojector`:
+
+```{r results, eval = FALSE}
+# Global scores (N x ncomp)
+S <- scores(fit)
+
+# Concatenated loadings (rows correspond to Y then each X block)
+V <- fit$v
+
+# Block-specific loadings
+fit$B        # Y loadings (q x ncomp)
+fit$V_list   # list of X_k loadings
+
+# Block indices in concatenated space
+fit$block_indices
+
+# Row mappings
+fit$row_index
+
+# Convergence trace
+fit$objective_trace
+```
+
+## Visualization
+
+Linked MFA has specialized plotting functions that account for the heterogeneous row structure.
+
+### Score Plot with Coverage
+
+The default plot colors observations by how many blocks contribute to their scores:
+
+```{r score-plot, eval = FALSE}
+# Base R
+plot(fit)
+
+# ggplot2 (if installed)
+library(ggplot2)
+autoplot(fit, color = "coverage")
+
+# Custom coloring (overrides coverage)
+autoplot(fit, color = some_grouping_variable)
+```
+
+Observations with more block coverage have more information sources informing their position.
+
+### Block Coverage Map
+
+Visualize the missingness structure:
+
+```{r coverage, eval = FALSE}
+plot_coverage(fit)
+```
+
+This heatmap shows which observations are present in which blocks—essential for understanding your data's overlap structure.
+
+### Convergence Diagnostics
+
+Monitor the ALS algorithm:
+
+```{r convergence, eval = FALSE}
+plot_convergence(fit)
+
+# Log scale for better visibility of late iterations
+plot_convergence(fit, log_scale = TRUE)
+```
+
+A healthy convergence trace decreases monotonically and flattens as it approaches the solution.
+
+### Partial Factor Scores
+
+Compare block-specific views:
+
+```{r partial-linked, eval = FALSE}
+plot_partial_scores(fit, show_consensus = TRUE)
+```
+
+For Linked MFA, this shows where each auxiliary block's observations fall, with open circles marking the reference positions in S.
+
+### Feature Group Alignment
+
+If you used `feature_groups`, visualize how grouped features align:
+
+```{r feature-groups-plot, eval = FALSE}
+plot_feature_groups(fit, dims = c(1, 2), show_centers = TRUE)
+```
+
+Features in the same group are connected to their group center. Tight clusters indicate the feature prior successfully aligned corresponding variables.
+
+### Block Weights and Fit
+
+```{r block-info, eval = FALSE}
+# Block normalization weights
+plot_block_weights(fit)
+
+# Relative reconstruction quality per block
+plot_block_fit(fit)
+```
+
+### Variable Loadings
+
+```{r loadings-linked, eval = FALSE}
+# Correlation circle
+plot_loadings(fit, type = "circle", color_by = "block")
+
+# Top loadings for component 1
+plot_loadings(fit, type = "bar", component = 1, top_n = 20)
+```
+
+## When to Use Linked MFA
+
+Linked MFA is appropriate when:
+
+- You have a reference dataset with complete observations
+- Auxiliary datasets are measured on overlapping but incomplete subsets
+- You want to learn a shared representation in the reference space
+- Features across blocks may have conceptual correspondence
+
+Linked MFA is *not* appropriate when:
+
+- All blocks share identical observations (use standard MFA)
+- There is no natural reference block
+- Block relationships are better captured by other methods (e.g., CCA for two blocks with different row and column spaces)
+
+## Example: Multi-Session Neuroimaging
+
+```{r neuroimaging, eval = FALSE}
+# Y: structural MRI on 200 subjects (all have this)
+# X1: task fMRI session 1 (150 subjects completed)
+# X2: task fMRI session 2 (120 subjects completed)
+# X3: resting state (180 subjects completed)
+
+fit <- linked_mfa(
+  Y = structural_data,
+  X = list(task1 = task1_data, task2 = task2_data, rest = rest_data),
+  row_index = list(task1 = task1_subjects,
+                   task2 = task2_subjects,
+                   rest = rest_subjects),
+  ncomp = 5,
+  feature_groups = "colnames",  # same ROIs across sessions
+
+  feature_lambda = 0.2
+)
+
+# Scores are defined for all 200 subjects,
+# integrating information from whatever sessions each completed
+```
+
+## References
+
+Linked MFA extends the classical MFA framework to handle heterogeneous row structures. The algorithm is based on weighted alternating least squares with an optional quadratic group-shrinkage penalty on loadings for user-specified feature groups.
+
+For background on MFA:
+
+Escofier, B., & Pagès, J. (1994). Multiple factor analysis (AFMULT package). *Computational Statistics & Data Analysis*, 18(1), 121-140.

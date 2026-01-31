@@ -2,7 +2,9 @@ Package: muscal
 Type: Package
 Title: Core Multivariate Statistical Analyses and Utilities
 Version: 0.1.0
-Authors@R: person("Bradley", "Buchsbaum", email = "bradley.buchsbaum@gmail.com", role = c("aut", "cre")) # TODO: UPDATE AUTHORS
+Authors@R: person("Bradley", "Buchsbaum", email = "bradley.buchsbaum@gmail.com", role = c("aut", "cre"))
+Author: Bradley Buchsbaum [aut, cre]
+Maintainer: Bradley Buchsbaum <bradley.buchsbaum@gmail.com>
 Description: Provides core 'French school' multivariate analysis methods including
     Multiple Factor Analysis (MFA), Penalized MFA, STATIS, variants of
     Correspondence Analysis (BADA, BAMFA), and Generalized Procrustes Analysis.
@@ -15,6 +17,7 @@ Imports:
     Matrix,
     stats,
     graphics,
+    grDevices,
     utils,
     MASS,
     multivarious,
@@ -34,12 +37,14 @@ Imports:
     pracma,
     MatrixCorrelation,
     RANN,
-    tibble
+    tibble,
+    ggplot2 (>= 3.4.0)
 Suggests:
     testthat (>= 3.0.0),
     knitr,
     rmarkdown,
     genpca
+VignetteBuilder: knitr
 Depends:
     R (>= 3.5.0)
 RoxygenNote: 7.3.3
