@@ -1,0 +1,607 @@
+<!DOCTYPE html>
+
+<html>
+
+<head>
+
+<meta charset="utf-8" />
+<meta name="generator" content="pandoc" />
+<meta http-equiv="X-UA-Compatible" content="IE=EDGE" />
+
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+
+
+
+<title>Linked Multiple Factor Analysis</title>
+
+<script>// Pandoc 2.9 adds attributes on both header and div. We remove the former (to
+// be compatible with the behavior of Pandoc < 2.8).
+document.addEventListener('DOMContentLoaded', function(e) {
+  var hs = document.querySelectorAll("div.section[class*='level'] > :first-child");
+  var i, h, a;
+  for (i = 0; i < hs.length; i++) {
+    h = hs[i];
+    if (!/^h[1-6]$/i.test(h.tagName)) continue;  // it should be a header h1-h6
+    a = h.attributes;
+    while (a.length > 0) h.removeAttribute(a[0].name);
+  }
+});
+</script>
+
+<style type="text/css">
+code{white-space: pre-wrap;}
+span.smallcaps{font-variant: small-caps;}
+span.underline{text-decoration: underline;}
+div.column{display: inline-block; vertical-align: top; width: 50%;}
+div.hanging-indent{margin-left: 1.5em; text-indent: -1.5em;}
+ul.task-list{list-style: none;}
+</style>
+
+
+
+<style type="text/css">
+code {
+white-space: pre;
+}
+.sourceCode {
+overflow: visible;
+}
+</style>
+<style type="text/css" data-origin="pandoc">
+html { -webkit-text-size-adjust: 100%; }
+pre > code.sourceCode { white-space: pre; position: relative; }
+pre > code.sourceCode > span { display: inline-block; line-height: 1.25; }
+pre > code.sourceCode > span:empty { height: 1.2em; }
+.sourceCode { overflow: visible; }
+code.sourceCode > span { color: inherit; text-decoration: inherit; }
+div.sourceCode { margin: 1em 0; }
+pre.sourceCode { margin: 0; }
+@media screen {
+div.sourceCode { overflow: auto; }
+}
+@media print {
+pre > code.sourceCode { white-space: pre-wrap; }
+pre > code.sourceCode > span { text-indent: -5em; padding-left: 5em; }
+}
+pre.numberSource code
+{ counter-reset: source-line 0; }
+pre.numberSource code > span
+{ position: relative; left: -4em; counter-increment: source-line; }
+pre.numberSource code > span > a:first-child::before
+{ content: counter(source-line);
+position: relative; left: -1em; text-align: right; vertical-align: baseline;
+border: none; display: inline-block;
+-webkit-touch-callout: none; -webkit-user-select: none;
+-khtml-user-select: none; -moz-user-select: none;
+-ms-user-select: none; user-select: none;
+padding: 0 4px; width: 4em;
+color: #aaaaaa;
+}
+pre.numberSource { margin-left: 3em; border-left: 1px solid #aaaaaa; padding-left: 4px; }
+div.sourceCode
+{ }
+@media screen {
+pre > code.sourceCode > span > a:first-child::before { text-decoration: underline; }
+}
+code span.al { color: #ff0000; font-weight: bold; } 
+code span.an { color: #60a0b0; font-weight: bold; font-style: italic; } 
+code span.at { color: #7d9029; } 
+code span.bn { color: #40a070; } 
+code span.bu { color: #008000; } 
+code span.cf { color: #007020; font-weight: bold; } 
+code span.ch { color: #4070a0; } 
+code span.cn { color: #880000; } 
+code span.co { color: #60a0b0; font-style: italic; } 
+code span.cv { color: #60a0b0; font-weight: bold; font-style: italic; } 
+code span.do { color: #ba2121; font-style: italic; } 
+code span.dt { color: #902000; } 
+code span.dv { color: #40a070; } 
+code span.er { color: #ff0000; font-weight: bold; } 
+code span.ex { } 
+code span.fl { color: #40a070; } 
+code span.fu { color: #06287e; } 
+code span.im { color: #008000; font-weight: bold; } 
+code span.in { color: #60a0b0; font-weight: bold; font-style: italic; } 
+code span.kw { color: #007020; font-weight: bold; } 
+code span.op { color: #666666; } 
+code span.ot { color: #007020; } 
+code span.pp { color: #bc7a00; } 
+code span.sc { color: #4070a0; } 
+code span.ss { color: #bb6688; } 
+code span.st { color: #4070a0; } 
+code span.va { color: #19177c; } 
+code span.vs { color: #4070a0; } 
+code span.wa { color: #60a0b0; font-weight: bold; font-style: italic; } 
+</style>
+<script>
+// apply pandoc div.sourceCode style to pre.sourceCode instead
+(function() {
+  var sheets = document.styleSheets;
+  for (var i = 0; i < sheets.length; i++) {
+    if (sheets[i].ownerNode.dataset["origin"] !== "pandoc") continue;
+    try { var rules = sheets[i].cssRules; } catch (e) { continue; }
+    var j = 0;
+    while (j < rules.length) {
+      var rule = rules[j];
+      // check if there is a div.sourceCode rule
+      if (rule.type !== rule.STYLE_RULE || rule.selectorText !== "div.sourceCode") {
+        j++;
+        continue;
+      }
+      var style = rule.style.cssText;
+      // check if color or background-color is set
+      if (rule.style.color === '' && rule.style.backgroundColor === '') {
+        j++;
+        continue;
+      }
+      // replace div.sourceCode by a pre.sourceCode rule
+      sheets[i].deleteRule(j);
+      sheets[i].insertRule('pre.sourceCode{' + style + '}', j);
+    }
+  }
+})();
+</script>
+
+
+
+
+<style type="text/css">body {
+background-color: #fff;
+margin: 1em auto;
+max-width: 700px;
+overflow: visible;
+padding-left: 2em;
+padding-right: 2em;
+font-family: "Open Sans", "Helvetica Neue", Helvetica, Arial, sans-serif;
+font-size: 14px;
+line-height: 1.35;
+}
+#TOC {
+clear: both;
+margin: 0 0 10px 10px;
+padding: 4px;
+width: 400px;
+border: 1px solid #CCCCCC;
+border-radius: 5px;
+background-color: #f6f6f6;
+font-size: 13px;
+line-height: 1.3;
+}
+#TOC .toctitle {
+font-weight: bold;
+font-size: 15px;
+margin-left: 5px;
+}
+#TOC ul {
+padding-left: 40px;
+margin-left: -1.5em;
+margin-top: 5px;
+margin-bottom: 5px;
+}
+#TOC ul ul {
+margin-left: -2em;
+}
+#TOC li {
+line-height: 16px;
+}
+table {
+margin: 1em auto;
+border-width: 1px;
+border-color: #DDDDDD;
+border-style: outset;
+border-collapse: collapse;
+}
+table th {
+border-width: 2px;
+padding: 5px;
+border-style: inset;
+}
+table td {
+border-width: 1px;
+border-style: inset;
+line-height: 18px;
+padding: 5px 5px;
+}
+table, table th, table td {
+border-left-style: none;
+border-right-style: none;
+}
+table thead, table tr.even {
+background-color: #f7f7f7;
+}
+p {
+margin: 0.5em 0;
+}
+blockquote {
+background-color: #f6f6f6;
+padding: 0.25em 0.75em;
+}
+hr {
+border-style: solid;
+border: none;
+border-top: 1px solid #777;
+margin: 28px 0;
+}
+dl {
+margin-left: 0;
+}
+dl dd {
+margin-bottom: 13px;
+margin-left: 13px;
+}
+dl dt {
+font-weight: bold;
+}
+ul {
+margin-top: 0;
+}
+ul li {
+list-style: circle outside;
+}
+ul ul {
+margin-bottom: 0;
+}
+pre, code {
+background-color: #f7f7f7;
+border-radius: 3px;
+color: #333;
+white-space: pre-wrap; 
+}
+pre {
+border-radius: 3px;
+margin: 5px 0px 10px 0px;
+padding: 10px;
+}
+pre:not([class]) {
+background-color: #f7f7f7;
+}
+code {
+font-family: Consolas, Monaco, 'Courier New', monospace;
+font-size: 85%;
+}
+p > code, li > code {
+padding: 2px 0px;
+}
+div.figure {
+text-align: center;
+}
+img {
+background-color: #FFFFFF;
+padding: 2px;
+border: 1px solid #DDDDDD;
+border-radius: 3px;
+border: 1px solid #CCCCCC;
+margin: 0 5px;
+}
+h1 {
+margin-top: 0;
+font-size: 35px;
+line-height: 40px;
+}
+h2 {
+border-bottom: 4px solid #f7f7f7;
+padding-top: 10px;
+padding-bottom: 2px;
+font-size: 145%;
+}
+h3 {
+border-bottom: 2px solid #f7f7f7;
+padding-top: 10px;
+font-size: 120%;
+}
+h4 {
+border-bottom: 1px solid #f7f7f7;
+margin-left: 8px;
+font-size: 105%;
+}
+h5, h6 {
+border-bottom: 1px solid #ccc;
+font-size: 105%;
+}
+a {
+color: #0033dd;
+text-decoration: none;
+}
+a:hover {
+color: #6666ff; }
+a:visited {
+color: #800080; }
+a:visited:hover {
+color: #BB00BB; }
+a[href^="http:"] {
+text-decoration: underline; }
+a[href^="https:"] {
+text-decoration: underline; }
+
+code > span.kw { color: #555; font-weight: bold; } 
+code > span.dt { color: #902000; } 
+code > span.dv { color: #40a070; } 
+code > span.bn { color: #d14; } 
+code > span.fl { color: #d14; } 
+code > span.ch { color: #d14; } 
+code > span.st { color: #d14; } 
+code > span.co { color: #888888; font-style: italic; } 
+code > span.ot { color: #007020; } 
+code > span.al { color: #ff0000; font-weight: bold; } 
+code > span.fu { color: #900; font-weight: bold; } 
+code > span.er { color: #a61717; background-color: #e3d2d2; } 
+</style>
+
+
+
+
+</head>
+
+<body>
+
+
+
+
+<h1 class="title toc-ignore">Linked Multiple Factor Analysis</h1>
+
+
+
+<div id="why-linked-mfa" class="section level2">
+<h2>Why Linked MFA?</h2>
+<p>Standard MFA requires all blocks to share the same observations. This
+is often unrealistic. Consider neuroimaging: you have a reference
+dataset (Y) with structural measures on N subjects, but your auxiliary
+data—task fMRI, resting-state, behavioral assessments—are available for
+overlapping but different subsets of those subjects. Some subjects
+completed one scan, others completed two, and the overlap varies by
+modality.</p>
+<p>Linked MFA solves this. It learns a shared score matrix for the
+reference observations while allowing each auxiliary block to have its
+own row structure. You simply specify which rows of each auxiliary block
+correspond to which rows of the reference.</p>
+</div>
+<div id="the-model" class="section level2">
+<h2>The Model</h2>
+<p>Linked MFA fits the following structure:</p>
+<p><span class="math display">\[Y \approx S B^\top\]</span> <span class="math display">\[X_k \approx S[\mathrm{idx}_k,]
+V_k^\top\]</span></p>
+<p>where:</p>
+<ul>
+<li><strong>Y</strong> is the reference block (N × q)</li>
+<li><strong>S</strong> is the shared score matrix (N × K)</li>
+<li><strong>B</strong> contains the loadings for Y</li>
+<li>Each <strong>X_k</strong> is an auxiliary block with its own
+dimensions</li>
+<li><strong>V_k</strong> contains the loadings for block k</li>
+<li><strong>idx_k</strong> maps rows of X_k to rows of Y</li>
+</ul>
+<p>The key insight: scores S live in the reference space (N rows), but
+each auxiliary block contributes information through its row
+mapping.</p>
+</div>
+<div id="basic-usage" class="section level2">
+<h2>Basic Usage</h2>
+<div class="sourceCode" id="cb1"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb1-1"><a href="#cb1-1" tabindex="-1"></a><span class="fu">library</span>(muscal)</span>
+<span id="cb1-2"><a href="#cb1-2" tabindex="-1"></a><span class="fu">library</span>(multivarious)</span>
+<span id="cb1-3"><a href="#cb1-3" tabindex="-1"></a></span>
+<span id="cb1-4"><a href="#cb1-4" tabindex="-1"></a><span class="fu">set.seed</span>(<span class="dv">123</span>)</span>
+<span id="cb1-5"><a href="#cb1-5" tabindex="-1"></a></span>
+<span id="cb1-6"><a href="#cb1-6" tabindex="-1"></a><span class="co"># Reference block: 100 subjects, 20 variables</span></span>
+<span id="cb1-7"><a href="#cb1-7" tabindex="-1"></a>N <span class="ot">&lt;-</span> <span class="dv">100</span></span>
+<span id="cb1-8"><a href="#cb1-8" tabindex="-1"></a>Y <span class="ot">&lt;-</span> <span class="fu">matrix</span>(<span class="fu">rnorm</span>(N <span class="sc">*</span> <span class="dv">20</span>), N, <span class="dv">20</span>)</span>
+<span id="cb1-9"><a href="#cb1-9" tabindex="-1"></a></span>
+<span id="cb1-10"><a href="#cb1-10" tabindex="-1"></a><span class="co"># Auxiliary block 1: 60 subjects (subset), 30 variables</span></span>
+<span id="cb1-11"><a href="#cb1-11" tabindex="-1"></a>X1 <span class="ot">&lt;-</span> <span class="fu">matrix</span>(<span class="fu">rnorm</span>(<span class="dv">60</span> <span class="sc">*</span> <span class="dv">30</span>), <span class="dv">60</span>, <span class="dv">30</span>)</span>
+<span id="cb1-12"><a href="#cb1-12" tabindex="-1"></a>idx1 <span class="ot">&lt;-</span> <span class="fu">sample.int</span>(N, <span class="dv">60</span>, <span class="at">replace =</span> <span class="cn">FALSE</span>)  <span class="co"># which reference subjects</span></span>
+<span id="cb1-13"><a href="#cb1-13" tabindex="-1"></a></span>
+<span id="cb1-14"><a href="#cb1-14" tabindex="-1"></a><span class="co"># Auxiliary block 2: 45 subjects (different subset), 25 variables</span></span>
+<span id="cb1-15"><a href="#cb1-15" tabindex="-1"></a>X2 <span class="ot">&lt;-</span> <span class="fu">matrix</span>(<span class="fu">rnorm</span>(<span class="dv">45</span> <span class="sc">*</span> <span class="dv">25</span>), <span class="dv">45</span>, <span class="dv">25</span>)</span>
+<span id="cb1-16"><a href="#cb1-16" tabindex="-1"></a>idx2 <span class="ot">&lt;-</span> <span class="fu">sample.int</span>(N, <span class="dv">45</span>, <span class="at">replace =</span> <span class="cn">FALSE</span>)</span>
+<span id="cb1-17"><a href="#cb1-17" tabindex="-1"></a></span>
+<span id="cb1-18"><a href="#cb1-18" tabindex="-1"></a><span class="co"># Fit linked MFA</span></span>
+<span id="cb1-19"><a href="#cb1-19" tabindex="-1"></a>fit <span class="ot">&lt;-</span> <span class="fu">linked_mfa</span>(</span>
+<span id="cb1-20"><a href="#cb1-20" tabindex="-1"></a>  <span class="at">Y =</span> Y,</span>
+<span id="cb1-21"><a href="#cb1-21" tabindex="-1"></a>  <span class="at">X =</span> <span class="fu">list</span>(<span class="at">X1 =</span> X1, <span class="at">X2 =</span> X2),</span>
+<span id="cb1-22"><a href="#cb1-22" tabindex="-1"></a>  <span class="at">row_index =</span> <span class="fu">list</span>(<span class="at">X1 =</span> idx1, <span class="at">X2 =</span> idx2),</span>
+<span id="cb1-23"><a href="#cb1-23" tabindex="-1"></a>  <span class="at">ncomp =</span> <span class="dv">3</span></span>
+<span id="cb1-24"><a href="#cb1-24" tabindex="-1"></a>)</span>
+<span id="cb1-25"><a href="#cb1-25" tabindex="-1"></a></span>
+<span id="cb1-26"><a href="#cb1-26" tabindex="-1"></a><span class="co"># Scores are defined for all N reference subjects</span></span>
+<span id="cb1-27"><a href="#cb1-27" tabindex="-1"></a>S <span class="ot">&lt;-</span> <span class="fu">scores</span>(fit)</span>
+<span id="cb1-28"><a href="#cb1-28" tabindex="-1"></a><span class="fu">dim</span>(S)  <span class="co"># 100 x 3</span></span></code></pre></div>
+</div>
+<div id="row-index-mapping" class="section level2">
+<h2>Row Index Mapping</h2>
+<p>The <code>row_index</code> argument is the core of Linked MFA. Each
+element maps rows of an auxiliary block to rows of the reference Y:</p>
+<div class="sourceCode" id="cb2"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb2-1"><a href="#cb2-1" tabindex="-1"></a><span class="co"># row_index[[k]][i] says: &quot;row i of X[[k]] corresponds to row row_index[[k]][i] of Y&quot;</span></span>
+<span id="cb2-2"><a href="#cb2-2" tabindex="-1"></a></span>
+<span id="cb2-3"><a href="#cb2-3" tabindex="-1"></a><span class="co"># Example: X1 has 60 rows, mapping to specific Y rows</span></span>
+<span id="cb2-4"><a href="#cb2-4" tabindex="-1"></a>idx1 <span class="ot">&lt;-</span> <span class="fu">sample.int</span>(N, <span class="dv">60</span>, <span class="at">replace =</span> <span class="cn">FALSE</span>)  <span class="co"># length 60, values in 1..N</span></span>
+<span id="cb2-5"><a href="#cb2-5" tabindex="-1"></a></span>
+<span id="cb2-6"><a href="#cb2-6" tabindex="-1"></a><span class="co"># Subjects can appear multiple times (repeated measures)</span></span>
+<span id="cb2-7"><a href="#cb2-7" tabindex="-1"></a>idx_repeated <span class="ot">&lt;-</span> <span class="fu">c</span>(<span class="fu">rep</span>(<span class="dv">1</span><span class="dt">L</span>, <span class="dv">3</span>), <span class="fu">rep</span>(<span class="dv">2</span><span class="dt">L</span>, <span class="dv">2</span>), <span class="dv">3</span><span class="dt">L</span>)  <span class="co"># subject 1 measured 3 times</span></span></code></pre></div>
+<p>This flexibility handles:</p>
+<ul>
+<li><strong>Subset data</strong>: Not all subjects have all
+modalities</li>
+<li><strong>Repeated measures</strong>: Multiple observations per
+subject</li>
+<li><strong>Unbalanced designs</strong>: Different numbers of
+measurements per subject</li>
+</ul>
+</div>
+<div id="feature-similarity-prior" class="section level2">
+<h2>Feature Similarity Prior</h2>
+<p>When auxiliary blocks measure conceptually similar features—say, the
+same brain regions across different tasks—you may want corresponding
+features to have similar loadings. Linked MFA supports this via a
+feature grouping prior.</p>
+<div class="sourceCode" id="cb3"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb3-1"><a href="#cb3-1" tabindex="-1"></a><span class="co"># Automatic grouping by column name</span></span>
+<span id="cb3-2"><a href="#cb3-2" tabindex="-1"></a><span class="co"># Features with the same name across blocks are grouped together</span></span>
+<span id="cb3-3"><a href="#cb3-3" tabindex="-1"></a>fit <span class="ot">&lt;-</span> <span class="fu">linked_mfa</span>(</span>
+<span id="cb3-4"><a href="#cb3-4" tabindex="-1"></a>  <span class="at">Y =</span> Y,</span>
+<span id="cb3-5"><a href="#cb3-5" tabindex="-1"></a>  <span class="at">X =</span> <span class="fu">list</span>(<span class="at">X1 =</span> X1, <span class="at">X2 =</span> X2),</span>
+<span id="cb3-6"><a href="#cb3-6" tabindex="-1"></a>  <span class="at">row_index =</span> <span class="fu">list</span>(<span class="at">X1 =</span> idx1, <span class="at">X2 =</span> idx2),</span>
+<span id="cb3-7"><a href="#cb3-7" tabindex="-1"></a>  <span class="at">ncomp =</span> <span class="dv">3</span>,</span>
+<span id="cb3-8"><a href="#cb3-8" tabindex="-1"></a>  <span class="at">feature_groups =</span> <span class="st">&quot;colnames&quot;</span>,</span>
+<span id="cb3-9"><a href="#cb3-9" tabindex="-1"></a>  <span class="at">feature_lambda =</span> <span class="fl">0.1</span></span>
+<span id="cb3-10"><a href="#cb3-10" tabindex="-1"></a>)</span>
+<span id="cb3-11"><a href="#cb3-11" tabindex="-1"></a></span>
+<span id="cb3-12"><a href="#cb3-12" tabindex="-1"></a><span class="co"># Manual grouping via data frame</span></span>
+<span id="cb3-13"><a href="#cb3-13" tabindex="-1"></a>groups_df <span class="ot">&lt;-</span> <span class="fu">data.frame</span>(</span>
+<span id="cb3-14"><a href="#cb3-14" tabindex="-1"></a>  <span class="at">block =</span> <span class="fu">c</span>(<span class="st">&quot;X1&quot;</span>, <span class="st">&quot;X1&quot;</span>, <span class="st">&quot;X2&quot;</span>, <span class="st">&quot;X2&quot;</span>),</span>
+<span id="cb3-15"><a href="#cb3-15" tabindex="-1"></a>  <span class="at">feature =</span> <span class="fu">c</span>(<span class="dv">1</span>, <span class="dv">5</span>, <span class="dv">1</span>, <span class="dv">3</span>),       <span class="co"># feature indices within each block</span></span>
+<span id="cb3-16"><a href="#cb3-16" tabindex="-1"></a>  <span class="at">group =</span> <span class="fu">c</span>(<span class="st">&quot;ROI_A&quot;</span>, <span class="st">&quot;ROI_B&quot;</span>, <span class="st">&quot;ROI_A&quot;</span>, <span class="st">&quot;ROI_B&quot;</span>),</span>
+<span id="cb3-17"><a href="#cb3-17" tabindex="-1"></a>  <span class="at">weight =</span> <span class="fu">c</span>(<span class="dv">1</span>, <span class="dv">1</span>, <span class="dv">1</span>, <span class="dv">1</span>)</span>
+<span id="cb3-18"><a href="#cb3-18" tabindex="-1"></a>)</span>
+<span id="cb3-19"><a href="#cb3-19" tabindex="-1"></a></span>
+<span id="cb3-20"><a href="#cb3-20" tabindex="-1"></a>fit <span class="ot">&lt;-</span> <span class="fu">linked_mfa</span>(</span>
+<span id="cb3-21"><a href="#cb3-21" tabindex="-1"></a>  <span class="at">Y =</span> Y,</span>
+<span id="cb3-22"><a href="#cb3-22" tabindex="-1"></a>  <span class="at">X =</span> <span class="fu">list</span>(<span class="at">X1 =</span> X1, <span class="at">X2 =</span> X2),</span>
+<span id="cb3-23"><a href="#cb3-23" tabindex="-1"></a>  <span class="at">row_index =</span> <span class="fu">list</span>(<span class="at">X1 =</span> idx1, <span class="at">X2 =</span> idx2),</span>
+<span id="cb3-24"><a href="#cb3-24" tabindex="-1"></a>  <span class="at">ncomp =</span> <span class="dv">3</span>,</span>
+<span id="cb3-25"><a href="#cb3-25" tabindex="-1"></a>  <span class="at">feature_groups =</span> groups_df,</span>
+<span id="cb3-26"><a href="#cb3-26" tabindex="-1"></a>  <span class="at">feature_lambda =</span> <span class="fl">0.5</span></span>
+<span id="cb3-27"><a href="#cb3-27" tabindex="-1"></a>)</span></code></pre></div>
+<p>The <code>feature_lambda</code> parameter controls the strength of
+the prior. Higher values pull grouped features toward their shared
+center more strongly.</p>
+</div>
+<div id="block-normalization" class="section level2">
+<h2>Block Normalization</h2>
+<p>Like standard MFA, Linked MFA supports block weighting:</p>
+<ul>
+<li><strong>“MFA”</strong> (default): Inverse squared first singular
+value</li>
+<li><strong>“None”</strong>: Uniform weights</li>
+<li><strong>“custom”</strong>: User-supplied weights via
+<code>alpha</code></li>
+</ul>
+<div class="sourceCode" id="cb4"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb4-1"><a href="#cb4-1" tabindex="-1"></a><span class="co"># Custom weights: emphasize the reference block</span></span>
+<span id="cb4-2"><a href="#cb4-2" tabindex="-1"></a>fit <span class="ot">&lt;-</span> <span class="fu">linked_mfa</span>(</span>
+<span id="cb4-3"><a href="#cb4-3" tabindex="-1"></a>  <span class="at">Y =</span> Y,</span>
+<span id="cb4-4"><a href="#cb4-4" tabindex="-1"></a>  <span class="at">X =</span> <span class="fu">list</span>(<span class="at">X1 =</span> X1, <span class="at">X2 =</span> X2),</span>
+<span id="cb4-5"><a href="#cb4-5" tabindex="-1"></a>  <span class="at">row_index =</span> <span class="fu">list</span>(<span class="at">X1 =</span> idx1, <span class="at">X2 =</span> idx2),</span>
+<span id="cb4-6"><a href="#cb4-6" tabindex="-1"></a>  <span class="at">ncomp =</span> <span class="dv">3</span>,</span>
+<span id="cb4-7"><a href="#cb4-7" tabindex="-1"></a>  <span class="at">normalization =</span> <span class="st">&quot;custom&quot;</span>,</span>
+<span id="cb4-8"><a href="#cb4-8" tabindex="-1"></a>  <span class="at">alpha =</span> <span class="fu">c</span>(<span class="dv">2</span>, <span class="dv">1</span>, <span class="dv">1</span>)  <span class="co"># Y weight, X1 weight, X2 weight</span></span>
+<span id="cb4-9"><a href="#cb4-9" tabindex="-1"></a>)</span></code></pre></div>
+</div>
+<div id="algorithm-details" class="section level2">
+<h2>Algorithm Details</h2>
+<p>Linked MFA uses alternating least squares (ALS):</p>
+<ol style="list-style-type: decimal">
+<li>Initialize S and B from the SVD of Y</li>
+<li>Update B (Y loadings) given S</li>
+<li>Update each V_k (X_k loadings) given S, with optional group
+shrinkage</li>
+<li>Update S row-by-row, aggregating information from Y and all X_k
+blocks</li>
+<li>Orthonormalize S; rotate all loadings to preserve fitted values</li>
+<li>Repeat until convergence</li>
+</ol>
+<p>Convergence is monitored via the reconstruction objective. Use
+<code>verbose = TRUE</code> to track progress.</p>
+<div class="sourceCode" id="cb5"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb5-1"><a href="#cb5-1" tabindex="-1"></a>fit <span class="ot">&lt;-</span> <span class="fu">linked_mfa</span>(</span>
+<span id="cb5-2"><a href="#cb5-2" tabindex="-1"></a>  <span class="at">Y =</span> Y,</span>
+<span id="cb5-3"><a href="#cb5-3" tabindex="-1"></a>  <span class="at">X =</span> <span class="fu">list</span>(<span class="at">X1 =</span> X1, <span class="at">X2 =</span> X2),</span>
+<span id="cb5-4"><a href="#cb5-4" tabindex="-1"></a>  <span class="at">row_index =</span> <span class="fu">list</span>(<span class="at">X1 =</span> idx1, <span class="at">X2 =</span> idx2),</span>
+<span id="cb5-5"><a href="#cb5-5" tabindex="-1"></a>  <span class="at">ncomp =</span> <span class="dv">3</span>,</span>
+<span id="cb5-6"><a href="#cb5-6" tabindex="-1"></a>  <span class="at">max_iter =</span> <span class="dv">100</span>,</span>
+<span id="cb5-7"><a href="#cb5-7" tabindex="-1"></a>  <span class="at">tol =</span> <span class="fl">1e-6</span>,</span>
+<span id="cb5-8"><a href="#cb5-8" tabindex="-1"></a>  <span class="at">verbose =</span> <span class="cn">TRUE</span></span>
+<span id="cb5-9"><a href="#cb5-9" tabindex="-1"></a>)</span>
+<span id="cb5-10"><a href="#cb5-10" tabindex="-1"></a></span>
+<span id="cb5-11"><a href="#cb5-11" tabindex="-1"></a><span class="co"># Inspect convergence</span></span>
+<span id="cb5-12"><a href="#cb5-12" tabindex="-1"></a><span class="fu">plot</span>(fit<span class="sc">$</span>objective_trace, <span class="at">type =</span> <span class="st">&quot;l&quot;</span>,</span>
+<span id="cb5-13"><a href="#cb5-13" tabindex="-1"></a>     <span class="at">xlab =</span> <span class="st">&quot;Iteration&quot;</span>, <span class="at">ylab =</span> <span class="st">&quot;Objective&quot;</span>)</span></code></pre></div>
+</div>
+<div id="working-with-results" class="section level2">
+<h2>Working with Results</h2>
+<p>The returned object behaves like a standard
+<code>multiblock_biprojector</code>:</p>
+<div class="sourceCode" id="cb6"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb6-1"><a href="#cb6-1" tabindex="-1"></a><span class="co"># Global scores (N x ncomp)</span></span>
+<span id="cb6-2"><a href="#cb6-2" tabindex="-1"></a>S <span class="ot">&lt;-</span> <span class="fu">scores</span>(fit)</span>
+<span id="cb6-3"><a href="#cb6-3" tabindex="-1"></a></span>
+<span id="cb6-4"><a href="#cb6-4" tabindex="-1"></a><span class="co"># Concatenated loadings (rows correspond to Y then each X block)</span></span>
+<span id="cb6-5"><a href="#cb6-5" tabindex="-1"></a>V <span class="ot">&lt;-</span> fit<span class="sc">$</span>v</span>
+<span id="cb6-6"><a href="#cb6-6" tabindex="-1"></a></span>
+<span id="cb6-7"><a href="#cb6-7" tabindex="-1"></a><span class="co"># Block-specific loadings</span></span>
+<span id="cb6-8"><a href="#cb6-8" tabindex="-1"></a>fit<span class="sc">$</span>B        <span class="co"># Y loadings (q x ncomp)</span></span>
+<span id="cb6-9"><a href="#cb6-9" tabindex="-1"></a>fit<span class="sc">$</span>V_list   <span class="co"># list of X_k loadings</span></span>
+<span id="cb6-10"><a href="#cb6-10" tabindex="-1"></a></span>
+<span id="cb6-11"><a href="#cb6-11" tabindex="-1"></a><span class="co"># Block indices in concatenated space</span></span>
+<span id="cb6-12"><a href="#cb6-12" tabindex="-1"></a>fit<span class="sc">$</span>block_indices</span>
+<span id="cb6-13"><a href="#cb6-13" tabindex="-1"></a></span>
+<span id="cb6-14"><a href="#cb6-14" tabindex="-1"></a><span class="co"># Row mappings</span></span>
+<span id="cb6-15"><a href="#cb6-15" tabindex="-1"></a>fit<span class="sc">$</span>row_index</span>
+<span id="cb6-16"><a href="#cb6-16" tabindex="-1"></a></span>
+<span id="cb6-17"><a href="#cb6-17" tabindex="-1"></a><span class="co"># Convergence trace</span></span>
+<span id="cb6-18"><a href="#cb6-18" tabindex="-1"></a>fit<span class="sc">$</span>objective_trace</span></code></pre></div>
+</div>
+<div id="when-to-use-linked-mfa" class="section level2">
+<h2>When to Use Linked MFA</h2>
+<p>Linked MFA is appropriate when:</p>
+<ul>
+<li>You have a reference dataset with complete observations</li>
+<li>Auxiliary datasets are measured on overlapping but incomplete
+subsets</li>
+<li>You want to learn a shared representation in the reference
+space</li>
+<li>Features across blocks may have conceptual correspondence</li>
+</ul>
+<p>Linked MFA is <em>not</em> appropriate when:</p>
+<ul>
+<li>All blocks share identical observations (use standard MFA)</li>
+<li>There is no natural reference block</li>
+<li>Block relationships are better captured by other methods (e.g., CCA
+for two blocks with different row and column spaces)</li>
+</ul>
+</div>
+<div id="example-multi-session-neuroimaging" class="section level2">
+<h2>Example: Multi-Session Neuroimaging</h2>
+<div class="sourceCode" id="cb7"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb7-1"><a href="#cb7-1" tabindex="-1"></a><span class="co"># Y: structural MRI on 200 subjects (all have this)</span></span>
+<span id="cb7-2"><a href="#cb7-2" tabindex="-1"></a><span class="co"># X1: task fMRI session 1 (150 subjects completed)</span></span>
+<span id="cb7-3"><a href="#cb7-3" tabindex="-1"></a><span class="co"># X2: task fMRI session 2 (120 subjects completed)</span></span>
+<span id="cb7-4"><a href="#cb7-4" tabindex="-1"></a><span class="co"># X3: resting state (180 subjects completed)</span></span>
+<span id="cb7-5"><a href="#cb7-5" tabindex="-1"></a></span>
+<span id="cb7-6"><a href="#cb7-6" tabindex="-1"></a>fit <span class="ot">&lt;-</span> <span class="fu">linked_mfa</span>(</span>
+<span id="cb7-7"><a href="#cb7-7" tabindex="-1"></a>  <span class="at">Y =</span> structural_data,</span>
+<span id="cb7-8"><a href="#cb7-8" tabindex="-1"></a>  <span class="at">X =</span> <span class="fu">list</span>(<span class="at">task1 =</span> task1_data, <span class="at">task2 =</span> task2_data, <span class="at">rest =</span> rest_data),</span>
+<span id="cb7-9"><a href="#cb7-9" tabindex="-1"></a>  <span class="at">row_index =</span> <span class="fu">list</span>(<span class="at">task1 =</span> task1_subjects,</span>
+<span id="cb7-10"><a href="#cb7-10" tabindex="-1"></a>                   <span class="at">task2 =</span> task2_subjects,</span>
+<span id="cb7-11"><a href="#cb7-11" tabindex="-1"></a>                   <span class="at">rest =</span> rest_subjects),</span>
+<span id="cb7-12"><a href="#cb7-12" tabindex="-1"></a>  <span class="at">ncomp =</span> <span class="dv">5</span>,</span>
+<span id="cb7-13"><a href="#cb7-13" tabindex="-1"></a>  <span class="at">feature_groups =</span> <span class="st">&quot;colnames&quot;</span>,  <span class="co"># same ROIs across sessions</span></span>
+<span id="cb7-14"><a href="#cb7-14" tabindex="-1"></a></span>
+<span id="cb7-15"><a href="#cb7-15" tabindex="-1"></a>  <span class="at">feature_lambda =</span> <span class="fl">0.2</span></span>
+<span id="cb7-16"><a href="#cb7-16" tabindex="-1"></a>)</span>
+<span id="cb7-17"><a href="#cb7-17" tabindex="-1"></a></span>
+<span id="cb7-18"><a href="#cb7-18" tabindex="-1"></a><span class="co"># Scores are defined for all 200 subjects,</span></span>
+<span id="cb7-19"><a href="#cb7-19" tabindex="-1"></a><span class="co"># integrating information from whatever sessions each completed</span></span></code></pre></div>
+</div>
+<div id="references" class="section level2">
+<h2>References</h2>
+<p>Linked MFA extends the classical MFA framework to handle
+heterogeneous row structures. The algorithm is based on weighted
+alternating least squares with an optional quadratic group-shrinkage
+penalty on loadings for user-specified feature groups.</p>
+<p>For background on MFA:</p>
+<p>Escofier, B., &amp; Pagès, J. (1994). Multiple factor analysis
+(AFMULT package). <em>Computational Statistics &amp; Data Analysis</em>,
+18(1), 121-140.</p>
+</div>
+
+
+
+<!-- code folding -->
+
+
+<!-- dynamically load mathjax for compatibility with self-contained -->
+<script>
+  (function () {
+    var script = document.createElement("script");
+    script.type = "text/javascript";
+    script.src  = "https://mathjax.rstudio.com/latest/MathJax.js?config=TeX-AMS-MML_HTMLorMML";
+    document.getElementsByTagName("head")[0].appendChild(script);
+  })();
+</script>
+
+</body>
+</html>

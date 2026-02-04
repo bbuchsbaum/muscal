@@ -1,0 +1,33 @@
+bada                    Barycentric Discriminant Analysis (generic)
+bamfa                   Barycentric Multiple Factor Analysis (BaMFA)
+check_duality           Verify duality between ROI- and RV-space
+                        coordinates
+covstatis               STATIS for Covariance Matrices (generic)
+estimate_components     Estimate the number of components and loading
+                        reliability (shared helpers)
+linked_mfa              Linked Multiple Factor Analysis (Linked MFA)
+mfa                     Multiple Factor Analysis (generic)
+penalized_mfa           Penalized Multiple Factor Analysis (MFA)
+penalized_mfa_clusterwise
+                        Penalized MFA with Clusterwise Spatial
+                        Smoothness Constraints
+plot_subjects           Plot subject clouds in RV and ROI spaces
+predict.bamfa           Predict method for BaMFA objects
+print.bamfa             Print Method for BaMFA Objects
+print.penalized_mfa     Print Method for Penalized MFA Objects
+print.penalized_mfa_clusterwise
+                        Print Method for Penalized MFA Clusterwise
+                        Objects
+project                 Re<e2><80><91>export selected generics from
+                        **multivarious**
+project_cov             Project a Covariance Matrix (generic)
+project_covariate       Project a Subject-Level Covariate (generic)
+project_subjects        Project and Summarize New Subject Data
+                        (generic)
+reconstruct.covstatis   Low-rank reconstruction of the compromise
+                        matrix
+roi_map                 Extract ROI map for a compromise dimension
+significant_components
+                        Identify Significant Components via RMT and
+                        Inter-block Coherence Tests
+synthetic_multiblock    Generate synthetic multiblock data

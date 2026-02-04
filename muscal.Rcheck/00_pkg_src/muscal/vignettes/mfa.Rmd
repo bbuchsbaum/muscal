@@ -1,0 +1,132 @@
+---
+title: "Multiple Factor Analysis"
+output: rmarkdown::html_vignette
+vignette: >
+  %\VignetteIndexEntry{Multiple Factor Analysis}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+```{r setup, include = FALSE}
+knitr::opts_chunk$set(
+  collapse = TRUE,
+  comment = "#>",
+  fig.width = 6,
+  fig.height = 4
+)
+```
+
+## Why MFA?
+
+Multiple Factor Analysis (MFA) solves a common problem: you have measured the same observations using different instruments, different feature sets, or at different time points—and you want a single, integrated view. Standard PCA on the concatenated data fails here because blocks with more variables or higher variance dominate the solution. MFA corrects this by normalizing each block before integration, ensuring that every data source contributes fairly to the shared representation.
+
+MFA belongs to the "French school" of multivariate analysis, developed by Escofier and Pagès in the 1980s. It remains one of the most principled approaches for multi-table data integration.
+
+## The Core Idea
+
+MFA proceeds in two stages:
+
+1. **Normalize each block** so that no single block dominates. The default approach divides each block by its first singular value—this makes the maximum inertia of each block equal to 1.
+
+2. **Apply PCA to the concatenated, normalized blocks** to extract global components that summarize the shared structure across all data sources.
+
+The result is a compromise factor space where observations are positioned according to their combined profile across all blocks.
+
+## Basic Usage
+
+```{r basic-example, eval = FALSE}
+library(muscal)
+library(multivarious)
+
+# Simulate three blocks of data on the same 50 observations
+set.seed(42)
+n <- 50
+block1 <- matrix(rnorm(n * 20), n, 20)  # 20 variables
+block2 <- matrix(rnorm(n * 15), n, 15)  # 15 variables
+block3 <- matrix(rnorm(n * 25), n, 25)  # 25 variables
+
+# Fit MFA with 3 components
+fit <- mfa(list(block1, block2, block3), ncomp = 3)
+
+# Extract global scores
+S <- scores(fit)
+dim(S)  # 50 x 3
+```
+
+## Normalization Schemes
+
+MFA supports several block-weighting schemes via the `normalization` argument:
+- **"MFA"** (default): Weight by inverse squared first singular value. This is the classical MFA normalization.
+
+- **"RV"**: Weight blocks by their contribution to the RV coefficient matrix. Blocks that are more similar to the overall structure receive higher weight.
+
+- **"Frob"**: Weight by Frobenius norm.
+
+- **"None"**: No normalization—equivalent to ordinary PCA on concatenated data.
+
+- **"custom"**: Supply your own weight matrices via `A` (column weights) and `M` (row weights).
+
+```{r normalization, eval = FALSE}
+# RV-based normalization
+fit_rv <- mfa(list(block1, block2, block3), ncomp = 3, normalization = "RV")
+
+# Custom weights
+ncols <- c(20, 15, 25)
+custom_weights <- rep(1/ncols, ncols)  # inverse-column-count weighting
+fit_custom <- mfa(list(block1, block2, block3),
+                  ncomp = 3,
+                  normalization = "custom",
+                  A = custom_weights)
+```
+
+## Working with the Results
+
+MFA returns a `multiblock_biprojector` object that integrates with the `multivarious` package:
+
+```{r results, eval = FALSE}
+# Global scores (observations in the compromise space)
+S <- scores(fit)
+
+# Loadings in the concatenated variable space (sum(p_k) x ncomp)
+V <- fit$v
+
+# Block-specific loadings are slices of V using block_indices
+V_block1 <- V[fit$block_indices[[1]], , drop = FALSE]
+
+# Project a single block onto the fitted model
+proj <- project_block(fit, block1, block = 1)
+
+# Partial factor scores: how each block "sees" the observations
+# (useful for assessing block agreement)
+partial_scores <- project_block(fit, block2, block = 2)
+```
+
+## Interpreting Block Contributions
+
+The `alpha` weights stored in the fitted object indicate each block's contribution:
+
+```{r alpha, eval = FALSE}
+fit$alpha
+```
+
+Blocks with smaller first singular values receive larger weights—this is how MFA equalizes their influence.
+
+## When to Use MFA
+
+MFA is appropriate when:
+
+- You have multiple measurement modalities on the same subjects (e.g., gene expression + metabolomics + clinical variables).
+- You want to identify patterns that are consistent across data sources.
+- You need block contributions to be balanced regardless of the number of variables per block.
+
+MFA is *not* appropriate when:
+
+- Blocks have different observations (use Linked MFA instead).
+- You want blocks with more variables to naturally dominate (use standard PCA).
+- Your goal is prediction rather than exploratory structure discovery.
+
+## References
+
+Escofier, B., & Pagès, J. (1994). Multiple factor analysis (AFMULT package). *Computational Statistics & Data Analysis*, 18(1), 121-140.
+
+Abdi, H., Williams, L. J., & Valentin, D. (2013). Multiple factor analysis: Principal component analysis for multitable and multiblock data sets. *Wiley Interdisciplinary Reviews: Computational Statistics*, 5(2), 149-179.

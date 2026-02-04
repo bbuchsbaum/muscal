@@ -1,0 +1,24 @@
+Package: muscal
+Type: Package
+Title: Core Multivariate Statistical Analyses and Utilities
+Version: 0.1.0
+Authors@R: person("Bradley", "Buchsbaum", email = "bradley.buchsbaum@gmail.com", role = c("aut", "cre"))
+Author: Bradley Buchsbaum [aut, cre]
+Maintainer: Bradley Buchsbaum <bradley.buchsbaum@gmail.com>
+Description: Provides core 'French school' multivariate analysis methods including
+    Multiple Factor Analysis (MFA), Penalized MFA, STATIS, variants of
+    Correspondence Analysis (BADA, BAMFA), and Generalized Procrustes Analysis.
+    Also includes essential utility functions for data simulation, testing,
+    and processing potentially used by related statistical packages.
+License: MIT + file LICENSE
+Encoding: UTF-8
+LazyData: true
+Imports: Matrix, stats, graphics, utils, MASS, multivarious,
+        assertthat, chk, crayon, Rcpp, RcppArmadillo, RSpectra, rlang,
+        dplyr, purrr, multidesign, cli, abind, furrr, pracma,
+        MatrixCorrelation, RANN, tibble
+Suggests: testthat (>= 3.0.0), knitr, rmarkdown, genpca
+Depends: R (>= 3.5.0)
+RoxygenNote: 7.3.3
+LinkingTo: Rcpp, RcppArmadillo, RcppEigen
+Built: R 4.5.1; aarch64-apple-darwin20; 2026-01-31 15:25:24 UTC; unix

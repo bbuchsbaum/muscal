@@ -1,0 +1,123 @@
+{
+  "product": "muscal",
+  "feature": {
+    "name": "Linked MFA",
+    "short_name": "linked_mfa",
+    "type": "algorithm",
+    "status": "proposed"
+  },
+  "date": "2026-01-31",
+  "summary": {
+    "problem": "Classical MFA assumes all blocks share the same rows (observations). We need an MFA-style block decomposition where multiple X blocks have different numbers of rows, but each X-row maps to a specific row in a reference block Y. Additionally, we want to encode prior knowledge that features (columns) across different X blocks are identical or similar.",
+    "solution": "Implement Linked MFA: a shared-score, multi-block low-rank model anchored on Y rows, with block-specific loadings for each block and optional feature-link regularization across X features.",
+    "why_now": "The package already contains MFA and penalized MFA variants; Linked MFA generalizes MFA to partially overlapping sample sets while preserving multivarious-compatible return structures."
+  },
+  "goals": [
+    "Support a reference block Y with N rows and multiple X blocks with arbitrary n_k, each row mapped to Y via an index vector.",
+    "Preserve MFA-style block structure and return a multivarious multiblock projector/biprojector compatible with existing downstream utilities.",
+    "Provide an explicit, user-supplied feature prior that can express 'same feature' and 'similar feature' relationships across X blocks."
+  ],
+  "non_goals": [
+    "Full Bayesian inference (posterior uncertainty) and variational inference (e.g., MOFA-style) are out of scope for v1.",
+    "Automatic learning of feature correspondences (feature matching) is out of scope; v1 expects user-supplied links/groups.",
+    "Supervised objectives (PLS/CCA-style) are out of scope; Linked MFA is an unsupervised block decomposition."
+  ],
+  "user_stories": [
+    {
+      "as_a": "user",
+      "i_want": "to decompose Y and multiple partially-overlapping X blocks into a shared latent space",
+      "so_that": "I can obtain consistent scores for the N reference samples while using information from all blocks that exist for each sample."
+    },
+    {
+      "as_a": "user",
+      "i_want": "to specify that features across blocks are identical or similar (e.g., X1[, 'geneA'] ~ X2[, 'geneA'])",
+      "so_that": "the decomposition borrows strength across blocks and yields aligned loading vectors."
+    }
+  ],
+  "interface": {
+    "primary_function": "linked_mfa",
+    "signature": {
+      "linked_mfa": {
+        "Y": "matrix|data.frame (N x q)",
+        "X": "list[matrix|data.frame] (each n_k x p_k)",
+        "row_index": "list[integer] (each length n_k; values in 1..N)",
+        "preproc": "multivarious pre_processor|prepper OR list of them (length 1+length(X))",
+        "ncomp": "integer >= 1",
+        "normalization": "one of: MFA, None, custom",
+        "alpha": "optional numeric vector of per-block weights (length 1+length(X)) when normalization=custom",
+        "feature_groups": "NULL | 'colnames' | data.frame with columns {block, feature, group, weight?}",
+        "feature_lambda": "numeric >= 0",
+        "max_iter": "integer >= 1",
+        "tol": "numeric > 0 (relative objective tolerance)",
+        "ridge": "numeric >= 0 (stabilization in normal equations)",
+        "verbose": "logical"
+      }
+    },
+    "returns": {
+      "class": [
+        "linked_mfa",
+        "multiblock_biprojector"
+      ],
+      "fields": [
+        "v (concatenated loadings: q + sum p_k rows, ncomp cols)",
+        "s (shared scores for Y rows: N x ncomp)",
+        "sdev (component scales; numeric length ncomp)",
+        "preproc (block-aware concatenated preprocessor via multivarious)",
+        "block_indices (list of column index ranges for Y and each X block)",
+        "attributes: V_list, B, row_index, alpha_blocks, normalization, objective_trace"
+      ]
+    }
+  },
+  "method": {
+    "model": {
+      "equations": [
+        "Y ≈ S B^T",
+        "X_k ≈ S[idx_k, ] V_k^T"
+      ],
+      "objective": "min_{S,B,V_k} ||Y - S B^T||_F^2 + Σ_k α_k ||X_k - S[idx_k,] V_k^T||_F^2 + feature_lambda * FeaturePenalty(V_1..V_K)",
+      "feature_penalty_v1": "Group shrinkage: for each global feature group g, penalize Σ_{(k,j) in g} w_{kj} ||V_k[j,] - W_g||_2^2 with W_g estimated as the weighted mean of member loadings."
+    },
+    "optimization": {
+      "approach": "Alternating least squares with per-row updates for S and closed-form ridge updates for B and V_k, plus optional group-shrinkage regularization.",
+      "identifiability": "After each S update, orthonormalize columns of S via QR and rotate all loadings by the corresponding R^T to preserve fitted values."
+    },
+    "initialization": {
+      "default": "Initialize S and B from PCA/SVD of preprocessed Y."
+    }
+  },
+  "acceptance_criteria": [
+    {
+      "id": "LMFA-AC-01",
+      "description": "Adds an exported function linked_mfa() with documented arguments and examples."
+    },
+    {
+      "id": "LMFA-AC-02",
+      "description": "Validates inputs: X is a list; row_index is a list with same length as X; each idx vector matches nrow(X_k) and is within 1..nrow(Y)."
+    },
+    {
+      "id": "LMFA-AC-03",
+      "description": "Returns an object inheriting from multivarious::multiblock_biprojector with additional class 'linked_mfa', including v, s, sdev, preproc, and block_indices."
+    },
+    {
+      "id": "LMFA-AC-04",
+      "description": "When all blocks share full rows (each idx_k == 1..N) and feature_lambda == 0, linked_mfa yields scores/loadings that agree with mfa(list(Y, X...)) up to sign/rotation (tested via reconstruction error and subspace similarity)."
+    },
+    {
+      "id": "LMFA-AC-05",
+      "description": "Supports feature_groups='colnames' and an explicit feature_groups data.frame; enabling feature_lambda>0 reduces within-group loading dispersion compared to feature_lambda=0 on synthetic data."
+    },
+    {
+      "id": "LMFA-AC-06",
+      "description": "Includes unit tests covering input validation, full-row equivalence behavior, and feature-group shrinkage behavior."
+    }
+  ],
+  "delivery": {
+    "files_expected": [
+      "R/linked_mfa.R",
+      "man/linked_mfa.Rd",
+      "tests/testthat/test-linked-mfa.R",
+      "dev/linked_mfa_prd.json"
+    ],
+    "notes": "v1 focuses on a robust, deterministic ALS implementation with group-based feature regularization. A future v2 may add general feature graphs (Laplacian penalty), missing-at-random likelihoods, and more projection utilities."
+  }
+}
