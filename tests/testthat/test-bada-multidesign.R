@@ -274,7 +274,7 @@ test_that("bootstrap.bada requires data argument", {
   res <- bada(md, y = y, subject = subj_id, ncomp = 1)
 
   expect_error(
-    bootstrap(res, nboot = 10),
+    multivarious::bootstrap(res, nboot = 10),
     "data.*required"
   )
 })

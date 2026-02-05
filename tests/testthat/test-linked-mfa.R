@@ -1,6 +1,29 @@
 library(testthat)
 library(muscal)
 
+test_that("anchored_mfa is the primary interface (linked_mfa is an alias)", {
+  set.seed(1)
+  Y <- matrix(rnorm(30 * 4), 30, 4)
+  X1 <- matrix(rnorm(10 * 6), 10, 6)
+  X2 <- matrix(rnorm(12 * 5), 12, 5)
+  idx1 <- sample.int(nrow(Y), nrow(X1), replace = FALSE)
+  idx2 <- sample.int(nrow(Y), nrow(X2), replace = FALSE)
+
+  fit <- anchored_mfa(Y, list(X1 = X1, X2 = X2), list(X1 = idx1, X2 = idx2), ncomp = 2)
+  expect_s3_class(fit, "anchored_mfa")
+  expect_s3_class(fit, "linked_mfa")
+
+  fit_alias <- linked_mfa(Y, list(X1 = X1, X2 = X2), list(X1 = idx1, X2 = idx2), ncomp = 2)
+  expect_s3_class(fit_alias, "linked_mfa")
+
+  S1 <- multivarious::scores(fit)
+  S2 <- multivarious::scores(fit_alias)
+  P1 <- S1 %*% solve(crossprod(S1), t(S1))
+  P2 <- S2 %*% solve(crossprod(S2), t(S2))
+  rel <- norm(P1 - P2, type = "F") / (norm(P2, type = "F") + 1e-12)
+  expect_lt(rel, 1e-12)
+})
+
 test_that("linked_mfa validates row_index and returns expected structure", {
   set.seed(1)
   Y <- matrix(rnorm(30 * 4), 30, 4)

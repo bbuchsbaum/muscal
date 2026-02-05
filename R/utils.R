@@ -369,7 +369,6 @@ significant_components <- function(fit, n, k_vec = NULL,
 #' @param X A numeric matrix where rows are observations and columns are features.
 #' @param class_vector A factor or vector specifying the class for each row of X.
 #' @return The within-class scatter matrix (p x p).
-#' @importFrom stats scale
 #' @noRd
 #' @keywords internal
 within_class_scatter <- function(X, class_vector) {

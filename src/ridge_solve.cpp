@@ -15,4 +15,4 @@ arma::mat ridge_solve(const arma::mat& Z, const arma::mat& X, double lambda) {
     ZtZ.diag() += lambda;
     arma::mat ZtX = Z.t() * X;
     return arma::solve(ZtZ, ZtX, arma::solve_opts::fast);
-} 
+}

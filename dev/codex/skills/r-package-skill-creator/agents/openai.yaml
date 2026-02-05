@@ -1,0 +1,4 @@
+interface:
+  display_name: "R Package Skill Creator"
+  short_description: "Generate Codex skills for R packages"
+  default_prompt: "Use $r-package-skill-creator to scaffold a Codex skill for the R package lme4."

@@ -1,0 +1,4 @@
+interface:
+  display_name: "R: lme4"
+  short_description: "Mixed-effects models with lme4"
+  default_prompt: "Use $r-lme4 to fit and interpret a mixed-effects model in R."

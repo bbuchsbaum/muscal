@@ -88,6 +88,46 @@ mfa <- function(data, preproc, ncomp = 2, normalization = "MFA", A = NULL, M = N
   UseMethod("mfa")
 }
 
+#' Multiblock Canonical Correlation Analysis (generic)
+#'
+#' A generic front-end for **multiblock canonical correlation analysis** (MCCA),
+#' also known as generalized CCA (GCCA). Concrete methods should estimate a
+#' compromise score space shared across multiple data blocks that have the same
+#' observations (rows) but potentially different variables (columns).
+#'
+#' The reference implementation in this package uses a ridge-stabilized MAXVAR
+#' GCCA formulation that remains well-posed when blocks have more variables than
+#' rows (\\eqn{p \\gg n}) or are rank-deficient after preprocessing (e.g.,
+#' centering).
+#'
+#' @param data A data object for which an MCCA method is defined. Typically a
+#'   `list` of matrices/data frames or a `multiblock` object.
+#' @param preproc A preprocessing pipeline from the multivarious package. Each
+#'   block is preprocessed independently.
+#' @param ncomp Integer; the number of canonical components to compute.
+#' @param ridge Non-negative numeric scalar (or vector of length equal to the
+#'   number of blocks) controlling ridge stabilization. The effective ridge used
+#'   per block is scaled by the block's overall energy so the default works
+#'   across variable scalings.
+#' @param block_weights Optional numeric vector of non-negative weights (length
+#'   = number of blocks) controlling each block's influence on the compromise.
+#' @param use_future Logical; if `TRUE`, block-wise computations are performed via
+#'   `furrr::future_map()` when available.
+#' @param ... Additional arguments passed to the underlying method.
+#'
+#' @return An object inheriting from class `mcca`.
+#'
+#' @references
+#' Kettenring, J. R. (1971). Canonical analysis of several sets of variables.
+#' *Biometrika*, 58(3), 433–451.
+#'
+#' @export
+#' @rdname mcca
+mcca <- function(data, preproc, ncomp = 2, ridge = 1e-6,
+                 block_weights = NULL, use_future = FALSE, ...) {
+  UseMethod("mcca")
+}
+
 
 
 #' Project a Covariance Matrix (generic)

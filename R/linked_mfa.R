@@ -1,7 +1,7 @@
-#' Linked Multiple Factor Analysis (Linked MFA)
+#' Anchored Multiple Factor Analysis (Anchored MFA)
 #'
 #' @description
-#' Linked MFA generalizes Multiple Factor Analysis (MFA) to the case where a single
+#' Anchored MFA generalizes Multiple Factor Analysis (MFA) to the case where a single
 #' reference block `Y` (with `N` rows) is linked to multiple blocks `X_k` that may
 #' have different numbers of rows. Each row of `X_k` is mapped to a row of `Y` via
 #' an index vector `row_index[[k]]`. The model estimates a shared score matrix
@@ -18,7 +18,7 @@
 #' where `S` is `N × ncomp`, `B` is `q × ncomp`, and each `V_k` is `p_k × ncomp`.
 #'
 #' ## Feature similarity prior (v1)
-#' When `feature_lambda > 0` and `feature_groups` is supplied, Linked MFA applies
+#' When `feature_lambda > 0` and `feature_groups` is supplied, Anchored MFA applies
 #' a group-shrinkage penalty that pulls the loading vectors of features in the same
 #' group toward a shared group center.
 #'
@@ -48,7 +48,7 @@
 #' @param ... Unused (reserved for future extensions).
 #'
 #' @return An object inheriting from `multivarious::multiblock_biprojector` with
-#'   additional class `"linked_mfa"`. The object contains global scores in `s`,
+#'   additional classes `"anchored_mfa"` and `"linked_mfa"`. The object contains global scores in `s`,
 #'   concatenated loadings in `v`, and block mappings in `block_indices`. Additional
 #'   fields include `V_list`, `B`, `row_index`, `alpha_blocks`, and `objective_trace`.
 #'
@@ -62,24 +62,25 @@
 #' idx1 <- sample.int(N, nrow(X1), replace = FALSE)
 #' idx2 <- sample.int(N, nrow(X2), replace = FALSE)
 #'
-#' fit <- linked_mfa(Y, list(X1 = X1, X2 = X2), list(X1 = idx1, X2 = idx2), ncomp = 2)
+#' fit <- anchored_mfa(Y, list(X1 = X1, X2 = X2), list(X1 = idx1, X2 = idx2), ncomp = 2)
 #' stopifnot(nrow(multivarious::scores(fit)) == N)
 #' }
+#' @rdname linked_mfa
 #' @export
-linked_mfa <- function(Y,
-                       X,
-                       row_index,
-                       preproc = multivarious::center(),
-                       ncomp = 2,
-                       normalization = c("MFA", "None", "custom"),
-                       alpha = NULL,
-                       feature_groups = NULL,
-                       feature_lambda = 0,
-                       max_iter = 50,
-                       tol = 1e-6,
-                       ridge = 1e-8,
-                       verbose = FALSE,
-                       ...) {
+anchored_mfa <- function(Y,
+                         X,
+                         row_index,
+                         preproc = multivarious::center(),
+                         ncomp = 2,
+                         normalization = c("MFA", "None", "custom"),
+                         alpha = NULL,
+                         feature_groups = NULL,
+                         feature_lambda = 0,
+                         max_iter = 50,
+                         tol = 1e-6,
+                         ridge = 1e-8,
+                         verbose = FALSE,
+                         ...) {
   normalization <- match.arg(normalization)
 
   # ---------------------------------------------------------------------------
@@ -271,7 +272,7 @@ linked_mfa <- function(Y,
     if (isTRUE(verbose)) {
       message(
         sprintf(
-          "linked_mfa iter %d: obj=%.6g, rel_change=%.3g",
+          "anchored_mfa iter %d: obj=%.6g, rel_change=%.3g",
           iter, obj, rel_change
         )
       )
@@ -385,7 +386,44 @@ linked_mfa <- function(Y,
     partial_scores = partial_scores,
     cor_loadings = cor_loadings,
     block_fit = block_fit,
-    classes = "linked_mfa"
+    classes = c("anchored_mfa", "linked_mfa")
+  )
+}
+
+#' @rdname linked_mfa
+#' @details
+#' `linked_mfa()` is a legacy alias for [anchored_mfa()] retained for backward
+#' compatibility.
+#' @export
+linked_mfa <- function(Y,
+                       X,
+                       row_index,
+                       preproc = multivarious::center(),
+                       ncomp = 2,
+                       normalization = c("MFA", "None", "custom"),
+                       alpha = NULL,
+                       feature_groups = NULL,
+                       feature_lambda = 0,
+                       max_iter = 50,
+                       tol = 1e-6,
+                       ridge = 1e-8,
+                       verbose = FALSE,
+                       ...) {
+  anchored_mfa(
+    Y = Y,
+    X = X,
+    row_index = row_index,
+    preproc = preproc,
+    ncomp = ncomp,
+    normalization = normalization,
+    alpha = alpha,
+    feature_groups = feature_groups,
+    feature_lambda = feature_lambda,
+    max_iter = max_iter,
+    tol = tol,
+    ridge = ridge,
+    verbose = verbose,
+    ...
   )
 }
 
