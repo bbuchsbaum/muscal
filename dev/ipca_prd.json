@@ -1,0 +1,115 @@
+{
+  "product": "muscal",
+  "feature": {
+    "name": "Integrated Principal Components Analysis",
+    "short_name": "ipca",
+    "type": "algorithm",
+    "status": "planned"
+  },
+  "date": "2026-02-13",
+  "summary": {
+    "problem": "Existing muscal methods cover MFA/MCCA-style multiblock decomposition but do not provide matrix-normal covariance factorization for integrated datasets with shared rows and heterogeneous features.",
+    "solution": "Add multiplicative Frobenius iPCA (Tang & Allen, 2021) with a scalable Gram-space implementation that avoids p_k x p_k operations during fitting when p_k >> n.",
+    "why_now": "Users operate in high-dimensional, low-sample regimes and need a solver that is both statistically regularized and operationally feasible across many datasets."
+  },
+  "goals": [
+    "Provide an exported ipca() API for list/multiblock inputs with shared rows.",
+    "Implement Algorithm 1 (multiplicative Frobenius Flip-Flop) with stable eigenvalue shrinkage.",
+    "Support an exact Gram-space mode using only n x n matrices during fitting.",
+    "Return a muscal-compatible projector object with iPCA-specific diagnostics."
+  ],
+  "non_goals": [
+    "Automatic penalty tuning via missing-value MCECM (Algorithms 7/9) in v1.",
+    "Sparse/L1 or additive Frobenius penalty variants.",
+    "Robust heavy-tail likelihoods and outlier weighting.",
+    "Distributed multi-node execution."
+  ],
+  "user_stories": [
+    {
+      "as_a": "multiblock analyst",
+      "i_want": "a single function to estimate shared sample components across multiple omics/views",
+      "so_that": "I can extract joint sample scores and view-specific feature loadings from one model."
+    },
+    {
+      "as_a": "high-dimensional practitioner",
+      "i_want": "an implementation that scales when p_k is much larger than n",
+      "so_that": "model fitting remains feasible in memory and runtime."
+    }
+  ],
+  "interface": {
+    "primary_function": "ipca",
+    "signature": {
+      "ipca": {
+        "data": "list[matrix|data.frame] or multiblock, all blocks share n rows",
+        "preproc": "multivarious pre_processor|prepper or list",
+        "ncomp": "integer >= 1 (joint components to return)",
+        "lambda": "positive numeric scalar or vector length K",
+        "method": "one of auto, gram, dense",
+        "max_iter": "integer >= 1",
+        "tol": "numeric > 0",
+        "normalize_trace": "logical; enforce mean diag(Sigma)=1 each iteration",
+        "use_future": "logical; parallelize per-block updates",
+        "...": "reserved"
+      }
+    },
+    "returns": {
+      "class": [
+        "ipca",
+        "multiblock_biprojector"
+      ],
+      "fields": [
+        "s (n x ncomp joint scores)",
+        "sdev (sqrt of top Sigma eigenvalues)",
+        "v (concatenated top per-block loadings, p_total x ncomp)",
+        "block_indices (feature index map by block)",
+        "Sigma_eigenvalues, Sigma_eigenvectors",
+        "Delta_leading_eigenvalues (per block)",
+        "iter, converged, method_used, objective_proxy"
+      ]
+    }
+  },
+  "method": {
+    "model": {
+      "assumption": "X_k ~ MN(0, Sigma, Delta_k), shared row covariance Sigma and block-specific column covariance Delta_k.",
+      "penalty": "Multiplicative Frobenius: sum_k lambda_k ||Sigma^{-1} \\otimes Delta_k^{-1}||_F^2.",
+      "algorithm": "Flip-Flop block-coordinate updates with closed-form eigenvalue shrinkage."
+    },
+    "scaling_strategy": {
+      "default": "Gram/sample-space update in n x n space when p_k > n.",
+      "exactness": "Gram mode is exact for the multiplicative Frobenius updates; not an approximation."
+    },
+    "numerics": {
+      "stability": [
+        "Stable sqrt(d^2 + c) helper to avoid overflow.",
+        "Reciprocal eigenvalue updates computed directly without inverting full matrices."
+      ],
+      "convergence": "Track relative changes in Sigma eigenvalues and Delta^{-1} Frobenius norms."
+    }
+  },
+  "acceptance_criteria": [
+    {
+      "id": "IPCA-AC-01",
+      "description": "Adds exported ipca() with list and multiblock methods and roxygen docs."
+    },
+    {
+      "id": "IPCA-AC-02",
+      "description": "Implements multiplicative Frobenius updates and converges on synthetic datasets with p_k >> n."
+    },
+    {
+      "id": "IPCA-AC-03",
+      "description": "Auto mode selects gram when any p_k > n and does not require p_k x p_k eigendecompositions during fitting."
+    },
+    {
+      "id": "IPCA-AC-04",
+      "description": "Dense and gram methods produce matching joint score subspaces on small test problems."
+    },
+    {
+      "id": "IPCA-AC-05",
+      "description": "Unit tests cover validation, structure, high-dimensional run, and dense-vs-gram consistency."
+    }
+  ],
+  "references": [
+    "Tang, T. M., & Allen, G. I. (2021). Integrated Principal Components Analysis. Journal of Machine Learning Research, 22(198), 1-81.",
+    "Local reference file: /Users/bbuchsbaum/Downloads/20-084.pdf"
+  ]
+}

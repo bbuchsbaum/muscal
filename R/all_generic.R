@@ -129,6 +129,62 @@ mcca <- function(data, preproc, ncomp = 2, ridge = 1e-6,
 }
 
 
+#' Integrated Principal Components Analysis (generic)
+#'
+#' A generic front-end for **integrated principal components analysis** (iPCA)
+#' for multiple aligned data blocks. iPCA models each block with a matrix-normal
+#' covariance structure with shared row covariance and block-specific column
+#' covariance.
+#'
+#' In practice, iPCA is most useful when you want:
+#' - a shared sample-space representation across all blocks (joint scores),
+#' - block-specific feature loadings, and
+#' - stable integration in high-dimensional regimes (`p_k >> n`).
+#'
+#' Relative to methods such as MCCA/MFA, iPCA is often more robust when block
+#' covariance/noise structures differ, but can be slower and is not always best
+#' for purely correlation-maximizing objectives.
+#'
+#' @param data A data object for which an iPCA method is defined. Typically a
+#'   `list` of matrices/data frames or a `multiblock` object.
+#' @param preproc A preprocessing pipeline from the multivarious package. Each
+#'   block is preprocessed independently.
+#' @param ncomp Integer; number of joint components to return.
+#' @param lambda Positive numeric scalar (recycled) or vector of length equal to
+#'   the number of blocks. These are the multiplicative Frobenius penalties.
+#' @param method One of `"auto"`, `"gram"`, or `"dense"`.
+#'   - `"auto"` is recommended: it switches to sample-space updates when any
+#'     block has `p_k > n`.
+#'   - `"gram"` is typically preferred for high-dimensional blocks.
+#'   - `"dense"` can be faster when all blocks are moderate in size.
+#' @param max_iter Integer; maximum Flip-Flop iterations.
+#' @param tol Positive numeric convergence tolerance.
+#' @param normalize_trace Logical; if `TRUE`, enforce `mean(diag(Sigma)) = 1`
+#'   after each iteration for numerical stability.
+#' @param use_future Logical; if `TRUE`, block-wise updates are parallelized via
+#'   `furrr::future_map()` when available.
+#' @param ... Additional arguments passed to the underlying method. iPCA methods
+#'   additionally support:
+#'   - `eig_solver = c("auto", "full", "truncated")` for dense-mode Sigma updates,
+#'   - `eig_rank` for truncated eigendecomposition rank,
+#'   - `eig_trunc_min_n` threshold used by `eig_solver = "auto"`.
+#'
+#' @return An object inheriting from class `ipca`.
+#'
+#' @references
+#' Tang, T. M., & Allen, G. I. (2021). Integrated Principal Components Analysis.
+#' *Journal of Machine Learning Research*, 22(198), 1-81.
+#'
+#' @export
+#' @rdname ipca
+ipca <- function(data, preproc, ncomp = 2, lambda = 1,
+                 method = c("auto", "gram", "dense"),
+                 max_iter = 100, tol = 1e-6,
+                 normalize_trace = TRUE, use_future = FALSE, ...) {
+  UseMethod("ipca")
+}
+
+
 
 #' Project a Covariance Matrix (generic)
 #'

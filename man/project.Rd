@@ -2,10 +2,13 @@
 % Please edit documentation in R/all_generic.R
 \name{project}
 \alias{project}
+\alias{project.ipca}
 \alias{reprocess}
 \title{Re‑export selected generics from **multivarious**}
 \usage{
 project(x, new_data, ...)
+
+\method{project}{ipca}(x, new_data, ...)
 
 reprocess(x, new_data, colind, ...)
 }
