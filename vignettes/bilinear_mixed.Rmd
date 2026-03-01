@@ -1,0 +1,791 @@
+---
+title: "Bilinear Mixed Models for Repeated Connectivity Matrices"
+output: rmarkdown::html_vignette
+vignette: >
+  %\VignetteIndexEntry{Bilinear Mixed Models for Repeated Connectivity Matrices}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+params:
+  family: red
+  preset: homage
+css: albers.css
+resource_files:
+- albers.css
+- albers.js
+includes:
+  in_header: |-
+    <script src="albers.js"></script>
+    <script>document.addEventListener('DOMContentLoaded',function(){document.body.classList.add('palette-red');});</script>
+
+---
+
+```{r setup, include = FALSE}
+if (requireNamespace("ggplot2", quietly = TRUE) && requireNamespace("albersdown", quietly = TRUE) && exists("params")) ggplot2::theme_set(albersdown::theme_albers(params$family))
+knitr::opts_chunk$set(
+  collapse = TRUE,
+  comment = "#>",
+  message = FALSE,
+  warning = FALSE,
+  fig.width = 6,
+  fig.height = 4
+)
+```
+
+## The problem
+
+You have a collection of connectivity matrices — one per scan, session, or
+trial — collected from multiple subjects under different experimental
+conditions. You want to answer questions like:
+
+- Which connectivity patterns differ across conditions?
+- Which patterns characterize individual subjects?
+- Can subject-level traits (age, performance) be predicted from connectivity?
+
+Standard approaches either vectorize the matrices (losing structure) or
+analyze them one edge at a time (losing the multivariate picture).
+`bilinear_mixed()` keeps the matrix structure intact by learning low-rank
+row and column bases, then fitting a mixed model in that compressed space.
+
+## Quick start
+
+```{r load-packages}
+library(muscal)
+library(ggplot2)
+```
+
+We'll simulate a small dataset: 8 subjects, each scanned under 3 conditions,
+producing 4-seed x 12-ROI connectivity matrices. A linear condition effect
+and subject-specific latent traits drive the signal.
+
+```{r simulate-data}
+set.seed(42)
+n_subject <- 8
+n_repeat  <- 3
+n_seed    <- 4
+n_roi     <- 12
+
+subject   <- rep(paste0("S", seq_len(n_subject)), each = n_repeat)
+condition <- rep(seq_len(n_repeat), times = n_subject)
+```
+
+```{r simulate-matrices, include = FALSE}
+# Ground-truth low-rank structure
+L_true <- qr.Q(qr(matrix(rnorm(n_seed * 2), n_seed, 2)))
+R_true <- qr.Q(qr(matrix(rnorm(n_roi * 3), n_roi, 3)))
+W_true <- matrix(rnorm(6 * 2, sd = 0.4), 6, 2)
+t_true <- matrix(rnorm(n_subject * 2), n_subject, 2)
+
+z <- scale(condition, scale = FALSE)
+B_true <- matrix(rnorm(6, sd = 0.3), 6, 1)
+
+data_list <- vector("list", length(subject))
+for (i in seq_along(data_list)) {
+  si <- ((i - 1L) %/% n_repeat) + 1L
+  m <- B_true * z[i] + W_true %*% t_true[si, ]
+  M <- matrix(m, nrow = 2, ncol = 3)
+  data_list[[i]] <- L_true %*% M %*% t(R_true) +
+    matrix(rnorm(n_seed * n_roi, sd = 0.12), n_seed, n_roi)
+}
+
+# Simulate subject-level traits driven by the latent scores
+A_true <- matrix(c(0.7, -0.2, 0.4, 0.6), nrow = 2)
+y_traits <- t_true %*% A_true +
+  matrix(rnorm(n_subject * 2, sd = 0.05), n_subject, 2)
+rownames(y_traits) <- levels(factor(subject))
+colnames(y_traits) <- c("accuracy", "speed")
+```
+
+Each element of `data_list` is a `r n_seed` x `r n_roi` matrix:
+
+```{r peek-data}
+dim(data_list[[1]])
+length(data_list)
+```
+
+Fit the model with supervised trait prediction:
+
+```{r fit-basic}
+fit <- bilinear_mixed(
+  data      = data_list,
+  subject   = subject,
+  z         = z,
+  y         = y_traits,
+  mode      = "seed_axis",
+  r_seed    = 2,
+  r_roi     = 3,
+  k_subject = 2,
+  lambda_y  = 1.0,
+  max_iter  = 30
+)
+fit
+```
+
+The model has learned a 2 x 3 compressed core for each observation,
+estimated subject scores, recovered a condition-effect map, and linked
+the latent space to subject traits.
+
+## How it works
+
+`bilinear_mixed()` decomposes each observed matrix $X_i$ as:
+
+$$X_i \approx L\left(\beta_0 + B z_i + W t_{s(i)}\right) R^\top$$
+
+where:
+
+| Symbol | Meaning | Dimensions |
+|:-------|:--------|:-----------|
+| $L$ | Seed (row) basis | n_seed x r_seed |
+| $R$ | ROI (column) basis | n_roi x r_roi |
+| $\beta_0$ | Grand-mean core | r_seed x r_roi (vectorized) |
+| $B$ | Design effect coefficients | (r_seed * r_roi) x n_design |
+| $W$ | Subject loading matrix | (r_seed * r_roi) x K |
+| $t_{s(i)}$ | Subject scores (random effects) | K x 1 per subject |
+| $A$ | Supervision map (optional) | K x n_traits |
+
+The bases $L$ and $R$ are learned from the pooled covariance of the data,
+then the model alternates between updating $W$, $B$, $t$, and $A$ in a
+regularized alternating least squares (ALS) loop.
+
+
+## The three analysis modes
+
+The `mode` argument controls how the model treats the row (seed) dimension.
+This is the most important modelling choice, and the right answer depends on
+whether your rows are exchangeable observations or structured entities.
+
+### seed_axis: rows as a matrix axis
+
+This is the default and most common mode. Each observed matrix $X_i$ is
+projected onto both bases simultaneously to form a compressed core vector:
+
+$$m_i = \text{vec}\bigl(L^\top X_i\, R\bigr) \quad \in \mathbb{R}^{r_\text{seed} \cdot r_\text{roi}}$$
+
+The mixed model is then fit on these core vectors:
+
+$$m_i = \beta_0 + B\,z_i + W\,t_{s(i)} + \varepsilon_i$$
+
+**Use seed_axis when:** your matrices represent bivariate relationships
+between two sets of entities (seeds and ROIs, genes and conditions, etc.)
+and you want to model the full matrix pattern as a single observation.
+
+```{r seed-axis-example}
+fit_axis <- bilinear_mixed(
+  data    = data_list,
+  subject = subject,
+  z       = z,
+  mode    = "seed_axis",
+  r_seed  = 2,
+  r_roi   = 3,
+  k_subject = 2,
+  max_iter  = 30
+)
+```
+
+**What you get back:** the `axis` slot contains seed-by-ROI effect maps that
+can be visualized as heatmaps. Each `trait_maps[[k]]` is a full
+`r n_seed` x `r n_roi` matrix, and each `design_maps[[j]]` shows how the
+$j$-th design variable modulates the connectivity surface.
+
+```{r axis-output-structure}
+names(fit_axis$axis$trait_maps)
+dim(fit_axis$axis$trait_maps[["comp1"]])
+dim(fit_axis$axis$design_maps[[1]])
+```
+
+### seed_repeat: rows as repeated observations
+
+In this mode, each row of a matrix is treated as a separate observation
+of the same ROI profile. Instead of compressing both axes, only the column
+(ROI) axis is projected:
+
+$$u_{ij} = X_i[j, \cdot]\; R \quad \in \mathbb{R}^{r_\text{roi}}$$
+
+where $j$ indexes rows within matrix $i$. This creates a "long-form"
+dataset with n_obs x n_seed rows, each of dimension r_roi. The mixed model
+is then:
+
+$$u_{ij} = \beta_0 + B\,d_{ij} + W\,t_{s(i)} + \varepsilon_{ij}$$
+
+where $d_{ij}$ is a design vector that can include the repeat-level design
+$z_i$, row-level covariates from `row_design`, and their interactions.
+
+**Use seed_repeat when:** your rows represent entities with their own
+properties (e.g., seed regions with spatial coordinates, voxels with
+tissue-type labels), and you want those properties to enter as covariates.
+
+```{r seed-repeat-example}
+row_cov <- data.frame(
+  position = seq(-1, 1, length.out = n_seed),
+  hemi     = rep(c(-1, 1), length.out = n_seed)
+)
+
+fit_rep <- bilinear_mixed(
+  data       = data_list,
+  subject    = subject,
+  z          = z,
+  row_design = row_cov,
+  mode       = "seed_repeat",
+  r_roi      = 3,
+  k_subject  = 2,
+  max_iter   = 30
+)
+```
+
+**What you get back:** the `repeat_head` slot contains ROI-space vectors
+rather than full matrices. The design is expanded to include row covariates
+and their interactions with the condition:
+
+```{r repeat-output-structure}
+fit_rep$repeat_head$design_names
+```
+
+Each `roi_trait_maps[[k]]` is a vector of length n_roi showing how each ROI
+loads on the $k$-th subject component:
+
+```{r repeat-roi-map}
+length(fit_rep$repeat_head$roi_trait_maps[[1]])
+```
+
+### both: fit both heads with a shared ROI basis
+
+This mode runs both analyses using the same ROI basis $R$, giving you
+complementary views: the seed_axis head captures the full seed-by-ROI
+pattern, while the seed_repeat head reveals how row-level covariates
+modulate the ROI profile.
+
+**Use both when:** you want the full matrix picture *and* you have
+meaningful row covariates.
+
+```{r both-example}
+fit_both <- bilinear_mixed(
+  data       = data_list,
+  subject    = subject,
+  z          = z,
+  row_design = row_cov,
+  mode       = "both",
+  r_seed     = 2,
+  r_roi      = 3,
+  k_subject  = 2,
+  max_iter   = 30
+)
+```
+
+The shared ROI basis ensures the two heads are comparable:
+
+```{r shared-basis}
+all.equal(fit_both$axis$R, fit_both$repeat_head$R)
+```
+
+
+## Interpreting components across spaces
+
+A single latent component $k$ has a footprint in three spaces: seed space
+(which rows it activates), ROI space (which columns it activates), and
+trait space (which subject-level outcomes it predicts). Understanding a
+component means seeing all three views together.
+
+We'll use the supervised fit for this section:
+
+```{r fit-for-interpretation}
+fit_sup <- bilinear_mixed(
+  data      = data_list,
+  subject   = subject,
+  z         = z,
+  y         = y_traits,
+  mode      = "seed_axis",
+  r_seed    = 2,
+  r_roi     = 3,
+  k_subject = 2,
+  lambda_y  = 1.0,
+  max_iter  = 30
+)
+```
+
+### Extracting the building blocks
+
+Every component $k$ is defined by four objects stored in the fitted model.
+All outputs carry proper names — subject labels on scores, component labels
+on columns, trait names on the supervision map:
+
+```{r extract-components}
+# Bases learned from the data
+L <- fit_sup$axis$L    # seed basis: n_seed x r_seed
+R <- fit_sup$axis$R    # ROI basis:  n_roi  x r_roi
+
+# Per-component quantities
+W <- fit_sup$axis$W              # loading matrix: (r_seed*r_roi) x K
+t_scores <- fit_sup$axis$t_scores  # subject scores: n_subject x K
+A <- fit_sup$axis$A              # supervision map: K x n_traits
+```
+
+Note how everything is labeled:
+
+```{r show-naming}
+head(t_scores)  # rows = subjects, cols = comp1, comp2
+A               # rows = components, cols = trait names
+```
+
+The loading matrix $W$ is the key to interpretation. Each column
+`W[, k]` is a vectorized `r_seed` x `r_roi` core, and the model
+pre-computes its back-projection to the original space as `trait_maps`:
+
+```{r trait-map-precomputed}
+# trait_maps[[k]] = L %*% matrix(W[,k], r_seed, r_roi) %*% t(R)
+# Already computed and named:
+names(fit_sup$axis$trait_maps)
+dim(fit_sup$axis$trait_maps[["comp1"]])
+```
+
+### Seed-space and ROI-space profiles
+
+To understand *where* a component acts, the model pre-computes marginal
+profiles by averaging each trait map across the opposite axis:
+
+```{r marginal-profiles}
+# Pre-computed: no manual derivation needed
+seed_profiles <- fit_sup$axis$seed_profiles  # n_seed x K
+roi_profiles  <- fit_sup$axis$roi_profiles   # n_roi  x K
+dim(seed_profiles)
+dim(roi_profiles)
+```
+
+The seed profile tells you which rows (seeds) are most involved in the
+component; the ROI profile tells you which columns (ROIs) are most involved.
+
+```{r plot-seed-profile, echo = FALSE, fig.cap = "Seed-space profiles: average connectivity contribution of each seed for components 1 (blue) and 2 (orange).", fig.height = 3.5}
+cols <- c("steelblue", "darkorange")
+barplot(
+  t(seed_profiles),
+  beside = TRUE,
+  names.arg = paste0("Seed ", seq_len(n_seed)),
+  col = cols,
+  ylab = "Mean loading",
+  main = "Seed profiles"
+)
+legend("topright", legend = paste("Comp", seq_len(K)),
+       fill = cols, bty = "n", cex = 0.9)
+```
+
+```{r plot-roi-profile, echo = FALSE, fig.cap = "ROI-space profiles: average connectivity contribution of each ROI for components 1 and 2.", fig.height = 3.5}
+barplot(
+  t(roi_profiles),
+  beside = TRUE,
+  names.arg = paste0("R", seq_len(n_roi)),
+  col = cols, las = 2, cex.names = 0.8,
+  ylab = "Mean loading",
+  main = "ROI profiles"
+)
+legend("topright", legend = paste("Comp", seq_len(K)),
+       fill = cols, bty = "n", cex = 0.9)
+```
+
+### The full connectivity map
+
+The trait map itself is the most informative view — it shows exactly which
+seed-ROI pairs are modulated by the component:
+
+```{r show-trait-map}
+tmap1 <- fit_sup$axis$trait_maps[[1]]
+```
+
+```{r plot-trait-map, echo = FALSE, fig.cap = "Component 1 trait map: the full seed x ROI connectivity pattern associated with individual differences on this latent dimension.", fig.height = 3.5}
+image(
+  seq_len(nrow(tmap1)), seq_len(ncol(tmap1)), tmap1,
+  xlab = "Seed", ylab = "ROI",
+  col = hcl.colors(64, "RdBu", rev = TRUE),
+  main = "Component 1: connectivity pattern"
+)
+```
+
+### Subject scores in latent space
+
+Subject scores position each individual along the components. Subjects with
+high scores on component $k$ express the connectivity pattern in
+`trait_maps[[k]]` more strongly:
+
+```{r show-subject-scores}
+# Subject scores come pre-labeled with subject IDs and component names
+t_scores <- fit_sup$axis$t_scores
+t_scores
+```
+
+```{r plot-subject-scores, echo = FALSE, fig.cap = "Subject positions in the 2-D latent space. Proximity reflects similarity in connectivity patterns after removing condition effects.", fig.height = 4}
+plot(t_scores[, 1], t_scores[, 2],
+     pch = 19, cex = 1.4,
+     xlab = "Component 1 score", ylab = "Component 2 score",
+     main = "Subject scores")
+text(t_scores[, 1], t_scores[, 2],
+     labels = rownames(t_scores), pos = 3, cex = 0.8)
+```
+
+### Trait-space weights
+
+The supervision map $A$ (K x n_traits) links subject scores to external
+measures. Each column of $A$ shows how a trait loads onto the latent
+components:
+
+```{r show-supervision-map}
+# A comes pre-labeled: rows = components, columns = trait names
+A <- fit_sup$axis$A
+A
+```
+
+Read this row-by-row: the "accuracy" column shows how each component
+predicts accuracy; "speed" shows the same for speed. Or read column-wise:
+comp1 loads positively on accuracy but negatively on speed.
+
+### Putting it all together
+
+The most powerful interpretation comes from viewing all four spaces in a
+single figure. For each component we show: the seed profile, the ROI
+profile, the full connectivity map, and the trait weights.
+
+```{r multi-panel-comp1, echo = FALSE, fig.width = 7, fig.height = 7, fig.cap = "Component 1 across all four spaces. Top-left: which seeds are involved. Top-right: which ROIs are involved. Bottom-left: the full connectivity map. Bottom-right: how this component predicts traits, with subject scores along the x-axis."}
+k <- 1
+tmap <- fit_sup$axis$trait_maps[[k]]
+
+op <- par(mfrow = c(2, 2), mar = c(4, 4, 3, 1))
+
+# Seed profile
+barplot(seed_profiles[, k], names.arg = paste0("S", seq_len(n_seed)),
+        col = "steelblue", ylab = "Mean loading",
+        main = paste0("Comp ", k, ": seed profile"))
+abline(h = 0, lty = 2, col = "grey50")
+
+# ROI profile
+barplot(roi_profiles[, k], names.arg = paste0("R", seq_len(n_roi)),
+        col = "darkorange", ylab = "Mean loading",
+        main = paste0("Comp ", k, ": ROI profile"),
+        las = 2, cex.names = 0.7)
+abline(h = 0, lty = 2, col = "grey50")
+
+# Full connectivity map
+image(seq_len(nrow(tmap)), seq_len(ncol(tmap)), tmap,
+      xlab = "Seed", ylab = "ROI",
+      col = hcl.colors(64, "RdBu", rev = TRUE),
+      main = paste0("Comp ", k, ": connectivity map"))
+
+# Trait prediction
+for (j in seq_len(ncol(y_traits))) {
+  y_pred <- t_scores[, k] * A[k, j]
+  if (j == 1) {
+    plot(t_scores[, k], y_traits[, j],
+         pch = 19, col = c("steelblue", "darkorange")[j],
+         xlab = paste0("Comp ", k, " score"),
+         ylab = "Trait value",
+         main = paste0("Comp ", k, ": trait prediction"),
+         ylim = range(y_traits))
+  } else {
+    points(t_scores[, k], y_traits[, j],
+           pch = 17, col = c("steelblue", "darkorange")[j])
+  }
+}
+legend("topright", legend = colnames(y_traits),
+       col = c("steelblue", "darkorange"), pch = c(19, 17),
+       bty = "n", cex = 0.8)
+
+par(op)
+```
+
+You can generate this panel for each component. Here is the code to
+produce it for an arbitrary component $k$:
+
+```{r multi-panel-recipe, eval = FALSE}
+k <- 1  # change to inspect other components
+
+par(mfrow = c(2, 2), mar = c(4, 4, 3, 1))
+
+# 1. Seed profile — which rows matter? (pre-computed)
+barplot(fit_sup$axis$seed_profiles[, k],
+        col = "steelblue", main = paste("Comp", k, "- seed profile"))
+
+# 2. ROI profile — which columns matter? (pre-computed)
+barplot(fit_sup$axis$roi_profiles[, k],
+        col = "darkorange", main = paste("Comp", k, "- ROI profile"))
+
+# 3. Full connectivity map
+tmap <- fit_sup$axis$trait_maps[[k]]
+image(seq_len(nrow(tmap)), seq_len(ncol(tmap)), tmap,
+      col = hcl.colors(64, "RdBu", rev = TRUE),
+      main = paste("Comp", k, "- connectivity"))
+
+# 4. Trait prediction
+plot(fit_sup$axis$t_scores[, k], y_traits[, 1], pch = 19,
+     xlab = paste("Comp", k, "score"), ylab = "Trait",
+     main = paste("Comp", k, "- traits"))
+```
+
+### Interpreting the seed_repeat head
+
+In `seed_repeat` mode, there is no full seed-by-ROI trait map. Instead,
+the per-component footprint is a single ROI-space vector. The model also
+pre-computes an `roi_profiles` matrix (n_roi x K), analogous to the axis
+head's profiles:
+
+```{r repeat-interpretation}
+fit_rep2 <- bilinear_mixed(
+  data       = data_list,
+  subject    = subject,
+  z          = z,
+  y          = y_traits,
+  row_design = row_cov,
+  mode       = "seed_repeat",
+  r_roi      = 3,
+  k_subject  = 2,
+  lambda_y   = 1.0,
+  max_iter   = 30
+)
+
+# Pre-computed ROI profiles matrix
+dim(fit_rep2$repeat_head$roi_profiles)
+
+# Or access individual component vectors
+roi_vec <- fit_rep2$repeat_head$roi_trait_maps[["comp1"]]
+length(roi_vec)
+```
+
+```{r plot-repeat-roi, echo = FALSE, fig.cap = "Component 1 ROI loading in seed_repeat mode. Each bar shows how strongly an ROI is associated with individual differences on this latent dimension.", fig.height = 3.5}
+barplot(roi_vec, names.arg = paste0("R", seq_len(n_roi)),
+        col = "darkorange", ylab = "Loading",
+        main = "Comp 1: ROI loading (seed_repeat)", las = 2)
+abline(h = 0, lty = 2, col = "grey50")
+```
+
+The design effect maps similarly live in ROI space. Each element of
+`roi_design_maps` shows how a design variable (condition, row covariate,
+or interaction) affects the ROI profile:
+
+```{r repeat-design-maps}
+names(fit_rep2$repeat_head$roi_design_maps)
+```
+
+```{r plot-repeat-design, echo = FALSE, fig.cap = "Design effect vectors in ROI space. The condition effect (z1) and its interactions with row covariates each produce a different ROI-space pattern.", fig.width = 7, fig.height = 3.5}
+dmaps <- fit_rep2$repeat_head$roi_design_maps
+n_effects <- min(length(dmaps), 4)
+op <- par(mfrow = c(1, n_effects), mar = c(4, 3, 3, 1))
+pal <- hcl.colors(n_effects, "Dark 2")
+for (j in seq_len(n_effects)) {
+  barplot(dmaps[[j]], names.arg = paste0("R", seq_len(n_roi)),
+          col = pal[j], main = names(dmaps)[j],
+          las = 2, cex.names = 0.7, ylab = if (j == 1) "Effect" else "")
+  abline(h = 0, lty = 2, col = "grey50")
+}
+par(op)
+```
+
+### Comparing modes: what does each give you?
+
+| What you want | seed_axis | seed_repeat |
+|:--------------|:----------|:------------|
+| Full seed x ROI maps | `trait_maps[["comp1"]]`, `design_maps[[j]]` | Not available |
+| Per-seed profiles | `seed_profiles` (pre-computed, n_seed x K) | Not available |
+| Per-ROI profiles | `roi_profiles` (pre-computed, n_roi x K) | `roi_profiles` (pre-computed, n_roi x K) |
+| ROI component vectors | Derive via `roi_profiles[, k]` | `roi_trait_maps[["comp1"]]` directly |
+| Row-covariate effects | Not supported | `roi_design_maps` (main + interactions) |
+| Subject scores | `axis$t_scores` (labeled) | `repeat_head$t_scores` (labeled) |
+| Trait prediction | `axis$A` (labeled) | `repeat_head$A` (labeled) |
+
+
+## Inspecting design effects
+
+The fitted model back-projects design coefficients into the original
+space. In `seed_axis` mode, each `design_maps[[j]]` is a full
+seed x ROI matrix:
+
+```{r design-map-dim}
+length(fit$axis$design_maps)
+dim(fit$axis$design_maps[[1]])
+```
+
+```{r plot-design-map, echo = FALSE, fig.cap = "Condition effect map. Each cell shows how connectivity between a seed-ROI pair changes with the experimental condition.", fig.height = 3.5}
+dmap <- fit$axis$design_maps[[1]]
+image(
+  seq_len(nrow(dmap)), seq_len(ncol(dmap)), dmap,
+  xlab = "Seed", ylab = "ROI",
+  col = hcl.colors(64, "RdBu", rev = TRUE),
+  main = "Condition effect"
+)
+```
+
+Positive values indicate seed-ROI pairs whose connectivity increases with
+condition; negative values indicate decreases.
+
+
+## Symmetric connectivity
+
+When your matrices are symmetric ROI x ROI correlation or covariance
+matrices, set `connectivity_type = "symmetric"`. The model then forces a
+shared basis for rows and columns ($L = R$), halving the basis parameters:
+
+```{r simulate-symmetric, include = FALSE}
+n_node <- 10
+U_true <- qr.Q(qr(matrix(rnorm(n_node * 3), n_node, 3)))
+sym_data <- vector("list", length(subject))
+for (i in seq_along(sym_data)) {
+  si <- ((i - 1L) %/% n_repeat) + 1L
+  m <- rnorm(9, sd = 0.3) * z[i] + rnorm(9, sd = 0.3) * t_true[si, 1]
+  S_mat <- matrix(m, 3, 3)
+  S_mat <- (S_mat + t(S_mat)) / 2
+  E <- matrix(rnorm(n_node^2, sd = 0.08), n_node, n_node)
+  E <- (E + t(E)) / 2
+  sym_data[[i]] <- U_true %*% S_mat %*% t(U_true) + E
+}
+```
+
+```{r fit-symmetric}
+fit_sym <- bilinear_mixed(
+  data              = sym_data,
+  subject           = subject,
+  z                 = z,
+  mode              = "seed_axis",
+  connectivity_type = "symmetric",
+  r_seed            = 3,
+  r_roi             = 3,
+  k_subject         = 2,
+  max_iter          = 25
+)
+fit_sym$connectivity_type
+```
+
+With `connectivity_type = "auto"` (the default), the model detects symmetry
+automatically by checking whether all matrices are equal to their transpose
+within `sym_tol`.
+
+When symmetric, the trait maps are symmetric too — the node-level profile
+is just the row (or column) mean:
+
+```{r sym-node-profile}
+tmap_sym <- fit_sym$axis$trait_maps[[1]]
+node_profile <- rowMeans(tmap_sym)  # = colMeans since symmetric
+node_profile
+```
+
+
+## The easy API
+
+For most analyses, `bilinear_mixed_easy()` picks sensible defaults
+automatically. You just specify a complexity profile:
+
+```{r fit-easy}
+fit_easy <- bilinear_mixed_easy(
+  data    = data_list,
+  subject = subject,
+  z       = z,
+  y       = y_traits,
+  profile = "fast"
+)
+fit_easy
+```
+
+The three profiles control how aggressively the model captures variance:
+
+| Profile | Variance target | Speed |
+|:--------|:----------------|:------|
+| `"fast"` | 75% | Fastest — good for exploration |
+| `"balanced"` | 85% | Default for most analyses |
+| `"adaptive"` | 92% | Thorough — higher ranks, more regularization |
+
+Behind the scenes, `bilinear_mixed_recommend()` inspects your data to set
+ranks, regularization strengths, and mode:
+
+```{r recommend}
+rec <- bilinear_mixed_recommend(
+  data    = data_list,
+  subject = subject,
+  z       = z,
+  y       = y_traits,
+  profile = "balanced"
+)
+str(rec[c("mode", "r_seed", "r_roi", "k_subject", "lambda_t")])
+```
+
+
+## Tuning via cross-validation
+
+When you need the best configuration, `bilinear_mixed_tune()` performs
+subject-blocked cross-validation over a grid of key parameters:
+
+```{r tune}
+tuned <- bilinear_mixed_tune(
+  data    = data_list,
+  subject = subject,
+  z       = z,
+  y       = y_traits,
+  metric  = "reconstruction",
+  n_folds = 2,
+  grid    = data.frame(
+    r_seed    = c(1, 2, 3),
+    r_roi     = c(2, 3, 4),
+    k_subject = c(1, 2, 2),
+    lambda_y  = c(0.5, 1, 1)
+  )
+)
+tuned
+```
+
+```{r plot-tuning, echo = FALSE, fig.cap = "CV reconstruction error by candidate. Lower is better.", fig.height = 3.5}
+res <- tuned$results
+res <- res[res$n_success > 0, ]
+barplot(
+  res$score,
+  names.arg = paste0("r=", res$r_seed, ",", res$r_roi, "\nK=", res$k_subject),
+  col = ifelse(seq_len(nrow(res)) == which.min(res$score), "steelblue", "grey70"),
+  ylab = "Mean CV error",
+  main = "Tuning candidates",
+  las = 1
+)
+```
+
+The best candidate is automatically refit on the full dataset and stored in
+`tuned$fit`.
+
+For supervised problems with trait data, use `metric = "trait_r2"` to select
+the configuration that best predicts subject traits:
+
+```{r tune-trait, eval = FALSE}
+tuned_trait <- bilinear_mixed_tune(
+  data    = data_list,
+  subject = subject,
+  z       = z,
+  y       = y_traits,
+  metric  = "trait_r2"
+)
+```
+
+
+## Convergence
+
+The ALS algorithm tracks a penalized objective at each iteration. You can
+inspect convergence to check that the model has stabilized:
+
+```{r convergence}
+obj <- fit$axis$objective_trace
+length(obj)
+```
+
+```{r plot-convergence, echo = FALSE, fig.cap = "Objective function over ALS iterations. Rapid initial descent followed by a plateau indicates convergence.", fig.height = 3.5}
+plot(obj, type = "b", pch = 19, cex = 0.7,
+     xlab = "Iteration", ylab = "Objective",
+     main = "Convergence trace")
+```
+
+If the trace hasn't plateaued, increase `max_iter`. If the model oscillates,
+increase the ridge penalties (`lambda_w`, `lambda_t`).
+
+
+## Summary of key functions
+
+| Function | Purpose |
+|:---------|:--------|
+| `bilinear_mixed()` | Full control over all parameters |
+| `bilinear_mixed_easy()` | Automatic defaults with optional tuning |
+| `bilinear_mixed_recommend()` | Data-adaptive parameter suggestions |
+| `bilinear_mixed_tune()` | Subject-blocked CV for rank and regularization |
+
+
+## Next steps
+
+- `?bilinear_mixed` — full parameter documentation
+- `vignette("mfa")` — Multiple Factor Analysis for multi-block integration
+- `vignette("penalized_mfa")` — sparse MFA with penalties
+- `vignette("covstatis")` — STATIS analysis for covariance matrices
