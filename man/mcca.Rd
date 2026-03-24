@@ -70,7 +70,7 @@ observations (rows) but potentially different variables (columns).
 \details{
 The reference implementation in this package uses a ridge-stabilized MAXVAR
 GCCA formulation that remains well-posed when blocks have more variables than
-rows (\\eqn{p \\gg n}) or are rank-deficient after preprocessing (e.g.,
+rows (\eqn{p \gg n}{p >> n}) or are rank-deficient after preprocessing (e.g.,
 centering).
 
 The \code{mcca.list} method applies MCCA to a list of data matrices or data frames.

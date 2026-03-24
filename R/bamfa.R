@@ -1,6 +1,3 @@
-#' @useDynLib muscal, .registration = TRUE
-#' @importFrom Rcpp sourceCpp
-#' @import RcppArmadillo
 #' @importFrom stats rnorm sd
 #' @importFrom chk chk_list chk_integer chk_numeric chk_gte chk_flag chk_matrix chk_not_empty
 #' @importFrom chk chk_true
@@ -14,9 +11,7 @@
 #' @importFrom rlang enquo quo_is_missing quo_get_expr
 #' @importFrom dplyr select pull
 #' @importFrom multivarious multiblock_projector
-#' @importFrom RSpectra svds
 #' @importFrom stats rnorm
-#' @import Rcpp
 #' @importFrom rlang .data
 NULL
 
@@ -40,18 +35,10 @@ ls_ridge <- function(Z, X, lambda = 0) {
   # Add tiny ridge for stability in unpenalized case
   effective_lambda <- if (lambda == 0) 1e-8 else lambda
   
-  # Call the fast Rcpp implementation
-  coefs <- tryCatch(
-    ridge_solve(Z, X, effective_lambda),
-    error = function(e) {
-      warning("Rcpp ridge_solve failed: ", e$message, ". Falling back to R.", call. = FALSE)
-      # Fallback R implementation
-      ZtZ <- crossprod(Z)
-      ZtX <- crossprod(Z, X)
-      I_k <- diag(k)
-      solve(ZtZ + effective_lambda * I_k, ZtX)
-    }
-  )
+  ZtZ <- crossprod(Z)
+  ZtX <- crossprod(Z, X)
+  I_k <- diag(k)
+  coefs <- solve(ZtZ + effective_lambda * I_k, ZtX)
 
   if (!is.matrix(coefs)) {
       coefs <- matrix(coefs, nrow = k, ncol = ncol(X))
@@ -98,14 +85,14 @@ prep_bamfa_blocks <- function(data, preproc) {
 #' subspace (`G`) and block-specific subspaces (`B_i`).
 #'
 #' @details
-#' The algorithm models each data block \\(X_i\\) as:
-#' \\\[ X_i = S_i G^T + U_i B_i^T + E_i \\\]
-#' where \\(G\\) represents shared global loadings, \\(B_i\\) represents block-specific
-#' local loadings, \\(S_i\\) and \\(U_i\\) are the corresponding scores, and \\(E_i\\) is noise.
-#' Loadings are constrained to be orthonormal (\\(G^T G = I, B_i^T B_i = I\\)).
+#' The algorithm models each data block \eqn{X_i} as:
+#' \deqn{X_i = S_i G^T + U_i B_i^T + E_i}
+#' where \eqn{G} represents shared global loadings, \eqn{B_i} represents block-specific
+#' local loadings, \eqn{S_i} and \eqn{U_i} are the corresponding scores, and \eqn{E_i} is noise.
+#' Loadings are constrained to be orthonormal (\eqn{G^T G = I, B_i^T B_i = I}).
 #'
 #' The algorithm aims to minimize the total reconstruction error:
-#' \\\[ \\sum_{i=1}^{m} ||X_i - S_i G^T - U_i B_i^T ||_F^2 \\\]
+#' \deqn{\sum_{i=1}^{m} ||X_i - S_i G^T - U_i B_i^T||_F^2}
 #' using an iterative alternating optimization strategy (similar to Expectation-Maximization):
 #' 1. **Preprocessing:** Each block is preprocessed using the provided `preproc` pipeline.
 #' 2. **Initialization:** Initialize global loadings `G` (via SVD on the mean block).

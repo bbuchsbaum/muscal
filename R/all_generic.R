@@ -97,7 +97,7 @@ mfa <- function(data, preproc, ncomp = 2, normalization = "MFA", A = NULL, M = N
 #'
 #' The reference implementation in this package uses a ridge-stabilized MAXVAR
 #' GCCA formulation that remains well-posed when blocks have more variables than
-#' rows (\\eqn{p \\gg n}) or are rank-deficient after preprocessing (e.g.,
+#' rows (\eqn{p \gg n}{p >> n}) or are rank-deficient after preprocessing (e.g.,
 #' centering).
 #'
 #' @param data A data object for which an MCCA method is defined. Typically a
@@ -163,16 +163,17 @@ mcca <- function(data, preproc, ncomp = 2, ridge = 1e-6,
 #'   after each iteration for numerical stability.
 #' @param use_future Logical; if `TRUE`, block-wise updates are parallelized via
 #'   `furrr::future_map()` when available.
-#' @param ... Additional arguments passed to the underlying method. iPCA methods
-#'   additionally support:
-#'   - `eig_solver = c("auto", "full", "truncated")` for dense-mode Sigma updates,
-#'   - `eig_rank` for truncated eigendecomposition rank,
-#'   - `eig_trunc_min_n` threshold used by `eig_solver = "auto"`.
+#' @param eig_solver Character; eigensolver policy for dense-mode Sigma updates.
+#'   One of `"auto"`, `"full"`, or `"truncated"`.
+#' @param eig_rank Optional integer; truncated eigendecomposition rank.
+#' @param eig_trunc_min_n Integer; minimum `n` at which `eig_solver = "auto"`
+#'   switches to truncated eigendecomposition.
+#' @param ... Additional arguments passed to the underlying method.
 #'
 #' @return An object inheriting from class `ipca`.
 #'
 #' @references
-#' Tang, T. M., & Allen, G. I. (2021). Integrated Principal Components Analysis.
+#' Tang, T. M. and Allen, G. I. (2021). Integrated Principal Components Analysis.
 #' *Journal of Machine Learning Research*, 22(198), 1-81.
 #'
 #' @export
@@ -180,7 +181,10 @@ mcca <- function(data, preproc, ncomp = 2, ridge = 1e-6,
 ipca <- function(data, preproc, ncomp = 2, lambda = 1,
                  method = c("auto", "gram", "dense"),
                  max_iter = 100, tol = 1e-6,
-                 normalize_trace = TRUE, use_future = FALSE, ...) {
+                 normalize_trace = TRUE, use_future = FALSE,
+                 eig_solver = c("auto", "full", "truncated"),
+                 eig_rank = NULL, eig_trunc_min_n = 400,
+                 ...) {
   UseMethod("ipca")
 }
 

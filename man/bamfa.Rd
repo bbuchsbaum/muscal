@@ -116,14 +116,14 @@ It decomposes multi-block data (e.g., multiple subjects) into a shared global
 subspace (\code{G}) and block-specific subspaces (\code{B_i}).
 }
 \details{
-The algorithm models each data block \\(X_i\\) as:
-\\[ X_i = S_i G^T + U_i B_i^T + E_i \\]
-where \\(G\\) represents shared global loadings, \\(B_i\\) represents block-specific
-local loadings, \\(S_i\\) and \\(U_i\\) are the corresponding scores, and \\(E_i\\) is noise.
-Loadings are constrained to be orthonormal (\\(G^T G = I, B_i^T B_i = I\\)).
+The algorithm models each data block \eqn{X_i} as:
+\deqn{X_i = S_i G^T + U_i B_i^T + E_i}
+where \eqn{G} represents shared global loadings, \eqn{B_i} represents block-specific
+local loadings, \eqn{S_i} and \eqn{U_i} are the corresponding scores, and \eqn{E_i} is noise.
+Loadings are constrained to be orthonormal (\eqn{G^T G = I, B_i^T B_i = I}).
 
 The algorithm aims to minimize the total reconstruction error:
-\\[ \\sum_{i=1}^{m} ||X_i - S_i G^T - U_i B_i^T ||_F^2 \\]
+\deqn{\sum_{i=1}^{m} ||X_i - S_i G^T - U_i B_i^T||_F^2}
 using an iterative alternating optimization strategy (similar to Expectation-Maximization):
 \enumerate{
 \item \strong{Preprocessing:} Each block is preprocessed using the provided \code{preproc} pipeline.

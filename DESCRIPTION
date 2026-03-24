@@ -12,7 +12,6 @@ Description: Provides core 'French school' multivariate analysis methods includi
     and processing potentially used by related statistical packages.
 License: MIT + file LICENSE
 Encoding: UTF-8
-LazyData: true
 Imports:
     Matrix,
     stats,
@@ -24,8 +23,6 @@ Imports:
     assertthat,
     chk,
     crayon,
-    Rcpp,
-    RcppArmadillo,
     RSpectra,
     rlang,
     dplyr,
@@ -43,9 +40,11 @@ Suggests:
     testthat (>= 3.0.0),
     knitr,
     rmarkdown,
-    genpca
+    genpca,
+    future
 VignetteBuilder: knitr
 Depends:
     R (>= 3.5.0)
+Additional_repositories: https://bbuchsbaum.r-universe.dev
 RoxygenNote: 7.3.3
-LinkingTo: Rcpp, RcppArmadillo, RcppEigen
+Config/Needs/website: albersdown

@@ -51,11 +51,13 @@ ipca.list <- function(data,
 #' @md
 #' @rdname ipca
 #' @details
-#' `ipca.multiblock()` implements multiplicative Frobenius iPCA from Tang & Allen
+#' `ipca.multiblock()` implements multiplicative Frobenius iPCA from Tang and Allen
 #' (2021) using a Flip-Flop algorithm. In `method = "gram"` mode, fitting is
 #' performed in sample space (`n x n`) and avoids `p_k x p_k` eigendecompositions.
 #' This is exact for the multiplicative Frobenius updates.
 #'
+#' @param .init_state Optional list of warm-start state from a previous fit.
+#' @param .return_state Logical; if `TRUE`, include warm-start state in the result.
 #' @export
 ipca.multiblock <- function(data,
                             preproc = multivarious::center(),
@@ -879,6 +881,7 @@ project.ipca <- function(x, new_data, ...) {
 #' @param tie Penalty tying rule: `"inv_p"` (`alpha / p_k`), `"inv_pbar"`
 #'   (`alpha * mean(p) / p_k`), or `"equal"` (`alpha` for all blocks).
 #' @param holdout_frac Fraction of entries to hold out in each block.
+#' @param n_masks Integer; number of random holdout masks to average over.
 #' @param warm_start Logical; if `TRUE`, alpha candidates are fit in ascending
 #'   order and each fit is initialized from the previous alpha within a mask.
 #' @param method One of `"auto"`, `"gram"`, or `"dense"` for iPCA fits.
