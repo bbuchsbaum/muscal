@@ -1,0 +1,153 @@
+# Graph-Anchored Multiple Factor Analysis
+
+\`graph_anchored_mfa()\` extends \[anchored_mfa()\] to settings where
+auxiliary blocks do not share aligned columns and borrowing across
+blocks is induced by a sparse feature graph. Rows of each auxiliary
+block are linked to a common anchor matrix \`Y\` through \`row_index\`,
+while a graph Laplacian penalty on the concatenated auxiliary loadings
+encourages similar features across blocks to have similar latent
+representations.
+
+Missing domains are handled by omission: each observed subject-domain
+pair is treated as one auxiliary block. This supports subjects with only
+\`D1\`, subjects with \`D1\` and \`D2\`, and mixtures of observed-domain
+patterns.
+
+## Usage
+
+``` r
+graph_anchored_mfa(
+  Y,
+  X,
+  row_index,
+  block_info = NULL,
+  preproc = multivarious::center(),
+  ncomp = 2,
+  normalization = c("MFA", "None", "custom"),
+  alpha = NULL,
+  feature_graph = NULL,
+  graph_lambda = 0,
+  graph_form = c("laplacian", "adjacency", "normalized_laplacian"),
+  max_iter = 50,
+  tol = 1e-06,
+  ridge = 1e-08,
+  verbose = FALSE,
+  ...
+)
+```
+
+## Arguments
+
+- Y:
+
+  Numeric matrix/data.frame (\`N × q\`) serving as the anchored target
+  space.
+
+- X:
+
+  Auxiliary blocks. Either a flat named list of matrices/data frames, or
+  a nested list \`X\[\[subject\]\]\[\[domain\]\]\`.
+
+- row_index:
+
+  A structure mirroring \`X\`. Each vector maps rows of the
+  corresponding auxiliary block to rows of \`Y\`.
+
+- block_info:
+
+  Optional data frame describing flattened blocks. If supplied, it must
+  have one row per flattened block. Recommended columns are \`block\`,
+  \`subject\`, and \`domain\`.
+
+- preproc:
+
+  A \`multivarious\` preprocessing pipeline (a \`pre_processor\` or
+  \`prepper\`) or a list of them. If a list, it must have length \`1 +
+  length(flattened_X)\` and will be applied to \`c(list(Y),
+  flattened_X)\`.
+
+- ncomp:
+
+  Integer number of latent components.
+
+- normalization:
+
+  Block weighting scheme. \`"MFA"\` uses inverse squared first singular
+  values; \`"None"\` uses uniform weights; \`"custom"\` uses \`alpha\`.
+
+- alpha:
+
+  Optional numeric vector of per-block weights. When \`normalization =
+  "custom"\`, it must have length \`1 + length(flattened_X)\`, with the
+  first weight corresponding to \`Y\`.
+
+- feature_graph:
+
+  Feature-graph specification; see Details.
+
+- graph_lambda:
+
+  Non-negative scalar controlling graph-penalty strength.
+
+- graph_form:
+
+  Interpretation of \`feature_graph\` when it is matrix-like, or the
+  Laplacian construction used for edge-based inputs.
+
+- max_iter:
+
+  Maximum ALS iterations.
+
+- tol:
+
+  Relative convergence tolerance on the objective.
+
+- ridge:
+
+  Non-negative ridge stabilization applied to loading and score updates.
+
+- verbose:
+
+  Logical; if \`TRUE\`, prints iteration diagnostics.
+
+- ...:
+
+  Unused (reserved for future extensions).
+
+## Value
+
+An object inheriting from \`multivarious::multiblock_biprojector\` with
+additional classes \`graph_anchored_mfa\`, \`anchored_mfa\`, and
+\`linked_mfa\`. The object contains anchored scores in \`s\`, auxiliary
+loadings in \`V_list\`, anchor loadings in \`B\`, block metadata in
+\`block_info\`, and graph metadata in \`graph_laplacian\` and
+\`graph_lambda\`.
+
+## Details
+
+\## Model The fitted model has the form: \$\$Y \approx S B^\top\$\$
+\$\$X_k \approx S\[\mathrm{idx}\_k,\] V_k^\top\$\$ where \`S\` is \`N ×
+ncomp\`, \`B\` is \`q × ncomp\`, and each \`V_k\` is \`p_k × ncomp\`.
+
+Let \`V\` denote the row-wise concatenation of the auxiliary loading
+matrices \`V_k\`, and let \`L\` be a feature-graph Laplacian over all
+auxiliary features. The estimator minimizes the anchored-MFA
+reconstruction loss plus the graph smoothness term \$\$\lambda_G
+\mathrm{tr}(V^\top L V).\$\$
+
+When \`graph_lambda = 0\` (or \`feature_graph = NULL\`), the method
+reduces to \[anchored_mfa()\] up to numerical tolerance.
+
+\## Input organization \`X\` and \`row_index\` may be supplied either
+as: \* flat lists of observed blocks, or \* nested subject/domain lists,
+e.g. \`X\[\[subject\]\]\[\[domain\]\]\`.
+
+Nested input is flattened internally into one block per observed
+subject-domain pair. The resulting mapping is recorded in
+\`block_info\`.
+
+\## Feature graph \`feature_graph\` may be: \* \`NULL\` (no graph
+penalty), \* \`"colnames"\` to connect identical auxiliary column names
+across blocks, \* a data frame with columns \`block1\`, \`feature1\`,
+\`block2\`, \`feature2\` and optional \`weight\`, or \* a square
+sparse/dense matrix interpreted according to \`graph_form\`.
