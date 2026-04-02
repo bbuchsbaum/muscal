@@ -1,6 +1,10 @@
 library(testthat)
 library(muscal)
 
+.permute_reference_labels <- function(idx, perm) {
+  perm[idx]
+}
+
 test_that("aligned_mfa validates row_index and returns expected structure", {
   set.seed(1)
   N <- 30
@@ -93,4 +97,87 @@ test_that("feature_groups='colnames' shrinks within-group loading differences in
   d0 <- rowSums((V0_1 - V0_2)^2)
   d1 <- rowSums((V1_1 - V1_2)^2)
   expect_lt(mean(d1), mean(d0))
+})
+
+test_that("aligned_mfa exposes a standard out-of-sample contract", {
+  set.seed(11)
+  N <- 45
+  X1 <- matrix(rnorm(18 * 6), 18, 6)
+  X2 <- matrix(rnorm(20 * 5), 20, 5)
+  idx1 <- sample.int(N, nrow(X1), replace = TRUE)
+  idx2 <- sample.int(N, nrow(X2), replace = TRUE)
+
+  fit <- aligned_mfa(
+    list(X1 = X1, X2 = X2),
+    list(X1 = idx1, X2 = idx2),
+    N = N,
+    ncomp = 2
+  )
+
+  expect_equal(fit$task, "row_alignment")
+  expect_equal(fit$fit_spec$method, "aligned_mfa")
+  expect_false(fit$fit_spec$refit_supported)
+  expect_setequal(fit$oos_types, c("scores", "reconstruction"))
+  expect_true(all(c("X1", "X2") %in% names(fit$block_preproc)))
+
+  new_rows <- X2[1:4, , drop = FALSE] + matrix(rnorm(20, sd = 0.05), nrow = 4)
+  scores_new <- project(fit, new_rows, block = "X2")
+  xhat <- predict(fit, new_rows, block = "X2", type = "reconstruction")
+
+  expect_equal(scores_new, predict(fit, new_rows, block = "X2", type = "scores"))
+  expect_equal(dim(scores_new), c(nrow(new_rows), multivarious::ncomp(fit)))
+  expect_equal(dim(xhat), dim(new_rows))
+})
+
+test_that("aligned_mfa objective trace is finite, non-increasing, and invariant to reference relabeling", {
+  set.seed(45)
+  N <- 55
+  k <- 2
+  S <- scale(matrix(rnorm(N * k), N, k), center = TRUE, scale = FALSE)
+  idx <- list(
+    X1 = sample.int(N, 40, replace = TRUE),
+    X2 = sample.int(N, 38, replace = TRUE)
+  )
+  V1 <- matrix(rnorm(7 * k), 7, k)
+  V2 <- matrix(rnorm(6 * k), 6, k)
+  X1 <- S[idx$X1, , drop = FALSE] %*% t(V1) + matrix(rnorm(length(idx$X1) * 7, sd = 0.02), length(idx$X1), 7)
+  X2 <- S[idx$X2, , drop = FALSE] %*% t(V2) + matrix(rnorm(length(idx$X2) * 6, sd = 0.02), length(idx$X2), 6)
+
+  fit <- aligned_mfa(
+    list(X1 = X1, X2 = X2),
+    idx,
+    N = N,
+    ncomp = k,
+    preproc = multivarious::pass(),
+    normalization = "None",
+    max_iter = 60,
+    tol = 0,
+    ridge = 1e-10
+  )
+
+  obj <- fit$objective_trace
+  expect_gt(length(obj), 0)
+  expect_true(all(is.finite(obj)))
+  expect_lte(max(diff(obj)), 1e-8)
+
+  perm <- sample.int(N)
+  idx_perm <- lapply(idx, .permute_reference_labels, perm = perm)
+  fit_perm <- aligned_mfa(
+    list(X1 = X1, X2 = X2),
+    idx_perm,
+    N = N,
+    ncomp = k,
+    preproc = multivarious::pass(),
+    normalization = "None",
+    max_iter = 60,
+    tol = 0,
+    ridge = 1e-10
+  )
+
+  S1 <- multivarious::scores(fit)
+  S2 <- multivarious::scores(fit_perm)[perm, , drop = FALSE]
+  P1 <- S1 %*% solve(crossprod(S1), t(S1))
+  P2 <- S2 %*% solve(crossprod(S2), t(S2))
+  rel <- norm(P1 - P2, type = "F") / (norm(P1, type = "F") + 1e-12)
+  expect_lt(rel, 1e-8)
 })

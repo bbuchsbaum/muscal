@@ -112,3 +112,131 @@ test_that("feature_groups='colnames' shrinks within-group loading differences", 
 
   expect_lt(mean(d1), mean(d0))
 })
+
+test_that("anchored_mfa exposes a standard out-of-sample contract", {
+  set.seed(5)
+  Y <- matrix(rnorm(40 * 4), 40, 4)
+  X1 <- matrix(rnorm(14 * 6), 14, 6)
+  X2 <- matrix(rnorm(16 * 5), 16, 5)
+  idx1 <- sample.int(nrow(Y), nrow(X1), replace = FALSE)
+  idx2 <- sample.int(nrow(Y), nrow(X2), replace = FALSE)
+
+  fit <- anchored_mfa(
+    Y,
+    list(X1 = X1, X2 = X2),
+    list(X1 = idx1, X2 = idx2),
+    ncomp = 2
+  )
+
+  expect_equal(fit$task, "response_prediction")
+  expect_equal(fit$fit_spec$method, "anchored_mfa")
+  expect_true(fit$fit_spec$refit_supported)
+  expect_true(is.list(fit$fit_spec$refit))
+  expect_setequal(fit$oos_types, c("response", "scores", "reconstruction"))
+  expect_true(all(c("X1", "X2") %in% names(fit$block_preproc)))
+  expect_true(inherits(fit$anchor_preproc, "pre_processor"))
+
+  new_rows <- X1[1:3, , drop = FALSE] + matrix(rnorm(18, sd = 0.05), nrow = 3)
+  scores_new <- project(fit, new_rows, block = "X1")
+  yhat <- predict(fit, new_rows, block = "X1", type = "response")
+  xhat <- predict(fit, new_rows, block = "X1", type = "reconstruction")
+
+  expect_equal(scores_new, predict(fit, new_rows, block = "X1", type = "scores"))
+  expect_equal(dim(scores_new), c(nrow(new_rows), multivarious::ncomp(fit)))
+  expect_equal(dim(yhat), c(nrow(new_rows), ncol(Y)))
+  expect_equal(dim(xhat), dim(new_rows))
+  expect_error(predict(fit, new_rows, block = "missing"), "Unknown block")
+})
+
+test_that("anchored_mfa refit contract can rebuild from stored training data", {
+  set.seed(42)
+  Y <- matrix(rnorm(36 * 3), 36, 3)
+  X1 <- matrix(rnorm(14 * 5), 14, 5)
+  X2 <- matrix(rnorm(16 * 4), 16, 4)
+  idx1 <- sample.int(nrow(Y), nrow(X1), replace = FALSE)
+  idx2 <- sample.int(nrow(Y), nrow(X2), replace = FALSE)
+
+  fit <- anchored_mfa(
+    Y = Y,
+    X = list(X1 = X1, X2 = X2),
+    row_index = list(X1 = idx1, X2 = idx2),
+    ncomp = 2
+  )
+
+  refit <- fit$fit_spec$refit$fit_fn(fit$fit_spec$refit$data)
+
+  expect_s3_class(refit, "anchored_mfa")
+  expect_equal(names(refit$V_list), names(fit$V_list))
+  expect_equal(length(refit$row_index), length(fit$row_index))
+  expect_true(all(is.finite(refit$sdev)))
+})
+
+test_that("anchored_mfa objective trace is finite and non-increasing", {
+  set.seed(43)
+  Y <- matrix(rnorm(50 * 4), 50, 4)
+  X1 <- matrix(rnorm(20 * 6), 20, 6)
+  X2 <- matrix(rnorm(24 * 5), 24, 5)
+  idx1 <- sample.int(nrow(Y), nrow(X1), replace = TRUE)
+  idx2 <- sample.int(nrow(Y), nrow(X2), replace = TRUE)
+
+  fit <- anchored_mfa(
+    Y = Y,
+    X = list(X1 = X1, X2 = X2),
+    row_index = list(X1 = idx1, X2 = idx2),
+    ncomp = 2,
+    max_iter = 30,
+    tol = 0
+  )
+
+  obj <- fit$objective_trace
+  expect_gt(length(obj), 0)
+  expect_true(all(is.finite(obj)))
+  expect_lte(max(diff(obj)), 1e-8)
+})
+
+test_that("anchored_mfa uses anchor information rather than arbitrary Y row assignments", {
+  set.seed(44)
+  N <- 60
+  k <- 2
+  S <- scale(matrix(rnorm(N * k), N, k), center = TRUE, scale = FALSE)
+  B <- matrix(rnorm(4 * k), 4, k)
+  V1 <- matrix(rnorm(8 * k), 8, k)
+  V2 <- matrix(rnorm(7 * k), 7, k)
+
+  Y <- S %*% t(B) + matrix(rnorm(N * 4, sd = 0.01), N, 4)
+  X1 <- S %*% t(V1) + matrix(rnorm(N * 8, sd = 0.01), N, 8)
+  X2 <- S %*% t(V2) + matrix(rnorm(N * 7, sd = 0.01), N, 7)
+  idx <- list(X1 = seq_len(N), X2 = seq_len(N))
+
+  fit_true <- anchored_mfa(
+    Y = Y,
+    X = list(X1 = X1, X2 = X2),
+    row_index = idx,
+    ncomp = k,
+    preproc = multivarious::pass(),
+    normalization = "None",
+    max_iter = 80,
+    tol = 1e-8,
+    ridge = 1e-10
+  )
+  fit_shuf <- anchored_mfa(
+    Y = Y[sample.int(N), , drop = FALSE],
+    X = list(X1 = X1, X2 = X2),
+    row_index = idx,
+    ncomp = k,
+    preproc = multivarious::pass(),
+    normalization = "None",
+    max_iter = 80,
+    tol = 1e-8,
+    ridge = 1e-10
+  )
+
+  yhat_true <- predict(fit_true, X1, block = "X1", type = "response", preprocess = FALSE)
+  yhat_shuf <- predict(fit_shuf, X1, block = "X1", type = "response", preprocess = FALSE)
+
+  mse_true <- mean((yhat_true - Y)^2)
+  mse_shuf <- mean((yhat_shuf - Y)^2)
+
+  expect_lt(mse_true, 1e-3)
+  expect_gt(mse_shuf, 10 * mse_true)
+})

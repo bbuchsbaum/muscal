@@ -80,6 +80,7 @@ aligned_mfa <- function(X,
                         ridge = 1e-8,
                         verbose = FALSE,
                         ...) {
+  fit_call <- match.call(expand.dots = FALSE)
   normalization <- match.arg(normalization)
 
   chk::chk_list(X)
@@ -313,7 +314,7 @@ aligned_mfa <- function(X,
     df
   }
 
-  multivarious::multiblock_biprojector(
+  fit <- multivarious::multiblock_biprojector(
     v = v_concat,
     s = S,
     sdev = sdev,
@@ -331,7 +332,19 @@ aligned_mfa <- function(X,
     cor_loadings = cor_loadings,
     block_fit = block_fit,
     N = N,
+    block_preproc = setNames(proclist, names(Xp)),
+    ridge = ridge,
     classes = "aligned_mfa"
+  )
+
+  .muscal_attach_fit_contract(
+    fit,
+    method = "aligned_mfa",
+    task = "row_alignment",
+    oos_types = c("scores", "reconstruction"),
+    fit_call = fit_call,
+    refit_supported = FALSE,
+    prediction_target = "blocks"
   )
 }
 

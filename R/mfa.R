@@ -130,6 +130,10 @@ mfa.list <- function(data, preproc=center(), ncomp=2,
 mfa.multiblock <- function(data, preproc=center(), ncomp=2,
                 normalization=c("MFA", "RV", "None", "Frob", "custom"),
                 A=NULL, M=NULL, ...) {
+  fit_call <- match.call(expand.dots = FALSE)
+  fit_dots <- list(...)
+  A_input <- A
+  M_input <- M
   
   
   chk::chk_true(length(data) > 1)
@@ -151,6 +155,7 @@ mfa.multiblock <- function(data, preproc=center(), ncomp=2,
   if (is.null(names(data))) {
     names(data) <- paste0("B", 1:S)
   }
+  data_refit <- lapply(data, function(x) as.matrix(x))
   
   # Preprocessing using utility function
   # Set check_consistent_ncol=FALSE as MFA handles potential concatenation later
@@ -260,6 +265,43 @@ mfa.multiblock <- function(data, preproc=center(), ncomp=2,
       classes = "mfa"
   )
   
-  
+  mfa_result <- .muscal_attach_fit_contract(
+    mfa_result,
+    method = "mfa",
+    task = "reconstruction",
+    oos_types = c("scores", "reconstruction"),
+    fit_call = fit_call,
+    refit_supported = TRUE,
+    prediction_target = "blocks",
+    refit = .muscal_make_refit_spec(
+      data = data_refit,
+      fit_fn = function(data) {
+        do.call(
+          mfa,
+          c(
+            list(
+              data = data,
+              preproc = preproc,
+              ncomp = ncomp,
+              normalization = normalization,
+              A = A_input,
+              M = M_input
+            ),
+            fit_dots
+          )
+        )
+      },
+      bootstrap_fn = function(data) {
+        n <- nrow(data[[1L]])
+        idx <- sample.int(n, size = n, replace = TRUE)
+        lapply(data, function(block) block[idx, , drop = FALSE])
+      },
+      permutation_fn = function(data) {
+        lapply(data, function(block) block[sample.int(nrow(block)), , drop = FALSE])
+      },
+      resample_unit = "rows"
+    )
+  )
+
   return(mfa_result)
 }

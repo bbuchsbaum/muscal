@@ -8,6 +8,10 @@ library(muscal)
   out
 }
 
+.permute_reference_labels <- function(idx, perm) {
+  perm[idx]
+}
+
 .sim_aligned_mcca <- function(N, k, p_vec, n_vec, noise_sd = 0.05) {
   Z <- matrix(rnorm(N * k), nrow = N, ncol = k)
   idx_list <- lapply(n_vec, function(nk) sample.int(N, nk, replace = TRUE))
@@ -307,4 +311,55 @@ test_that("aligned_mcca use_future path matches serial", {
   P2 <- S2 %*% solve(crossprod(S2), t(S2))
   rel <- norm(P1 - P2, type = "F") / (norm(P2, type = "F") + 1e-12)
   expect_lt(rel, 1e-12)
+})
+
+test_that("aligned_mcca is invariant to relabeling the reference row space", {
+  set.seed(32)
+  sim <- .sim_aligned_mcca(
+    N = 70,
+    k = 2,
+    p_vec = c(16, 18, 14),
+    n_vec = c(50, 48, 55),
+    noise_sd = 0.03
+  )
+
+  fit <- aligned_mcca(sim$blocks, sim$idx, N = 70, ncomp = 2, ridge = 1e-6)
+
+  perm <- sample.int(70)
+  idx_perm <- lapply(sim$idx, .permute_reference_labels, perm = perm)
+  fit_perm <- aligned_mcca(sim$blocks, idx_perm, N = 70, ncomp = 2, ridge = 1e-6)
+
+  S1 <- multivarious::scores(fit)
+  S2 <- multivarious::scores(fit_perm)[perm, , drop = FALSE]
+  P1 <- S1 %*% solve(crossprod(S1), t(S1))
+  P2 <- S2 %*% solve(crossprod(S2), t(S2))
+  rel <- norm(P1 - P2, type = "F") / (norm(P1, type = "F") + 1e-12)
+  expect_lt(rel, 1e-10)
+})
+
+test_that("aligned_mcca loses recovery quality when row_index is randomized", {
+  set.seed(33)
+  sim <- .sim_aligned_mcca(
+    N = 75,
+    k = 2,
+    p_vec = c(15, 17, 14),
+    n_vec = c(55, 52, 58),
+    noise_sd = 0.02
+  )
+
+  fit_true <- aligned_mcca(sim$blocks, sim$idx, N = 75, ncomp = 2, ridge = 1e-6)
+  idx_wrong <- lapply(sim$idx, sample)
+  fit_wrong <- aligned_mcca(sim$blocks, idx_wrong, N = 75, ncomp = 2, ridge = 1e-6)
+
+  cc_true <- cancor(
+    scale(sim$Z, center = TRUE, scale = FALSE),
+    scale(multivarious::scores(fit_true), center = TRUE, scale = FALSE)
+  )$cor
+  cc_wrong <- cancor(
+    scale(sim$Z, center = TRUE, scale = FALSE),
+    scale(multivarious::scores(fit_wrong), center = TRUE, scale = FALSE)
+  )$cor
+
+  expect_gt(mean(cc_true[1:2]), mean(cc_wrong[1:2]) + 0.2)
+  expect_gt(mean(cc_true[1:2]), 0.65)
 })

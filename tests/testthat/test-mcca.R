@@ -200,3 +200,40 @@ test_that("mcca covers edge cases (zero/NA blocks, ridge=0 without centering, ei
   fit_full <- mcca(blocks2, ncomp = n2, ridge = 1e-6, preproc = multivarious::pass())
   expect_equal(ncol(multivarious::scores(fit_full)), n2)
 })
+
+test_that("mcca is invariant to a common row permutation across blocks", {
+  set.seed(31)
+  sim <- .sim_mcca_blocks(n = 70, k = 2, p_vec = c(18, 20, 16), noise_sd = 0.04)
+  perm <- sample.int(70)
+
+  fit <- mcca(sim$blocks, ncomp = 2, ridge = 1e-6)
+  fit_perm <- mcca(lapply(sim$blocks, function(X) X[perm, , drop = FALSE]), ncomp = 2, ridge = 1e-6)
+
+  S1 <- multivarious::scores(fit)
+  S2 <- multivarious::scores(fit_perm)[order(perm), , drop = FALSE]
+  P1 <- S1 %*% solve(crossprod(S1), t(S1))
+  P2 <- S2 %*% solve(crossprod(S2), t(S2))
+  rel <- norm(P1 - P2, type = "F") / (norm(P1, type = "F") + 1e-12)
+  expect_lt(rel, 1e-8)
+})
+
+test_that("mcca latent recovery degrades as noise increases", {
+  set.seed(32)
+  low_noise <- .sim_mcca_blocks(n = 80, k = 2, p_vec = c(18, 20, 16), noise_sd = 0.02)
+  high_noise <- .sim_mcca_blocks(n = 80, k = 2, p_vec = c(18, 20, 16), noise_sd = 0.4)
+
+  fit_low <- mcca(low_noise$blocks, ncomp = 2, ridge = 1e-6)
+  fit_high <- mcca(high_noise$blocks, ncomp = 2, ridge = 1e-6)
+
+  cc_low <- cancor(
+    scale(low_noise$Z, center = TRUE, scale = FALSE),
+    scale(multivarious::scores(fit_low), center = TRUE, scale = FALSE)
+  )$cor
+  cc_high <- cancor(
+    scale(high_noise$Z, center = TRUE, scale = FALSE),
+    scale(multivarious::scores(fit_high), center = TRUE, scale = FALSE)
+  )$cor
+
+  expect_gt(mean(cc_low[1:2]), mean(cc_high[1:2]))
+  expect_gt(min(cc_low[1:2]), 0.9)
+})

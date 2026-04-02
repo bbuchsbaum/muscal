@@ -81,6 +81,8 @@ anchored_mfa <- function(Y,
                          ridge = 1e-8,
                          verbose = FALSE,
                          ...) {
+  fit_call <- match.call(expand.dots = FALSE)
+  fit_dots <- list(...)
   normalization <- match.arg(normalization)
 
   # ---------------------------------------------------------------------------
@@ -130,6 +132,12 @@ anchored_mfa <- function(Y,
   if (is.null(names(row_index))) {
     names(row_index) <- names(X)
   }
+
+  data_refit <- list(
+    Y = Y,
+    X = X,
+    row_index = row_index
+  )
 
   # ---------------------------------------------------------------------------
   # 1. Preprocess blocks
@@ -368,7 +376,7 @@ anchored_mfa <- function(Y,
     df
   }
 
-  multivarious::multiblock_biprojector(
+  fit <- multivarious::multiblock_biprojector(
     v = v_concat,
     s = S,
     sdev = sdev,
@@ -386,7 +394,49 @@ anchored_mfa <- function(Y,
     partial_scores = partial_scores,
     cor_loadings = cor_loadings,
     block_fit = block_fit,
+    block_preproc = setNames(proclist[-1L], names(Xp)),
+    anchor_preproc = proclist[[1L]],
+    ridge = ridge,
     classes = c("anchored_mfa", "linked_mfa")
+  )
+
+  .muscal_attach_fit_contract(
+    fit,
+    method = "anchored_mfa",
+    task = "response_prediction",
+    oos_types = c("response", "scores", "reconstruction"),
+    fit_call = fit_call,
+    refit_supported = TRUE,
+    prediction_target = "Y",
+    refit = .muscal_make_refit_spec(
+      data = data_refit,
+      fit_fn = function(data) {
+        do.call(
+          anchored_mfa,
+          c(
+            list(
+              Y = data$Y,
+              X = data$X,
+              row_index = data$row_index,
+              preproc = preproc,
+              ncomp = ncomp,
+              normalization = normalization,
+              alpha = alpha,
+              feature_groups = feature_groups,
+              feature_lambda = feature_lambda,
+              max_iter = max_iter,
+              tol = tol,
+              ridge = ridge,
+              verbose = FALSE
+            ),
+            fit_dots
+          )
+        )
+      },
+      bootstrap_fn = .muscal_bootstrap_anchored_data,
+      permutation_fn = .muscal_permute_anchored_data,
+      resample_unit = "anchor_rows"
+    )
   )
 }
 
