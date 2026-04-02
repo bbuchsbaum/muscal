@@ -1,0 +1,224 @@
+---
+title: COVSTATIS Analysis
+output: rmarkdown::html_vignette
+vignette: >
+  %\VignetteIndexEntry{COVSTATIS Analysis}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+params:
+  family: red
+  preset: homage
+css: albers.css
+resource_files:
+- albers.css
+- albers.js
+includes:
+  in_header: |-
+    <script src="albers.js"></script>
+    <script>document.addEventListener('DOMContentLoaded',function(){document.body.classList.add('palette-red');});</script>
+
+---
+
+```{r setup, include = FALSE}
+if (requireNamespace("ggplot2", quietly = TRUE) && requireNamespace("albersdown", quietly = TRUE) && exists("params")) ggplot2::theme_set(albersdown::theme_albers(params$family))
+knitr::opts_chunk$set(
+  collapse = TRUE,
+  comment = "#>",
+  message = FALSE,
+  warning = FALSE,
+  fig.width = 6,
+  fig.height = 4
+)
+```
+
+## Why COVSTATIS?
+
+You have correlation or covariance matrices from multiple subjects — say,
+resting-state functional connectivity measured in 10 people — and you want to
+find the shared structure. Which brain regions co-activate consistently across
+subjects? Which subjects are outliers? COVSTATIS answers these questions by
+computing a *compromise* matrix that optimally represents the set, then
+projecting both variables (ROIs) and subjects into a common low-dimensional
+space.
+
+COVSTATIS is the covariance-matrix variant of STATIS, a "French school"
+method for analyzing collections of data tables.
+
+## Quick start
+
+```{r load-packages}
+library(muscal)
+library(multivarious)
+library(ggplot2)
+```
+
+We simulate 8 subjects, each with a 12 x 12 correlation matrix. All subjects
+share the same underlying factor structure, but with individual noise.
+
+```{r simulate-data, include = FALSE}
+set.seed(42)
+n_subjects <- 8
+n_vars <- 12
+n_obs <- 100
+
+# Shared loading structure (3 latent factors)
+L <- matrix(rnorm(n_vars * 3), n_vars, 3)
+shared_cov <- L %*% t(L) + 0.5 * diag(n_vars)
+R <- chol(shared_cov)
+
+# Per-subject correlation matrices
+cor_list <- lapply(seq_len(n_subjects), function(i) {
+  X <- matrix(rnorm(n_obs * n_vars), n_obs, n_vars) %*% R
+  # Add subject-specific signal shift
+  X <- X + matrix(rnorm(n_obs * n_vars, sd = 0.2 * i), n_obs, n_vars)
+  cor(X)
+})
+names(cor_list) <- paste0("Subj_", seq_len(n_subjects))
+```
+
+```{r show-data}
+# 8 subjects, each with a 12 x 12 correlation matrix
+length(cor_list)
+dim(cor_list[[1]])
+```
+
+Fit COVSTATIS and extract the compromise:
+
+```{r fit-covstatis}
+fit <- covstatis(cor_list, ncomp = 3)
+```
+
+```{r roi-scores, echo = FALSE, fig.cap = "ROI scores in the compromise space. Variables that co-vary consistently across subjects cluster together."}
+autoplot(fit, type = "roi")
+```
+
+The ROI score plot shows `r nrow(fit$roi_scores)` variables positioned
+according to their role in the compromise. Variables close together have
+similar correlation patterns across subjects.
+
+## How COVSTATIS works
+
+The algorithm has four steps:
+
+1. **Preprocess** each matrix — optionally double-center (Gower transformation)
+   and normalize to unit Frobenius norm.
+
+2. **Compute the RV matrix** — a matrix of pairwise similarities between
+   the input matrices (analogous to correlations between subjects).
+
+3. **Determine optimal weights** (`alpha`) from the first eigenvector of the
+   RV matrix. Subjects whose matrices are more "typical" receive higher weight.
+
+4. **Form the compromise** as a weighted sum of the normalized matrices,
+   then eigendecompose it to get scores and loadings.
+
+## Subject-level analysis
+
+Each subject contributes differently to the compromise. The `alpha` weights
+reveal who is most representative:
+
+```{r subject-weights}
+fit$alpha
+```
+
+```{r block-weights-plot, echo = FALSE, fig.cap = "Block weights (alpha). Higher weight means the subject's matrix is more representative of the group."}
+plot_block_weights(fit)
+```
+
+You can also view subjects in the compromise space:
+
+```{r subject-scores, fig.cap = "Subject scores. Subjects close together have similar correlation structure."}
+autoplot(fit, type = "subjects")
+```
+
+## Variance explained
+
+```{r variance, fig.cap = "Variance explained by each compromise component."}
+plot_variance(fit, type = "bar")
+```
+
+## Partial factor scores
+
+Partial scores show how each subject "sees" the ROIs. Lines connect each
+subject's view to the consensus:
+
+```{r partial-scores, fig.cap = "Partial factor scores. Each color is one subject; open circles show the consensus. Short connecting lines indicate agreement.", fig.width = 7, fig.height = 5}
+plot_partial_scores(fit, connect = TRUE, show_consensus = TRUE)
+```
+
+## Block similarity
+
+The RV matrix shows pairwise similarity between subjects:
+
+```{r block-similarity, fig.cap = "RV coefficient matrix between subjects. Values near 1 mean similar correlation structure."}
+plot_block_similarity(fit)
+```
+
+## Projecting new subjects
+
+After fitting, you can project a new subject's correlation matrix into the
+compromise space without refitting:
+
+```{r project-new, include = FALSE}
+# Generate a new subject
+X_new <- matrix(rnorm(n_obs * n_vars), n_obs, n_vars) %*% R
+X_new <- X_new + matrix(rnorm(n_obs * n_vars, sd = 0.15), n_obs, n_vars)
+new_cor <- cor(X_new)
+```
+
+```{r project-cov}
+proj <- project_cov(fit, new_cor)
+dim(proj)
+head(proj, 4)
+```
+
+For a richer analysis of new subjects — including RV coefficients and distance
+to the compromise — use `project_subjects()`:
+
+```{r project-subjects}
+result <- project_subjects(fit, list(new_cor), subject_ids = "New_Subject")
+result$scalar_summaries
+```
+
+## Projecting a covariate
+
+You can ask: "which compromise dimensions relate to an external variable?"
+For example, projecting a subject-level cognitive score:
+
+```{r project-covariate}
+# Simulated covariate (e.g., memory score per subject)
+y <- rnorm(n_subjects)
+dim_cos <- project_covariate(fit, y, what = "dimension", scale = "cosine")
+dim_cos
+```
+
+Values near +/- 1 indicate that a compromise dimension strongly tracks the
+covariate.
+
+## When to use COVSTATIS
+
+COVSTATIS is appropriate when:
+
+- Your data are square symmetric matrices (correlations, covariances,
+  distance matrices)
+- You want to find a consensus structure across multiple tables
+- You need to identify outlier subjects or conditions
+- You want to project new observations or external covariates
+
+COVSTATIS is *not* appropriate when:
+
+- Your data are raw observation-by-variable matrices (use `mfa()` instead)
+- You need supervised discrimination (use `bada()` or `bamfa()`)
+
+## Next steps
+
+- `vignette("mfa")` — MFA for raw data blocks
+- `?project_subjects` — Detailed new-subject projection
+- `?project_covariate` — Supplementary variable analysis
+
+## References
+
+Abdi, H., Williams, L. J., Valentin, D., & Bennani-Dosse, M. (2012).
+STATIS and DISTATIS: optimum multitable principal component analysis and
+three way metric multidimensional scaling. *WIREs Computational Statistics*,
+4(2), 124-167.

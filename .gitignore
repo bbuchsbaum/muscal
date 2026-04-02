@@ -1,2 +1,17 @@
 /doc/
 /Meta/
+
+# Local build and scratch artifacts
+.albersdown.bak/
+.omc/
+figure/
+src/
+vignettes/*.html
+
+# Local development outputs
+dev/codex/skills/r-package-faq-creator/
+dev/ipca_benchmark_results.csv
+dev/ipca_vs_multiset_noninferiority.csv
+dev/ipca_vs_multiset_raw.csv
+dev/ipca_vs_multiset_report.md
+dev/ipca_vs_multiset_summary.csv

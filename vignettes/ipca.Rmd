@@ -1,0 +1,224 @@
+---
+title: Integrative PCA (iPCA)
+output: rmarkdown::html_vignette
+vignette: >
+  %\VignetteIndexEntry{Integrative PCA (iPCA)}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+params:
+  family: red
+  preset: homage
+css: albers.css
+resource_files:
+- albers.css
+- albers.js
+includes:
+  in_header: |-
+    <script src="albers.js"></script>
+    <script>document.addEventListener('DOMContentLoaded',function(){document.body.classList.add('palette-red');});</script>
+
+---
+
+```{r setup, include = FALSE}
+if (requireNamespace("ggplot2", quietly = TRUE) && requireNamespace("albersdown", quietly = TRUE) && exists("params")) ggplot2::theme_set(albersdown::theme_albers(params$family))
+knitr::opts_chunk$set(
+  collapse = TRUE,
+  comment = "#>",
+  message = FALSE,
+  warning = FALSE,
+  fig.width = 6,
+  fig.height = 4
+)
+```
+
+## Why iPCA?
+
+When you run PCA on concatenated multi-block data, blocks with more variables
+or higher variance dominate the result. MFA addresses this by normalizing each
+block's first singular value to 1. But this is a single global correction — it
+doesn't adapt to the actual signal content of each block.
+
+Integrative PCA (iPCA) takes a different approach. It applies per-block
+*multiplicative* penalties that continuously reweight each block's contribution
+based on how well it aligns with the emerging shared structure. The penalty
+strength `lambda` controls how aggressively blocks are equalized: small
+`lambda` approaches standard PCA, large `lambda` gives each block equal
+influence regardless of size.
+
+iPCA was introduced by Tang and Allen (2021) and implemented here using an
+efficient Flip-Flop algorithm.
+
+## Quick start
+
+```{r load-packages}
+library(muscal)
+library(multivarious)
+library(ggplot2)
+```
+
+```{r simulate-data}
+sim <- synthetic_multiblock(
+  S = 4, n = 60,
+  p = c(20, 30, 15, 25),
+  r = 3, sigma = 0.3, seed = 42
+)
+sapply(sim$data_list, dim)
+```
+
+Fit iPCA with a moderate penalty:
+
+```{r fit-ipca}
+fit <- ipca(sim$data_list, ncomp = 3, lambda = 1)
+S <- scores(fit)
+dim(S)
+```
+
+```{r quick-score-plot, echo = FALSE, fig.cap = "iPCA scores. The multiplicative penalty balances block contributions while preserving shared structure."}
+df <- data.frame(PC1 = S[, 1], PC2 = S[, 2])
+ggplot(df, aes(PC1, PC2)) +
+  geom_point(color = "steelblue", alpha = 0.8, size = 2) +
+  geom_hline(yintercept = 0, linetype = 2, color = "grey70") +
+  geom_vline(xintercept = 0, linetype = 2, color = "grey70") +
+  labs(title = "iPCA Score Plot",
+       x = sprintf("Component 1 (sd = %.2f)", fit$sdev[1]),
+       y = sprintf("Component 2 (sd = %.2f)", fit$sdev[2]))
+```
+
+## How iPCA works
+
+iPCA solves a penalized eigenvalue problem. For $K$ blocks
+$\mathbf{X}_1, \ldots, \mathbf{X}_K$, it finds shared eigenvectors $u$ by
+maximizing:
+
+$$\sum_{k=1}^K f_\lambda\!\left(\frac{u^\top \mathbf{X}_k^\top \mathbf{X}_k\, u}
+{\mathrm{tr}(\mathbf{X}_k^\top \mathbf{X}_k)}\right)$$
+
+where $f_\lambda$ is a concave penalty function (the multiplicative Frobenius
+penalty). This upweights blocks that align well with the current direction and
+downweights those that don't — a soft, adaptive form of integration.
+
+## The lambda parameter
+
+`lambda` controls the integration strength:
+
+- **`lambda` near 0**: Standard PCA on concatenated data (no reweighting).
+  Blocks with more variables dominate.
+- **`lambda = 1`**: Moderate integration. Blocks are softly equalized.
+- **Large `lambda`** (10+): Strong equalization. Every block contributes
+  roughly equally, regardless of size.
+
+```{r lambda-comparison}
+fit_low  <- ipca(sim$data_list, ncomp = 3, lambda = 0.01)
+fit_high <- ipca(sim$data_list, ncomp = 3, lambda = 10)
+```
+
+```{r lambda-plot, echo = FALSE, fig.cap = "Effect of lambda on the score space. Low lambda (left) lets larger blocks dominate; high lambda (right) equalizes contributions.", fig.width = 8, fig.height = 4}
+S_lo <- scores(fit_low)
+S_hi <- scores(fit_high)
+df_lambda <- rbind(
+  data.frame(PC1 = S_lo[, 1], PC2 = S_lo[, 2], lambda = "lambda == 0.01"),
+  data.frame(PC1 = S_hi[, 1], PC2 = S_hi[, 2], lambda = "lambda == 10")
+)
+df_lambda$lambda <- factor(df_lambda$lambda, levels = c("lambda == 0.01", "lambda == 10"))
+ggplot(df_lambda, aes(PC1, PC2)) +
+  geom_point(color = "steelblue", alpha = 0.8, size = 2) +
+  geom_hline(yintercept = 0, linetype = 2, color = "grey70") +
+  geom_vline(xintercept = 0, linetype = 2, color = "grey70") +
+  facet_wrap(~ lambda, labeller = label_parsed) +
+  labs(x = "Component 1", y = "Component 2")
+```
+
+## Tuning lambda with held-out data
+
+`ipca_tune_alpha()` selects the optimal penalty by holding out a fraction of
+the data and measuring reconstruction error:
+
+```{r tune-alpha}
+tune <- ipca_tune_alpha(
+  sim$data_list, ncomp = 3,
+  alpha_grid = c(0.01, 0.1, 1, 10),
+  holdout_frac = 0.1
+)
+tune$best_alpha
+```
+
+```{r tune-plot, echo = FALSE, fig.cap = "Held-out MSE across alpha (lambda) values. Lower is better."}
+df_tune <- data.frame(alpha = tune$results$alpha, mse = tune$results$holdout_mse)
+ggplot(df_tune, aes(alpha, mse)) +
+  geom_line(color = "steelblue") +
+  geom_point(color = "steelblue", size = 3) +
+  geom_vline(xintercept = tune$best_alpha, linetype = 2, color = "firebrick") +
+  scale_x_log10() +
+  labs(x = expression(alpha ~ (lambda)), y = "Held-out MSE",
+       title = "iPCA Tuning Curve")
+```
+
+The tuning result includes a refit on the full data at the best alpha:
+
+```{r tune-refit}
+fit_tuned <- tune$fit
+dim(scores(fit_tuned))
+```
+
+## Partial scores
+
+Each block contributes its own view of the observations through per-block
+loadings:
+
+```{r partial-scores}
+# Per-block scores
+ps <- fit$partial_scores
+sapply(ps, dim)
+```
+
+## Projection
+
+Project new observations onto the fitted model. You pass a list of blocks
+with the same structure as the training data:
+
+```{r project-new}
+new_blocks <- lapply(sim$data_list, function(X) X[1:5, , drop = FALSE])
+proj <- project(fit, new_blocks)
+dim(proj)
+```
+
+## Computation methods
+
+iPCA supports two internal methods:
+
+- **`"gram"`** (default for wide data): Works in sample space ($n \times n$).
+  Efficient when blocks have more variables than observations.
+- **`"dense"`**: Works in variable space. Better for tall data.
+
+The `"auto"` setting (default) picks the right method based on data dimensions.
+
+```{r method, eval = FALSE}
+# Force gram mode for high-dimensional blocks
+fit_gram <- ipca(sim$data_list, ncomp = 3, lambda = 1, method = "gram")
+```
+
+## When to use iPCA
+
+iPCA is appropriate when:
+
+- You have multiple data blocks on the same observations
+- You want adaptive, data-driven integration (vs. MFA's fixed normalization)
+- Blocks vary substantially in dimensionality or signal strength
+- You want a tunable integration strength
+
+iPCA is *not* appropriate when:
+
+- Blocks have different observations (use `anchored_mfa()`)
+- You need classical MFA block weights for interpretation (use `mfa()`)
+- Your data are covariance matrices (use `covstatis()`)
+
+## Next steps
+
+- `vignette("mfa")` — Classical MFA with fixed normalization
+- `vignette("penalized_mfa")` — MFA with loading similarity penalties
+- `?ipca_tune_alpha` — Detailed tuning options
+
+## References
+
+Tang, T. M., & Allen, G. I. (2021). Integrated principal components analysis.
+*Journal of Machine Learning Research*, 22(224), 1-71.

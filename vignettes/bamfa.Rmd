@@ -1,0 +1,197 @@
+---
+title: Barycentric MFA (BaMFA)
+output: rmarkdown::html_vignette
+vignette: >
+  %\VignetteIndexEntry{Barycentric MFA (BaMFA)}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+params:
+  family: red
+  preset: homage
+css: albers.css
+resource_files:
+- albers.css
+- albers.js
+includes:
+  in_header: |-
+    <script src="albers.js"></script>
+    <script>document.addEventListener('DOMContentLoaded',function(){document.body.classList.add('palette-red');});</script>
+
+---
+
+```{r setup, include = FALSE}
+if (requireNamespace("ggplot2", quietly = TRUE) && requireNamespace("albersdown", quietly = TRUE) && exists("params")) ggplot2::theme_set(albersdown::theme_albers(params$family))
+knitr::opts_chunk$set(
+  collapse = TRUE,
+  comment = "#>",
+  message = FALSE,
+  warning = FALSE,
+  fig.width = 6,
+  fig.height = 4
+)
+```
+
+## Why BaMFA?
+
+Multi-subject data often contains two kinds of structure: patterns shared
+across all subjects (*global* components) and patterns unique to individuals
+(*local* components). Standard MFA captures the global structure but discards
+subject-specific variation. If you care about individual differences — which
+subjects deviate, and how — you need a method that explicitly models both.
+
+BaMFA (Barycentric Multiple Factor Analysis) decomposes multi-block data into
+**global** and **local** components simultaneously. Global components capture
+the consensus structure; local components capture what makes each subject
+unique.
+
+## Quick start
+
+```{r load-packages}
+library(muscal)
+library(multivarious)
+library(ggplot2)
+```
+
+We simulate 6 subjects with shared structure (3 global factors) plus
+subject-specific structure (2 local factors per subject).
+
+```{r simulate-data, include = FALSE}
+set.seed(42)
+n_subjects <- 6
+n_obs <- 50
+n_vars <- 20
+r_global <- 3
+r_local <- 2
+
+# Shared global loading structure
+V_global <- svd(matrix(rnorm(n_vars * r_global), n_vars, r_global))$u
+
+# Shared global scores
+F_global <- qr.Q(qr(scale(matrix(rnorm(n_obs * r_global), n_obs, r_global),
+                           scale = FALSE)))
+
+data_list <- lapply(seq_len(n_subjects), function(i) {
+  # Subject-specific local loadings (orthogonal to global)
+  V_local_raw <- matrix(rnorm(n_vars * r_local), n_vars, r_local)
+  # Project out global subspace to make local orthogonal-ish
+  V_local_raw <- V_local_raw - V_global %*% (t(V_global) %*% V_local_raw)
+  V_local <- svd(V_local_raw)$u[, seq_len(r_local)]
+
+  F_local <- matrix(rnorm(n_obs * r_local, sd = 0.5), n_obs, r_local)
+
+  X <- F_global %*% t(V_global) + F_local %*% t(V_local) +
+    matrix(rnorm(n_obs * n_vars, sd = 0.3), n_obs, n_vars)
+  scale(X, scale = FALSE)
+})
+names(data_list) <- paste0("Subject_", seq_len(n_subjects))
+```
+
+```{r show-data}
+length(data_list)
+sapply(data_list, dim)
+```
+
+Fit BaMFA with 3 global and 2 local components:
+
+```{r fit-bamfa}
+fit <- bamfa(data_list, k_g = 3, k_l = 2, niter = 20)
+fit
+```
+
+```{r quick-score-plot, echo = FALSE, fig.cap = "Mean global scores across subjects. These capture the consensus structure shared by all blocks."}
+autoplot(fit, block = "mean")
+```
+
+## Global vs. local components
+
+The key idea: BaMFA decomposes each block's data as:
+
+$$\mathbf{X}_i \approx \mathbf{S}_i \mathbf{B}_i^\top + \mathbf{U}_i \mathbf{V}_i^\top$$
+
+where:
+
+- $\mathbf{S}_i$ are the **global scores** — similar across subjects
+- $\mathbf{B}_i$ are the **global loadings**
+- $\mathbf{U}_i$ are the **local scores** — unique to subject $i$
+- $\mathbf{V}_i$ are the **local loadings**
+
+The global loadings $\mathbf{B}_i$ are encouraged to be similar across
+subjects, while the local loadings $\mathbf{V}_i$ are free to differ.
+
+## Examining the components
+
+```{r global-components}
+# Global loadings: one per block, should be similar
+sapply(fit$B_list, dim)
+
+# Local loadings: one per block, capture individual structure
+sapply(fit$V_list, dim)
+```
+
+## Convergence
+
+```{r convergence, fig.cap = "BaMFA convergence trace. The alternating least squares algorithm typically converges within 10-20 iterations."}
+plot_convergence(fit)
+```
+
+## Per-subject score plots
+
+View the global scores for a specific subject:
+
+```{r subject-scores, fig.cap = "Global scores for Subject 1."}
+autoplot(fit, block = 1)
+```
+
+## Partial factor scores
+
+Compare how the global structure looks across subjects:
+
+```{r partial-scores, fig.cap = "Partial factor scores: each subject's global scores overlaid. Agreement indicates consistent global structure.", fig.width = 7, fig.height = 5}
+plot_partial_scores(fit, connect = TRUE, show_consensus = TRUE)
+```
+
+Short connecting lines mean subjects agree about the global structure of
+an observation. Large deviations indicate observations where subjects diverge.
+
+## The local penalty (lambda_l)
+
+The `lambda_l` parameter controls regularization on local components. By
+default it is 0 (no regularization). Increasing it shrinks local components,
+pushing more structure into the global subspace:
+
+```{r lambda-l, eval = FALSE}
+# Strong local regularization — most structure forced into global
+fit_sparse <- bamfa(data_list, k_g = 3, k_l = 2, niter = 20, lambda_l = 1)
+```
+
+## Choosing k_g and k_l
+
+- **`k_g`** (global components): Set this to the number of shared factors you
+  expect. Start with the number of dominant eigenvalues from pooled PCA.
+- **`k_l`** (local components): Set this to capture meaningful individual
+  variation. Too many local components can absorb noise.
+
+A useful diagnostic: if partial factor scores are tight (short lines in the
+plot), `k_g` is capturing the shared structure well. If they're spread out,
+you may need more global components.
+
+## When to use BaMFA
+
+BaMFA is appropriate when:
+
+- You have multi-subject or multi-condition data blocks
+- You want to separate shared (global) from individual (local) structure
+- Individual differences are scientifically interesting, not just noise
+- You need interpretable per-subject components
+
+BaMFA is *not* appropriate when:
+
+- You only care about the consensus (use `mfa()` — simpler and faster)
+- Blocks have different observations (use `anchored_mfa()`)
+- Your data are covariance matrices (use `covstatis()`)
+
+## Next steps
+
+- `vignette("mfa")` — Standard MFA for consensus-only analysis
+- `vignette("penalized_mfa")` — Penalized MFA for loading similarity
+- `?bamfa` — Full parameter documentation
