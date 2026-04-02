@@ -34,11 +34,15 @@
 <li class="active nav-item dropdown">
   <button class="nav-link dropdown-toggle" type="button" id="dropdown-articles" data-bs-toggle="dropdown" aria-expanded="false" aria-haspopup="true">Articles</button>
   <ul class="dropdown-menu" aria-labelledby="dropdown-articles">
-<li><a class="dropdown-item" href="../articles/bamfa.html">Barycentric MFA (BaMFA)</a></li>
+<li><a class="dropdown-item" href="../articles/aligned_mcca.html">Aligned Multiblock Canonical Correlation Analysis</a></li>
+    <li><a class="dropdown-item" href="../articles/aligned_mfa.html">Aligned Multiple Factor Analysis</a></li>
+    <li><a class="dropdown-item" href="../articles/bada.html">Barycentric Discriminant Analysis</a></li>
+    <li><a class="dropdown-item" href="../articles/bamfa.html">Barycentric MFA (BaMFA)</a></li>
     <li><a class="dropdown-item" href="../articles/bilinear_mixed.html">Bilinear Mixed Models for Repeated Connectivity Matrices</a></li>
     <li><a class="dropdown-item" href="../articles/covstatis.html">COVSTATIS Analysis</a></li>
     <li><a class="dropdown-item" href="../articles/ipca.html">Integrative PCA (iPCA)</a></li>
     <li><a class="dropdown-item" href="../articles/linked_mfa.html">Anchored Multiple Factor Analysis</a></li>
+    <li><a class="dropdown-item" href="../articles/mcca.html">Multiblock Canonical Correlation Analysis</a></li>
     <li><a class="dropdown-item" href="../articles/mfa.html">Multiple Factor Analysis</a></li>
     <li><a class="dropdown-item" href="../articles/penalized_mfa.html">Penalized Multiple Factor Analysis</a></li>
   </ul>
@@ -242,7 +246,9 @@ Each <code>trait_maps[[k]]</code> is a full 4 x 12 matrix, and each
 <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>j</mi><annotation encoding="application/x-tex">j</annotation></semantics></math>-th
 design variable modulates the connectivity surface.</p>
 <div class="sourceCode" id="cb6"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/base/dim.html" class="external-link">dim</a></span><span class="op">(</span><span class="va">fit_axis</span><span class="op">$</span><span class="va">axis</span><span class="op">$</span><span class="va">trait_maps</span><span class="op">[[</span><span class="fl">1</span><span class="op">]</span><span class="op">]</span><span class="op">)</span></span>
+<code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/base/names.html" class="external-link">names</a></span><span class="op">(</span><span class="va">fit_axis</span><span class="op">$</span><span class="va">axis</span><span class="op">$</span><span class="va">trait_maps</span><span class="op">)</span></span>
+<span><span class="co">#&gt; [1] "comp1" "comp2"</span></span>
+<span><span class="fu"><a href="https://rdrr.io/r/base/dim.html" class="external-link">dim</a></span><span class="op">(</span><span class="va">fit_axis</span><span class="op">$</span><span class="va">axis</span><span class="op">$</span><span class="va">trait_maps</span><span class="op">[[</span><span class="st">"comp1"</span><span class="op">]</span><span class="op">]</span><span class="op">)</span></span>
 <span><span class="co">#&gt; [1]  4 12</span></span>
 <span><span class="fu"><a href="https://rdrr.io/r/base/dim.html" class="external-link">dim</a></span><span class="op">(</span><span class="va">fit_axis</span><span class="op">$</span><span class="va">axis</span><span class="op">$</span><span class="va">design_maps</span><span class="op">[[</span><span class="fl">1</span><span class="op">]</span><span class="op">]</span><span class="op">)</span></span>
 <span><span class="co">#&gt; [1]  4 12</span></span></code></pre></div>
@@ -358,7 +364,9 @@ seeing all three views together.</p>
 </h3>
 <p>Every component
 <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>k</mi><annotation encoding="application/x-tex">k</annotation></semantics></math>
-is defined by four objects stored in the fitted model:</p>
+is defined by four objects stored in the fitted model. All outputs carry
+proper names — subject labels on scores, component labels on columns,
+trait names on the supervision map:</p>
 <div class="sourceCode" id="cb13"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="co"># Bases learned from the data</span></span>
 <span><span class="va">L</span> <span class="op">&lt;-</span> <span class="va">fit_sup</span><span class="op">$</span><span class="va">axis</span><span class="op">$</span><span class="va">L</span>    <span class="co"># seed basis: n_seed x r_seed</span></span>
@@ -368,33 +376,48 @@ is defined by four objects stored in the fitted model:</p>
 <span><span class="va">W</span> <span class="op">&lt;-</span> <span class="va">fit_sup</span><span class="op">$</span><span class="va">axis</span><span class="op">$</span><span class="va">W</span>              <span class="co"># loading matrix: (r_seed*r_roi) x K</span></span>
 <span><span class="va">t_scores</span> <span class="op">&lt;-</span> <span class="va">fit_sup</span><span class="op">$</span><span class="va">axis</span><span class="op">$</span><span class="va">t_scores</span>  <span class="co"># subject scores: n_subject x K</span></span>
 <span><span class="va">A</span> <span class="op">&lt;-</span> <span class="va">fit_sup</span><span class="op">$</span><span class="va">axis</span><span class="op">$</span><span class="va">A</span>              <span class="co"># supervision map: K x n_traits</span></span></code></pre></div>
+<p>Note how everything is labeled:</p>
+<div class="sourceCode" id="cb14"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/utils/head.html" class="external-link">head</a></span><span class="op">(</span><span class="va">t_scores</span><span class="op">)</span>  <span class="co"># rows = subjects, cols = comp1, comp2</span></span>
+<span><span class="co">#&gt;          comp1      comp2</span></span>
+<span><span class="co">#&gt; S1 -0.74220283  0.3029316</span></span>
+<span><span class="co">#&gt; S2  0.22759622 -0.9031354</span></span>
+<span><span class="co">#&gt; S3  2.70865789  0.3953440</span></span>
+<span><span class="co">#&gt; S4  0.26760870 -0.6852734</span></span>
+<span><span class="co">#&gt; S5  0.55348601 -0.5373639</span></span>
+<span><span class="co">#&gt; S6 -0.02364459 -0.4909562</span></span>
+<span><span class="va">A</span>               <span class="co"># rows = components, cols = trait names</span></span>
+<span><span class="co">#&gt;         accuracy      speed</span></span>
+<span><span class="co">#&gt; comp1 -0.7721786 -0.2173421</span></span>
+<span><span class="co">#&gt; comp2 -0.1092141 -0.9947347</span></span></code></pre></div>
 <p>The loading matrix
 <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>W</mi><annotation encoding="application/x-tex">W</annotation></semantics></math>
 is the key to interpretation. Each column <code>W[, k]</code> is a
 vectorized <code>r_seed</code> x <code>r_roi</code> core, and the model
 pre-computes its back-projection to the original space as
 <code>trait_maps</code>:</p>
-<div class="sourceCode" id="cb14"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb15"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="co"># trait_maps[[k]] = L %*% matrix(W[,k], r_seed, r_roi) %*% t(R)</span></span>
-<span><span class="co"># This is already computed:</span></span>
-<span><span class="fu"><a href="https://rdrr.io/r/base/dim.html" class="external-link">dim</a></span><span class="op">(</span><span class="va">fit_sup</span><span class="op">$</span><span class="va">axis</span><span class="op">$</span><span class="va">trait_maps</span><span class="op">[[</span><span class="fl">1</span><span class="op">]</span><span class="op">]</span><span class="op">)</span></span>
+<span><span class="co"># Already computed and named:</span></span>
+<span><span class="fu"><a href="https://rdrr.io/r/base/names.html" class="external-link">names</a></span><span class="op">(</span><span class="va">fit_sup</span><span class="op">$</span><span class="va">axis</span><span class="op">$</span><span class="va">trait_maps</span><span class="op">)</span></span>
+<span><span class="co">#&gt; [1] "comp1" "comp2"</span></span>
+<span><span class="fu"><a href="https://rdrr.io/r/base/dim.html" class="external-link">dim</a></span><span class="op">(</span><span class="va">fit_sup</span><span class="op">$</span><span class="va">axis</span><span class="op">$</span><span class="va">trait_maps</span><span class="op">[[</span><span class="st">"comp1"</span><span class="op">]</span><span class="op">]</span><span class="op">)</span></span>
 <span><span class="co">#&gt; [1]  4 12</span></span></code></pre></div>
 </div>
 <div class="section level3">
 <h3 id="seed-space-and-roi-space-profiles">Seed-space and ROI-space profiles<a class="anchor" aria-label="anchor" href="#seed-space-and-roi-space-profiles"></a>
 </h3>
-<p>To understand <em>where</em> a component acts, we extract marginal
-profiles by averaging the trait map across each axis:</p>
-<div class="sourceCode" id="cb15"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="va">K</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/nrow.html" class="external-link">ncol</a></span><span class="op">(</span><span class="va">t_scores</span><span class="op">)</span></span>
-<span><span class="va">seed_profiles</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/matrix.html" class="external-link">matrix</a></span><span class="op">(</span><span class="cn">NA</span>, nrow <span class="op">=</span> <span class="va">n_seed</span>, ncol <span class="op">=</span> <span class="va">K</span><span class="op">)</span></span>
-<span><span class="va">roi_profiles</span>  <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/matrix.html" class="external-link">matrix</a></span><span class="op">(</span><span class="cn">NA</span>, nrow <span class="op">=</span> <span class="va">n_roi</span>,  ncol <span class="op">=</span> <span class="va">K</span><span class="op">)</span></span>
-<span></span>
-<span><span class="kw">for</span> <span class="op">(</span><span class="va">k</span> <span class="kw">in</span> <span class="fu"><a href="https://rdrr.io/r/base/seq.html" class="external-link">seq_len</a></span><span class="op">(</span><span class="va">K</span><span class="op">)</span><span class="op">)</span> <span class="op">{</span></span>
-<span>  <span class="va">tmap</span> <span class="op">&lt;-</span> <span class="va">fit_sup</span><span class="op">$</span><span class="va">axis</span><span class="op">$</span><span class="va">trait_maps</span><span class="op">[[</span><span class="va">k</span><span class="op">]</span><span class="op">]</span></span>
-<span>  <span class="va">seed_profiles</span><span class="op">[</span>, <span class="va">k</span><span class="op">]</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/colSums.html" class="external-link">rowMeans</a></span><span class="op">(</span><span class="va">tmap</span><span class="op">)</span>   <span class="co"># average across ROIs</span></span>
-<span>  <span class="va">roi_profiles</span><span class="op">[</span>, <span class="va">k</span><span class="op">]</span>  <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/colSums.html" class="external-link">colMeans</a></span><span class="op">(</span><span class="va">tmap</span><span class="op">)</span>   <span class="co"># average across seeds</span></span>
-<span><span class="op">}</span></span></code></pre></div>
+<p>To understand <em>where</em> a component acts, the model pre-computes
+marginal profiles by averaging each trait map across the opposite
+axis:</p>
+<div class="sourceCode" id="cb16"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="co"># Pre-computed: no manual derivation needed</span></span>
+<span><span class="va">seed_profiles</span> <span class="op">&lt;-</span> <span class="va">fit_sup</span><span class="op">$</span><span class="va">axis</span><span class="op">$</span><span class="va">seed_profiles</span>  <span class="co"># n_seed x K</span></span>
+<span><span class="va">roi_profiles</span>  <span class="op">&lt;-</span> <span class="va">fit_sup</span><span class="op">$</span><span class="va">axis</span><span class="op">$</span><span class="va">roi_profiles</span>   <span class="co"># n_roi  x K</span></span>
+<span><span class="fu"><a href="https://rdrr.io/r/base/dim.html" class="external-link">dim</a></span><span class="op">(</span><span class="va">seed_profiles</span><span class="op">)</span></span>
+<span><span class="co">#&gt; [1] 4 2</span></span>
+<span><span class="fu"><a href="https://rdrr.io/r/base/dim.html" class="external-link">dim</a></span><span class="op">(</span><span class="va">roi_profiles</span><span class="op">)</span></span>
+<span><span class="co">#&gt; [1] 12  2</span></span></code></pre></div>
 <p>The seed profile tells you which rows (seeds) are most involved in
 the component; the ROI profile tells you which columns (ROIs) are most
 involved.</p>
@@ -416,7 +439,7 @@ components 1 and 2.
 </h3>
 <p>The trait map itself is the most informative view — it shows exactly
 which seed-ROI pairs are modulated by the component:</p>
-<div class="sourceCode" id="cb16"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb17"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">tmap1</span> <span class="op">&lt;-</span> <span class="va">fit_sup</span><span class="op">$</span><span class="va">axis</span><span class="op">$</span><span class="va">trait_maps</span><span class="op">[[</span><span class="fl">1</span><span class="op">]</span><span class="op">]</span></span></code></pre></div>
 <div class="figure">
 <img src="bilinear_mixed_files/figure-html/plot-trait-map-1.png" class="r-plt" alt="Component 1 trait map: the full seed x ROI connectivity pattern associated with individual differences on this latent dimension." width="576"><p class="caption">
@@ -433,11 +456,11 @@ Subjects with high scores on component
 <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>k</mi><annotation encoding="application/x-tex">k</annotation></semantics></math>
 express the connectivity pattern in <code>trait_maps[[k]]</code> more
 strongly:</p>
-<div class="sourceCode" id="cb17"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="va">t_scores</span> <span class="op">&lt;-</span> <span class="va">fit_sup</span><span class="op">$</span><span class="va">axis</span><span class="op">$</span><span class="va">t_scores</span></span>
-<span><span class="fu"><a href="https://rdrr.io/r/base/colnames.html" class="external-link">rownames</a></span><span class="op">(</span><span class="va">t_scores</span><span class="op">)</span> <span class="op">&lt;-</span> <span class="va">fit_sup</span><span class="op">$</span><span class="va">subject_levels</span></span>
+<div class="sourceCode" id="cb18"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="co"># Subject scores come pre-labeled with subject IDs and component names</span></span>
+<span><span class="va">t_scores</span> <span class="op">&lt;-</span> <span class="va">fit_sup</span><span class="op">$</span><span class="va">axis</span><span class="op">$</span><span class="va">t_scores</span></span>
 <span><span class="va">t_scores</span></span>
-<span><span class="co">#&gt;           [,1]       [,2]</span></span>
+<span><span class="co">#&gt;          comp1      comp2</span></span>
 <span><span class="co">#&gt; S1 -0.74220283  0.3029316</span></span>
 <span><span class="co">#&gt; S2  0.22759622 -0.9031354</span></span>
 <span><span class="co">#&gt; S3  2.70865789  0.3953440</span></span>
@@ -461,17 +484,17 @@ in connectivity patterns after removing condition effects.
 (K x n_traits) links subject scores to external measures. Each column of
 <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>A</mi><annotation encoding="application/x-tex">A</annotation></semantics></math>
 shows how a trait loads onto the latent components:</p>
-<div class="sourceCode" id="cb18"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="va">A</span> <span class="op">&lt;-</span> <span class="va">fit_sup</span><span class="op">$</span><span class="va">axis</span><span class="op">$</span><span class="va">A</span></span>
-<span><span class="fu"><a href="https://rdrr.io/r/base/colnames.html" class="external-link">colnames</a></span><span class="op">(</span><span class="va">A</span><span class="op">)</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/colnames.html" class="external-link">colnames</a></span><span class="op">(</span><span class="va">y_traits</span><span class="op">)</span></span>
-<span><span class="fu"><a href="https://rdrr.io/r/base/colnames.html" class="external-link">rownames</a></span><span class="op">(</span><span class="va">A</span><span class="op">)</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/paste.html" class="external-link">paste0</a></span><span class="op">(</span><span class="st">"Comp"</span>, <span class="fu"><a href="https://rdrr.io/r/base/seq.html" class="external-link">seq_len</a></span><span class="op">(</span><span class="va">K</span><span class="op">)</span><span class="op">)</span></span>
+<div class="sourceCode" id="cb19"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="co"># A comes pre-labeled: rows = components, columns = trait names</span></span>
+<span><span class="va">A</span> <span class="op">&lt;-</span> <span class="va">fit_sup</span><span class="op">$</span><span class="va">axis</span><span class="op">$</span><span class="va">A</span></span>
 <span><span class="va">A</span></span>
 <span><span class="co">#&gt;         accuracy      speed</span></span>
-<span><span class="co">#&gt; Comp1 -0.7721786 -0.2173421</span></span>
-<span><span class="co">#&gt; Comp2 -0.1092141 -0.9947347</span></span></code></pre></div>
-<p>Read this as: “accuracy” is predicted by a weighted combination of
-component scores, with the weights given by column 1 of
-<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>A</mi><annotation encoding="application/x-tex">A</annotation></semantics></math>.</p>
+<span><span class="co">#&gt; comp1 -0.7721786 -0.2173421</span></span>
+<span><span class="co">#&gt; comp2 -0.1092141 -0.9947347</span></span></code></pre></div>
+<p>Read this row-by-row: the “accuracy” column shows how each component
+predicts accuracy; “speed” shows the same for speed. Or read
+column-wise: comp1 loads positively on accuracy but negatively on
+speed.</p>
 </div>
 <div class="section level3">
 <h3 id="putting-it-all-together">Putting it all together<a class="anchor" aria-label="anchor" href="#putting-it-all-together"></a>
@@ -490,21 +513,21 @@ scores along the x-axis.
 <p>You can generate this panel for each component. Here is the code to
 produce it for an arbitrary component
 <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>k</mi><annotation encoding="application/x-tex">k</annotation></semantics></math>:</p>
-<div class="sourceCode" id="cb19"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb20"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">k</span> <span class="op">&lt;-</span> <span class="fl">1</span>  <span class="co"># change to inspect other components</span></span>
-<span><span class="va">tmap</span> <span class="op">&lt;-</span> <span class="va">fit_sup</span><span class="op">$</span><span class="va">axis</span><span class="op">$</span><span class="va">trait_maps</span><span class="op">[[</span><span class="va">k</span><span class="op">]</span><span class="op">]</span></span>
 <span></span>
 <span><span class="fu"><a href="https://rdrr.io/r/graphics/par.html" class="external-link">par</a></span><span class="op">(</span>mfrow <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">2</span>, <span class="fl">2</span><span class="op">)</span>, mar <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">4</span>, <span class="fl">4</span>, <span class="fl">3</span>, <span class="fl">1</span><span class="op">)</span><span class="op">)</span></span>
 <span></span>
-<span><span class="co"># 1. Seed profile — which rows matter?</span></span>
-<span><span class="fu"><a href="https://rdrr.io/r/graphics/barplot.html" class="external-link">barplot</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/colSums.html" class="external-link">rowMeans</a></span><span class="op">(</span><span class="va">tmap</span><span class="op">)</span>, names.arg <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/paste.html" class="external-link">paste0</a></span><span class="op">(</span><span class="st">"S"</span>, <span class="fu"><a href="https://rdrr.io/r/base/seq.html" class="external-link">seq_len</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/nrow.html" class="external-link">nrow</a></span><span class="op">(</span><span class="va">tmap</span><span class="op">)</span><span class="op">)</span><span class="op">)</span>,</span>
+<span><span class="co"># 1. Seed profile — which rows matter? (pre-computed)</span></span>
+<span><span class="fu"><a href="https://rdrr.io/r/graphics/barplot.html" class="external-link">barplot</a></span><span class="op">(</span><span class="va">fit_sup</span><span class="op">$</span><span class="va">axis</span><span class="op">$</span><span class="va">seed_profiles</span><span class="op">[</span>, <span class="va">k</span><span class="op">]</span>,</span>
 <span>        col <span class="op">=</span> <span class="st">"steelblue"</span>, main <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/paste.html" class="external-link">paste</a></span><span class="op">(</span><span class="st">"Comp"</span>, <span class="va">k</span>, <span class="st">"- seed profile"</span><span class="op">)</span><span class="op">)</span></span>
 <span></span>
-<span><span class="co"># 2. ROI profile — which columns matter?</span></span>
-<span><span class="fu"><a href="https://rdrr.io/r/graphics/barplot.html" class="external-link">barplot</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/colSums.html" class="external-link">colMeans</a></span><span class="op">(</span><span class="va">tmap</span><span class="op">)</span>, names.arg <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/paste.html" class="external-link">paste0</a></span><span class="op">(</span><span class="st">"R"</span>, <span class="fu"><a href="https://rdrr.io/r/base/seq.html" class="external-link">seq_len</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/nrow.html" class="external-link">ncol</a></span><span class="op">(</span><span class="va">tmap</span><span class="op">)</span><span class="op">)</span><span class="op">)</span>,</span>
+<span><span class="co"># 2. ROI profile — which columns matter? (pre-computed)</span></span>
+<span><span class="fu"><a href="https://rdrr.io/r/graphics/barplot.html" class="external-link">barplot</a></span><span class="op">(</span><span class="va">fit_sup</span><span class="op">$</span><span class="va">axis</span><span class="op">$</span><span class="va">roi_profiles</span><span class="op">[</span>, <span class="va">k</span><span class="op">]</span>,</span>
 <span>        col <span class="op">=</span> <span class="st">"darkorange"</span>, main <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/paste.html" class="external-link">paste</a></span><span class="op">(</span><span class="st">"Comp"</span>, <span class="va">k</span>, <span class="st">"- ROI profile"</span><span class="op">)</span><span class="op">)</span></span>
 <span></span>
 <span><span class="co"># 3. Full connectivity map</span></span>
+<span><span class="va">tmap</span> <span class="op">&lt;-</span> <span class="va">fit_sup</span><span class="op">$</span><span class="va">axis</span><span class="op">$</span><span class="va">trait_maps</span><span class="op">[[</span><span class="va">k</span><span class="op">]</span><span class="op">]</span></span>
 <span><span class="fu"><a href="https://rdrr.io/r/graphics/image.html" class="external-link">image</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/seq.html" class="external-link">seq_len</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/nrow.html" class="external-link">nrow</a></span><span class="op">(</span><span class="va">tmap</span><span class="op">)</span><span class="op">)</span>, <span class="fu"><a href="https://rdrr.io/r/base/seq.html" class="external-link">seq_len</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/nrow.html" class="external-link">ncol</a></span><span class="op">(</span><span class="va">tmap</span><span class="op">)</span><span class="op">)</span>, <span class="va">tmap</span>,</span>
 <span>      col <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/grDevices/palettes.html" class="external-link">hcl.colors</a></span><span class="op">(</span><span class="fl">64</span>, <span class="st">"RdBu"</span>, rev <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span>,</span>
 <span>      main <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/paste.html" class="external-link">paste</a></span><span class="op">(</span><span class="st">"Comp"</span>, <span class="va">k</span>, <span class="st">"- connectivity"</span><span class="op">)</span><span class="op">)</span></span>
@@ -518,9 +541,10 @@ produce it for an arbitrary component
 <h3 id="interpreting-the-seed_repeat-head">Interpreting the seed_repeat head<a class="anchor" aria-label="anchor" href="#interpreting-the-seed_repeat-head"></a>
 </h3>
 <p>In <code>seed_repeat</code> mode, there is no full seed-by-ROI trait
-map. Instead, the per-component footprint is a single ROI-space
-vector:</p>
-<div class="sourceCode" id="cb20"><pre class="downlit sourceCode r">
+map. Instead, the per-component footprint is a single ROI-space vector.
+The model also pre-computes an <code>roi_profiles</code> matrix (n_roi x
+K), analogous to the axis head’s profiles:</p>
+<div class="sourceCode" id="cb21"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">fit_rep2</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/bilinear_mixed.html">bilinear_mixed</a></span><span class="op">(</span></span>
 <span>  data       <span class="op">=</span> <span class="va">data_list</span>,</span>
 <span>  subject    <span class="op">=</span> <span class="va">subject</span>,</span>
@@ -534,8 +558,12 @@ vector:</p>
 <span>  max_iter   <span class="op">=</span> <span class="fl">30</span></span>
 <span><span class="op">)</span></span>
 <span></span>
-<span><span class="co"># ROI loading vector for component 1</span></span>
-<span><span class="va">roi_vec</span> <span class="op">&lt;-</span> <span class="va">fit_rep2</span><span class="op">$</span><span class="va">repeat_head</span><span class="op">$</span><span class="va">roi_trait_maps</span><span class="op">[[</span><span class="fl">1</span><span class="op">]</span><span class="op">]</span></span>
+<span><span class="co"># Pre-computed ROI profiles matrix</span></span>
+<span><span class="fu"><a href="https://rdrr.io/r/base/dim.html" class="external-link">dim</a></span><span class="op">(</span><span class="va">fit_rep2</span><span class="op">$</span><span class="va">repeat_head</span><span class="op">$</span><span class="va">roi_profiles</span><span class="op">)</span></span>
+<span><span class="co">#&gt; [1] 12  2</span></span>
+<span></span>
+<span><span class="co"># Or access individual component vectors</span></span>
+<span><span class="va">roi_vec</span> <span class="op">&lt;-</span> <span class="va">fit_rep2</span><span class="op">$</span><span class="va">repeat_head</span><span class="op">$</span><span class="va">roi_trait_maps</span><span class="op">[[</span><span class="st">"comp1"</span><span class="op">]</span><span class="op">]</span></span>
 <span><span class="fu"><a href="https://rdrr.io/r/base/length.html" class="external-link">length</a></span><span class="op">(</span><span class="va">roi_vec</span><span class="op">)</span></span>
 <span><span class="co">#&gt; [1] 12</span></span></code></pre></div>
 <div class="figure">
@@ -548,7 +576,7 @@ dimension.
 <p>The design effect maps similarly live in ROI space. Each element of
 <code>roi_design_maps</code> shows how a design variable (condition, row
 covariate, or interaction) affects the ROI profile:</p>
-<div class="sourceCode" id="cb21"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb22"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/base/names.html" class="external-link">names</a></span><span class="op">(</span><span class="va">fit_rep2</span><span class="op">$</span><span class="va">repeat_head</span><span class="op">$</span><span class="va">roi_design_maps</span><span class="op">)</span></span>
 <span><span class="co">#&gt; [1] "z1"          "row_cov1"    "row_cov2"    "z1:row_cov1" "z1:row_cov2"</span></span></code></pre></div>
 <div class="figure">
@@ -577,39 +605,53 @@ pattern.
 <tr class="odd">
 <td align="left">Full seed x ROI maps</td>
 <td align="left">
-<code>trait_maps[[k]]</code>,
+<code>trait_maps[["comp1"]]</code>,
 <code>design_maps[[j]]</code>
 </td>
 <td align="left">Not available</td>
 </tr>
 <tr class="even">
-<td align="left">Per-ROI loading vectors</td>
-<td align="left">Derive via <code>colMeans(trait_maps[[k]])</code>
-</td>
+<td align="left">Per-seed profiles</td>
 <td align="left">
-<code>roi_trait_maps[[k]]</code> directly</td>
-</tr>
-<tr class="odd">
-<td align="left">Per-seed loading vectors</td>
-<td align="left">Derive via <code>rowMeans(trait_maps[[k]])</code>
-</td>
+<code>seed_profiles</code> (pre-computed, n_seed x
+K)</td>
 <td align="left">Not available</td>
 </tr>
+<tr class="odd">
+<td align="left">Per-ROI profiles</td>
+<td align="left">
+<code>roi_profiles</code> (pre-computed, n_roi x
+K)</td>
+<td align="left">
+<code>roi_profiles</code> (pre-computed, n_roi x
+K)</td>
+</tr>
 <tr class="even">
+<td align="left">ROI component vectors</td>
+<td align="left">Derive via <code>roi_profiles[, k]</code>
+</td>
+<td align="left">
+<code>roi_trait_maps[["comp1"]]</code> directly</td>
+</tr>
+<tr class="odd">
 <td align="left">Row-covariate effects</td>
 <td align="left">Not supported</td>
 <td align="left">
 <code>roi_design_maps</code> (main + interactions)</td>
 </tr>
-<tr class="odd">
-<td align="left">Subject scores</td>
-<td align="left"><code>axis$t_scores</code></td>
-<td align="left"><code>repeat_head$t_scores</code></td>
-</tr>
 <tr class="even">
+<td align="left">Subject scores</td>
+<td align="left">
+<code>axis$t_scores</code> (labeled)</td>
+<td align="left">
+<code>repeat_head$t_scores</code> (labeled)</td>
+</tr>
+<tr class="odd">
 <td align="left">Trait prediction</td>
-<td align="left"><code>axis$A</code></td>
-<td align="left"><code>repeat_head$A</code></td>
+<td align="left">
+<code>axis$A</code> (labeled)</td>
+<td align="left">
+<code>repeat_head$A</code> (labeled)</td>
 </tr>
 </tbody>
 </table>
@@ -621,7 +663,7 @@ pattern.
 <p>The fitted model back-projects design coefficients into the original
 space. In <code>seed_axis</code> mode, each
 <code>design_maps[[j]]</code> is a full seed x ROI matrix:</p>
-<div class="sourceCode" id="cb22"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb23"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/base/length.html" class="external-link">length</a></span><span class="op">(</span><span class="va">fit</span><span class="op">$</span><span class="va">axis</span><span class="op">$</span><span class="va">design_maps</span><span class="op">)</span></span>
 <span><span class="co">#&gt; [1] 1</span></span>
 <span><span class="fu"><a href="https://rdrr.io/r/base/dim.html" class="external-link">dim</a></span><span class="op">(</span><span class="va">fit</span><span class="op">$</span><span class="va">axis</span><span class="op">$</span><span class="va">design_maps</span><span class="op">[[</span><span class="fl">1</span><span class="op">]</span><span class="op">]</span><span class="op">)</span></span>
@@ -643,7 +685,7 @@ matrices, set <code>connectivity_type = "symmetric"</code>. The model
 then forces a shared basis for rows and columns
 (<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>L</mi><mo>=</mo><mi>R</mi></mrow><annotation encoding="application/x-tex">L = R</annotation></semantics></math>),
 halving the basis parameters:</p>
-<div class="sourceCode" id="cb23"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb24"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">fit_sym</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/bilinear_mixed.html">bilinear_mixed</a></span><span class="op">(</span></span>
 <span>  data              <span class="op">=</span> <span class="va">sym_data</span>,</span>
 <span>  subject           <span class="op">=</span> <span class="va">subject</span>,</span>
@@ -662,7 +704,7 @@ detects symmetry automatically by checking whether all matrices are
 equal to their transpose within <code>sym_tol</code>.</p>
 <p>When symmetric, the trait maps are symmetric too — the node-level
 profile is just the row (or column) mean:</p>
-<div class="sourceCode" id="cb24"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb25"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">tmap_sym</span> <span class="op">&lt;-</span> <span class="va">fit_sym</span><span class="op">$</span><span class="va">axis</span><span class="op">$</span><span class="va">trait_maps</span><span class="op">[[</span><span class="fl">1</span><span class="op">]</span><span class="op">]</span></span>
 <span><span class="va">node_profile</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/colSums.html" class="external-link">rowMeans</a></span><span class="op">(</span><span class="va">tmap_sym</span><span class="op">)</span>  <span class="co"># = colMeans since symmetric</span></span>
 <span><span class="va">node_profile</span></span>
@@ -674,7 +716,7 @@ profile is just the row (or column) mean:</p>
 </h2>
 <p>For most analyses, <code><a href="../reference/bilinear_mixed_easy.html">bilinear_mixed_easy()</a></code> picks sensible
 defaults automatically. You just specify a complexity profile:</p>
-<div class="sourceCode" id="cb25"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb26"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">fit_easy</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/bilinear_mixed_easy.html">bilinear_mixed_easy</a></span><span class="op">(</span></span>
 <span>  data    <span class="op">=</span> <span class="va">data_list</span>,</span>
 <span>  subject <span class="op">=</span> <span class="va">subject</span>,</span>
@@ -717,7 +759,7 @@ variance:</p>
 </table>
 <p>Behind the scenes, <code><a href="../reference/bilinear_mixed_recommend.html">bilinear_mixed_recommend()</a></code> inspects
 your data to set ranks, regularization strengths, and mode:</p>
-<div class="sourceCode" id="cb26"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb27"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">rec</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/bilinear_mixed_recommend.html">bilinear_mixed_recommend</a></span><span class="op">(</span></span>
 <span>  data    <span class="op">=</span> <span class="va">data_list</span>,</span>
 <span>  subject <span class="op">=</span> <span class="va">subject</span>,</span>
@@ -739,7 +781,7 @@ your data to set ranks, regularization strengths, and mode:</p>
 <p>When you need the best configuration,
 <code><a href="../reference/bilinear_mixed_tune.html">bilinear_mixed_tune()</a></code> performs subject-blocked
 cross-validation over a grid of key parameters:</p>
-<div class="sourceCode" id="cb27"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb28"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">tuned</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/bilinear_mixed_tune.html">bilinear_mixed_tune</a></span><span class="op">(</span></span>
 <span>  data    <span class="op">=</span> <span class="va">data_list</span>,</span>
 <span>  subject <span class="op">=</span> <span class="va">subject</span>,</span>
@@ -779,7 +821,7 @@ stored in <code>tuned$fit</code>.</p>
 <p>For supervised problems with trait data, use
 <code>metric = "trait_r2"</code> to select the configuration that best
 predicts subject traits:</p>
-<div class="sourceCode" id="cb28"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb29"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">tuned_trait</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/bilinear_mixed_tune.html">bilinear_mixed_tune</a></span><span class="op">(</span></span>
 <span>  data    <span class="op">=</span> <span class="va">data_list</span>,</span>
 <span>  subject <span class="op">=</span> <span class="va">subject</span>,</span>
@@ -793,7 +835,7 @@ predicts subject traits:</p>
 </h2>
 <p>The ALS algorithm tracks a penalized objective at each iteration. You
 can inspect convergence to check that the model has stabilized:</p>
-<div class="sourceCode" id="cb29"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb30"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">obj</span> <span class="op">&lt;-</span> <span class="va">fit</span><span class="op">$</span><span class="va">axis</span><span class="op">$</span><span class="va">objective_trace</span></span>
 <span><span class="fu"><a href="https://rdrr.io/r/base/length.html" class="external-link">length</a></span><span class="op">(</span><span class="va">obj</span><span class="op">)</span></span>
 <span><span class="co">#&gt; [1] 30</span></span></code></pre></div>

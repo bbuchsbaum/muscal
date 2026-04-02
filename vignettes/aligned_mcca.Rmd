@@ -1,0 +1,189 @@
+---
+title: Aligned Multiblock Canonical Correlation Analysis
+output: rmarkdown::html_vignette
+vignette: >
+  %\VignetteIndexEntry{Aligned Multiblock Canonical Correlation Analysis}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+params:
+  family: red
+  preset: homage
+css: albers.css
+resource_files:
+- albers.css
+- albers.js
+includes:
+  in_header: |-
+    <script src="albers.js"></script>
+    <script>document.addEventListener('DOMContentLoaded',function(){document.body.classList.add('palette-red');});</script>
+
+---
+
+```{r setup, include = FALSE}
+if (requireNamespace("ggplot2", quietly = TRUE) && requireNamespace("albersdown", quietly = TRUE) && exists("params")) ggplot2::theme_set(albersdown::theme_albers(params$family))
+knitr::opts_chunk$set(
+  collapse = TRUE,
+  comment = "#>",
+  message = FALSE,
+  warning = FALSE,
+  fig.width = 6,
+  fig.height = 4
+)
+```
+
+## Why aligned MCCA?
+
+`aligned_mcca()` solves the same row-mismatch problem as `aligned_mfa()`, but in
+the language of canonical correlation. You use it when each block has its own
+row set, yet all blocks should still line up on one shared score space over a
+common latent population.
+
+It is the correlation-based counterpart to `aligned_mfa()`: same alignment
+idea, different objective.
+
+## What does a quick fit look like?
+
+```{r load-packages}
+library(muscal)
+library(multivarious)
+library(ggplot2)
+```
+
+```{r simulate-data, include = FALSE}
+set.seed(42)
+N <- 75
+k <- 2
+Z <- scale(matrix(rnorm(N * k), nrow = N, ncol = k), center = TRUE, scale = FALSE)
+
+idx1 <- sort(sample.int(N, 60, replace = FALSE))
+idx2 <- sort(c(setdiff(seq_len(N), idx1), sample(idx1, 40, replace = FALSE)))
+idx3 <- sort(sample.int(N, 55, replace = FALSE))
+
+make_block <- function(idx, p, noise_sd = 0.1) {
+  A <- matrix(rnorm(p * k), nrow = p, ncol = k)
+  X <- Z[idx, , drop = FALSE] %*% t(A) +
+    matrix(rnorm(length(idx) * p, sd = noise_sd), nrow = length(idx), ncol = p)
+  scale(X, center = TRUE, scale = FALSE)
+}
+
+blocks <- list(
+  transcriptomics = make_block(idx1, 20),
+  imaging = make_block(idx2, 22),
+  physiology = make_block(idx3, 18)
+)
+row_index <- list(transcriptomics = idx1, imaging = idx2, physiology = idx3)
+coverage <- tabulate(c(idx1, idx2, idx3), nbins = N)
+
+full_blocks <- list(
+  transcriptomics = make_block(seq_len(N), 20),
+  imaging = make_block(seq_len(N), 22)
+)
+```
+
+```{r show-coverage}
+c(
+  n_transcriptomics_rows = nrow(blocks$transcriptomics),
+  n_imaging_rows = nrow(blocks$imaging),
+  n_physiology_rows = nrow(blocks$physiology)
+)
+```
+
+```{r fit-aligned-mcca}
+fit <- aligned_mcca(blocks, row_index, N = N, ncomp = 2, ridge = 1e-6)
+S <- multivarious::scores(fit)
+
+stopifnot(all(dim(S) == c(N, 2)))
+stopifnot(all(is.finite(S)))
+```
+
+```{r latent-recovery-check}
+cc <- cancor(
+  scale(Z, center = TRUE, scale = FALSE),
+  scale(S, center = TRUE, scale = FALSE)
+)$cor[1:2]
+
+stopifnot(all(is.finite(cc)))
+stopifnot(mean(cc) > 0.83)
+
+round(cc, 3)
+```
+
+```{r quick-score-plot, echo = FALSE, fig.cap = "Aligned MCCA scores over the latent reference rows. Darker coverage means more blocks contribute to that row."}
+score_df <- data.frame(
+  Comp1 = S[, 1],
+  Comp2 = S[, 2],
+  coverage = factor(coverage)
+)
+
+ggplot(score_df, aes(Comp1, Comp2, color = coverage)) +
+  geom_point(alpha = 0.85, size = 2) +
+  geom_hline(yintercept = 0, linetype = 2, color = "grey75") +
+  geom_vline(xintercept = 0, linetype = 2, color = "grey75") +
+  labs(x = "Component 1", y = "Component 2", color = "Blocks")
+```
+
+The shared components recover the latent signal even though no block covers the
+same row pattern as any other block.
+
+## How is this different from ordinary MCCA?
+
+When all blocks share the same rows, `aligned_mcca()` should collapse back to
+`mcca()`.
+
+```{r reduction-to-mcca}
+fit_aligned_full <- aligned_mcca(
+  full_blocks,
+  list(transcriptomics = seq_len(N), imaging = seq_len(N)),
+  N = N,
+  ncomp = 2,
+  ridge = 1e-6
+)
+fit_mcca <- mcca(full_blocks, ncomp = 2, ridge = 1e-6)
+
+P1 <- multivarious::scores(fit_aligned_full) %*%
+  solve(crossprod(multivarious::scores(fit_aligned_full)), t(multivarious::scores(fit_aligned_full)))
+P2 <- multivarious::scores(fit_mcca) %*%
+  solve(crossprod(multivarious::scores(fit_mcca)), t(multivarious::scores(fit_mcca)))
+rel <- norm(P1 - P2, type = "F") / (norm(P2, type = "F") + 1e-12)
+
+stopifnot(is.finite(rel))
+stopifnot(rel < 1e-8)
+
+rel
+```
+
+That reduction matters because it tells you the alignment layer is only solving
+the missing-row problem. It is not changing the core GCCA objective when the
+problem is already fully aligned.
+
+## What should you inspect after fitting?
+
+```{r inspect-partial-scores}
+sapply(fit$partial_scores, dim)
+```
+
+```{r inspect-canonical-weights}
+sapply(fit$canonical_weights, dim)
+```
+
+The `partial_scores` live at the observed-row level for each block. The
+`canonical_weights` live in each block's feature space. Together they tell you
+how the shared reference-space scores are supported by the observed data.
+
+## When should you use aligned MCCA?
+
+Use `aligned_mcca()` when:
+
+- each block has its own row set,
+- you want correlation-based shared components,
+- repeated or subset row mappings are part of the data collection process, and
+- no block should be treated as the anchor.
+
+If you *do* have a fully observed anchor block, `anchored_mcca()` is the more
+direct interface.
+
+## Where next?
+
+- `?aligned_mcca` for weighting and ridge options
+- `?anchored_mcca` for the anchored wrapper
+- `vignette("aligned_mfa")` for the variance-based aligned alternative

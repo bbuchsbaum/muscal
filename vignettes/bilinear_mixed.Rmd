@@ -354,6 +354,7 @@ component; the ROI profile tells you which columns (ROIs) are most involved.
 
 ```{r plot-seed-profile, echo = FALSE, fig.cap = "Seed-space profiles: average connectivity contribution of each seed for components 1 (blue) and 2 (orange).", fig.height = 3.5}
 cols <- c("steelblue", "darkorange")
+n_profile <- ncol(seed_profiles)
 barplot(
   t(seed_profiles),
   beside = TRUE,
@@ -362,7 +363,7 @@ barplot(
   ylab = "Mean loading",
   main = "Seed profiles"
 )
-legend("topright", legend = paste("Comp", seq_len(K)),
+legend("topright", legend = paste("Comp", seq_len(n_profile)),
        fill = cols, bty = "n", cex = 0.9)
 ```
 
@@ -375,7 +376,7 @@ barplot(
   ylab = "Mean loading",
   main = "ROI profiles"
 )
-legend("topright", legend = paste("Comp", seq_len(K)),
+legend("topright", legend = paste("Comp", seq_len(n_profile)),
        fill = cols, bty = "n", cex = 0.9)
 ```
 

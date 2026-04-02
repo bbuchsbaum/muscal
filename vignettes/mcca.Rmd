@@ -1,0 +1,161 @@
+---
+title: Multiblock Canonical Correlation Analysis
+output: rmarkdown::html_vignette
+vignette: >
+  %\VignetteIndexEntry{Multiblock Canonical Correlation Analysis}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+params:
+  family: red
+  preset: homage
+css: albers.css
+resource_files:
+- albers.css
+- albers.js
+includes:
+  in_header: |-
+    <script src="albers.js"></script>
+    <script>document.addEventListener('DOMContentLoaded',function(){document.body.classList.add('palette-red');});</script>
+
+---
+
+```{r setup, include = FALSE}
+if (requireNamespace("ggplot2", quietly = TRUE) && requireNamespace("albersdown", quietly = TRUE) && exists("params")) ggplot2::theme_set(albersdown::theme_albers(params$family))
+knitr::opts_chunk$set(
+  collapse = TRUE,
+  comment = "#>",
+  message = FALSE,
+  warning = FALSE,
+  fig.width = 6,
+  fig.height = 4
+)
+```
+
+## Why MCCA?
+
+Use `mcca()` when you have several blocks measured on the same observations and
+you care about the *shared score space* rather than raw variance in the
+concatenated data. The method looks for components that each block can project
+onto coherently, so it is a natural choice when blocks differ in scale or
+dimensionality but should still agree on the same latent structure.
+
+If your main question is "what common signal do these blocks line up on?",
+MCCA is often the right first model.
+
+## What does a quick fit look like?
+
+```{r load-packages}
+library(muscal)
+library(multivarious)
+library(ggplot2)
+```
+
+```{r simulate-data, include = FALSE}
+set.seed(42)
+n <- 80
+k <- 2
+Z <- scale(matrix(rnorm(n * k), nrow = n, ncol = k), center = TRUE, scale = FALSE)
+
+make_block <- function(p, noise_sd = 0.25) {
+  A <- matrix(rnorm(p * k), nrow = p, ncol = k)
+  X <- Z %*% t(A) + matrix(rnorm(n * p, sd = noise_sd), nrow = n, ncol = p)
+  scale(X, center = TRUE, scale = FALSE)
+}
+
+blocks <- list(
+  clinical = make_block(16),
+  behavior = make_block(20),
+  imaging = make_block(18)
+)
+latent_group <- factor(ifelse(Z[, 1] > 0, "positive latent score", "negative latent score"))
+```
+
+```{r show-blocks}
+sapply(blocks, dim)
+```
+
+```{r fit-mcca}
+fit <- mcca(blocks, ncomp = 2, ridge = 1e-6)
+S <- multivarious::scores(fit)
+
+stopifnot(all(dim(S) == c(n, 2)))
+stopifnot(all(is.finite(S)))
+```
+
+```{r shared-signal-check}
+cc <- cancor(
+  scale(Z, center = TRUE, scale = FALSE),
+  scale(S, center = TRUE, scale = FALSE)
+)$cor[1:2]
+
+stopifnot(all(is.finite(cc)))
+stopifnot(min(cc) > 0.9)
+
+round(cc, 3)
+```
+
+```{r quick-score-plot, echo = FALSE, fig.cap = "MCCA scores recover the shared low-dimensional structure. The coloring is derived from the first latent factor used to generate the blocks."}
+score_df <- data.frame(
+  Comp1 = S[, 1],
+  Comp2 = S[, 2],
+  latent_group = latent_group
+)
+
+ggplot(score_df, aes(Comp1, Comp2, color = latent_group)) +
+  geom_point(alpha = 0.8, size = 2) +
+  geom_hline(yintercept = 0, linetype = 2, color = "grey75") +
+  geom_vline(xintercept = 0, linetype = 2, color = "grey75") +
+  labs(x = "Component 1", y = "Component 2", color = NULL)
+```
+
+The canonical correlations above are the first sanity check. In this simulated
+example, the fitted scores recover the two shared latent directions very
+strongly.
+
+## What is the method actually doing?
+
+MCCA builds a compromise score space that all blocks can project into. In the
+MAXVAR formulation used here, each block contributes a ridge-stabilized
+projection operator, and the shared components are the leading eigenvectors of
+their weighted sum.
+
+That is why `mcca()` stays stable even when some blocks are wide (`p >> n`) or
+close to rank-deficient after centering.
+
+## What should you inspect after fitting?
+
+```{r inspect-partial-scores}
+sapply(fit$partial_scores, dim)
+```
+
+```{r partial-score-check}
+S_sum <- Reduce(`+`, fit$partial_scores)
+max_diff <- max(abs(S_sum - S))
+
+stopifnot(is.finite(max_diff))
+stopifnot(max_diff < 1e-6)
+
+max_diff
+```
+
+Each block has its own partial score matrix. Their sum reproduces the
+compromise scores, so large disagreements across partial scores tell you where
+the blocks are pulling in different directions.
+
+## When should you reach for MCCA?
+
+Use `mcca()` when:
+
+- your blocks share the same rows,
+- you want a common score space driven by cross-block agreement,
+- some blocks are much wider than others, and
+- you need ridge stabilization in high dimensions.
+
+Use `mfa()` instead when you want a classical variance-balancing factor model
+rather than a canonical-correlation view.
+
+## Where next?
+
+- `vignette("mfa")` for variance-based multiblock integration
+- `vignette("aligned_mcca")` for the same idea when blocks do not share the same rows
+- `?mcca` for tuning `ridge` and `block_weights`

@@ -1,0 +1,205 @@
+---
+title: Aligned Multiple Factor Analysis
+output: rmarkdown::html_vignette
+vignette: >
+  %\VignetteIndexEntry{Aligned Multiple Factor Analysis}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+params:
+  family: red
+  preset: homage
+css: albers.css
+resource_files:
+- albers.css
+- albers.js
+includes:
+  in_header: |-
+    <script src="albers.js"></script>
+    <script>document.addEventListener('DOMContentLoaded',function(){document.body.classList.add('palette-red');});</script>
+
+---
+
+```{r setup, include = FALSE}
+if (requireNamespace("ggplot2", quietly = TRUE) && requireNamespace("albersdown", quietly = TRUE) && exists("params")) ggplot2::theme_set(albersdown::theme_albers(params$family))
+knitr::opts_chunk$set(
+  collapse = TRUE,
+  comment = "#>",
+  message = FALSE,
+  warning = FALSE,
+  fig.width = 6,
+  fig.height = 4
+)
+```
+
+## Why aligned MFA?
+
+Standard MFA assumes every block has exactly the same rows. `aligned_mfa()`
+relaxes that assumption. You use it when blocks point back to the same latent
+population, but each block observes only a subset of rows, or observes them in
+different patterns.
+
+The key difference from `anchored_mfa()` is that no single block is treated as
+the privileged reference. The shared scores live in a latent reference row
+space, and each block contributes through its own `row_index` mapping.
+
+## What does a quick fit look like?
+
+```{r load-packages}
+library(muscal)
+library(multivarious)
+library(ggplot2)
+```
+
+```{r simulate-data, include = FALSE}
+set.seed(42)
+N <- 75
+k <- 2
+S_true <- qr.Q(qr(scale(matrix(rnorm(N * k), nrow = N, ncol = k), center = TRUE, scale = FALSE)))
+
+idx1 <- sort(sample.int(N, 60, replace = FALSE))
+idx2 <- sort(c(setdiff(seq_len(N), idx1), sample(idx1, 40, replace = FALSE)))
+idx3 <- sort(sample.int(N, 55, replace = FALSE))
+
+V1 <- svd(matrix(rnorm(20 * k), 20, k))$u[, seq_len(k), drop = FALSE]
+V2 <- svd(matrix(rnorm(18 * k), 18, k))$u[, seq_len(k), drop = FALSE]
+V3 <- svd(matrix(rnorm(16 * k), 16, k))$u[, seq_len(k), drop = FALSE]
+
+X1 <- S_true[idx1, , drop = FALSE] %*% t(V1) +
+  matrix(rnorm(length(idx1) * 20, sd = 0.1), nrow = length(idx1), ncol = 20)
+X2 <- S_true[idx2, , drop = FALSE] %*% t(V2) +
+  matrix(rnorm(length(idx2) * 18, sd = 0.1), nrow = length(idx2), ncol = 18)
+X3 <- S_true[idx3, , drop = FALSE] %*% t(V3) +
+  matrix(rnorm(length(idx3) * 16, sd = 0.1), nrow = length(idx3), ncol = 16)
+
+blocks <- list(
+  expression = scale(X1, center = TRUE, scale = FALSE),
+  imaging = scale(X2, center = TRUE, scale = FALSE),
+  behavior = scale(X3, center = TRUE, scale = FALSE)
+)
+row_index <- list(expression = idx1, imaging = idx2, behavior = idx3)
+coverage <- tabulate(c(idx1, idx2, idx3), nbins = N)
+
+full_blocks <- list(
+  expression = scale(S_true %*% t(V1) + matrix(rnorm(N * 20, sd = 0.1), N, 20), center = TRUE, scale = FALSE),
+  imaging = scale(S_true %*% t(V2) + matrix(rnorm(N * 18, sd = 0.1), N, 18), center = TRUE, scale = FALSE),
+  behavior = scale(S_true %*% t(V3) + matrix(rnorm(N * 16, sd = 0.1), N, 16), center = TRUE, scale = FALSE)
+)
+```
+
+```{r show-coverage}
+c(
+  n_expression_rows = nrow(blocks$expression),
+  n_imaging_rows = nrow(blocks$imaging),
+  n_behavior_rows = nrow(blocks$behavior)
+)
+```
+
+```{r fit-aligned-mfa}
+fit <- aligned_mfa(blocks, row_index, N = N, ncomp = 2, normalization = "None")
+S <- multivarious::scores(fit)
+
+stopifnot(all(dim(S) == c(N, 2)))
+stopifnot(all(is.finite(S)))
+stopifnot(length(fit$objective_trace) >= 1)
+```
+
+```{r latent-recovery-check}
+cc <- cancor(
+  scale(S_true, center = TRUE, scale = FALSE),
+  scale(S, center = TRUE, scale = FALSE)
+)$cor[1:2]
+
+stopifnot(all(is.finite(cc)))
+stopifnot(mean(cc) > 0.77)
+
+round(cc, 3)
+```
+
+```{r quick-score-plot, echo = FALSE, fig.cap = "Aligned MFA estimates one score vector for each latent reference row. Here the points are colored by how many blocks cover that row."}
+score_df <- data.frame(
+  Comp1 = S[, 1],
+  Comp2 = S[, 2],
+  coverage = factor(coverage)
+)
+
+ggplot(score_df, aes(Comp1, Comp2, color = coverage)) +
+  geom_point(alpha = 0.85, size = 2) +
+  geom_hline(yintercept = 0, linetype = 2, color = "grey75") +
+  geom_vline(xintercept = 0, linetype = 2, color = "grey75") +
+  labs(x = "Component 1", y = "Component 2", color = "Blocks")
+```
+
+Rows observed in two blocks are better constrained than rows observed once, but
+the model still estimates a single coherent score space over all `N` latent
+rows.
+
+## How do row mappings work?
+
+```{r inspect-row-index}
+lapply(row_index, head, 8)
+```
+
+Each integer vector says which latent reference row each observed row belongs
+to. This is the entire alignment mechanism: if row 7 in `expression` and row 3
+in `imaging` both map to latent row 21, they contribute to the same shared
+score vector.
+
+## What happens when all rows line up?
+
+When every block observes the same rows in the same order, `aligned_mfa()`
+should agree with ordinary `mfa()`.
+
+```{r reduction-to-mfa}
+fit_aligned_full <- aligned_mfa(
+  full_blocks,
+  list(expression = seq_len(N), imaging = seq_len(N), behavior = seq_len(N)),
+  N = N,
+  ncomp = 2,
+  normalization = "None",
+  ridge = 1e-10,
+  max_iter = 200,
+  tol = 1e-10
+)
+fit_mfa <- mfa(full_blocks, ncomp = 2, normalization = "None")
+
+P1 <- multivarious::scores(fit_aligned_full) %*%
+  solve(crossprod(multivarious::scores(fit_aligned_full)), t(multivarious::scores(fit_aligned_full)))
+P2 <- multivarious::scores(fit_mfa) %*%
+  solve(crossprod(multivarious::scores(fit_mfa)), t(multivarious::scores(fit_mfa)))
+rel <- norm(P1 - P2, type = "F") / (norm(P2, type = "F") + 1e-12)
+
+stopifnot(is.finite(rel))
+stopifnot(rel < 0.05)
+
+rel
+```
+
+That reduction check is important: it confirms that you are getting a genuine
+extension of MFA rather than a separate, incompatible factor model.
+
+## What should you inspect while fitting?
+
+```{r inspect-loadings}
+sapply(fit$V_list, dim)
+```
+
+```{r objective-trace, echo = FALSE, fig.cap = "The aligned-MFA objective should fall quickly and then flatten."}
+obj_df <- data.frame(
+  iteration = seq_along(fit$objective_trace),
+  objective = fit$objective_trace
+)
+
+ggplot(obj_df, aes(iteration, objective)) +
+  geom_line(linewidth = 0.8, color = "#9c2f2f") +
+  geom_point(size = 1.6, color = "#9c2f2f") +
+  labs(x = "Iteration", y = "Objective")
+```
+
+The loading dimensions tell you how much information each block carries. The
+objective trace tells you whether the alternating updates have settled cleanly.
+
+## Where next?
+
+- `vignette("linked_mfa")` for the anchored version with an explicit reference block
+- `vignette("mfa")` for the classical same-row setting
+- `?aligned_mfa` for `feature_groups`, `feature_lambda`, and weighting options
