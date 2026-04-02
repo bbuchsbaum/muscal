@@ -13,9 +13,9 @@ conditions. You want to answer questions like:
 
 Standard approaches either vectorize the matrices (losing structure) or
 analyze them one edge at a time (losing the multivariate picture).
-[`bilinear_mixed()`](../reference/bilinear_mixed.md) keeps the matrix
-structure intact by learning low-rank row and column bases, then fitting
-a mixed model in that compressed space.
+[`bilinear_mixed()`](https://bbuchsbaum.github.io/muscal/reference/bilinear_mixed.md)
+keeps the matrix structure intact by learning low-rank row and column
+bases, then fitting a mixed model in that compressed space.
 
 ## Quick start
 
@@ -78,8 +78,8 @@ the latent space to subject traits.
 
 ## How it works
 
-[`bilinear_mixed()`](../reference/bilinear_mixed.md) decomposes each
-observed matrix $`X_i`$ as:
+[`bilinear_mixed()`](https://bbuchsbaum.github.io/muscal/reference/bilinear_mixed.md)
+decomposes each observed matrix $`X_i`$ as:
 
 ``` math
 X_i \approx L\left(\beta_0 + B z_i + W t_{s(i)}\right) R^\top
@@ -148,7 +148,9 @@ that can be visualized as heatmaps. Each `trait_maps[[k]]` is a full 4 x
 variable modulates the connectivity surface.
 
 ``` r
-dim(fit_axis$axis$trait_maps[[1]])
+names(fit_axis$axis$trait_maps)
+#> [1] "comp1" "comp2"
+dim(fit_axis$axis$trait_maps[["comp1"]])
 #> [1]  4 12
 dim(fit_axis$axis$design_maps[[1]])
 #> [1]  4 12
@@ -274,7 +276,8 @@ fit_sup <- bilinear_mixed(
 ### Extracting the building blocks
 
 Every component $`k`$ is defined by four objects stored in the fitted
-model:
+model. All outputs carry proper names — subject labels on scores,
+component labels on columns, trait names on the supervision map:
 
 ``` r
 # Bases learned from the data
@@ -287,32 +290,49 @@ t_scores <- fit_sup$axis$t_scores  # subject scores: n_subject x K
 A <- fit_sup$axis$A              # supervision map: K x n_traits
 ```
 
+Note how everything is labeled:
+
+``` r
+head(t_scores)  # rows = subjects, cols = comp1, comp2
+#>          comp1      comp2
+#> S1 -0.74220283  0.3029316
+#> S2  0.22759622 -0.9031354
+#> S3  2.70865789  0.3953440
+#> S4  0.26760870 -0.6852734
+#> S5  0.55348601 -0.5373639
+#> S6 -0.02364459 -0.4909562
+A               # rows = components, cols = trait names
+#>         accuracy      speed
+#> comp1 -0.7721786 -0.2173421
+#> comp2 -0.1092141 -0.9947347
+```
+
 The loading matrix $`W`$ is the key to interpretation. Each column
 `W[, k]` is a vectorized `r_seed` x `r_roi` core, and the model
 pre-computes its back-projection to the original space as `trait_maps`:
 
 ``` r
 # trait_maps[[k]] = L %*% matrix(W[,k], r_seed, r_roi) %*% t(R)
-# This is already computed:
-dim(fit_sup$axis$trait_maps[[1]])
+# Already computed and named:
+names(fit_sup$axis$trait_maps)
+#> [1] "comp1" "comp2"
+dim(fit_sup$axis$trait_maps[["comp1"]])
 #> [1]  4 12
 ```
 
 ### Seed-space and ROI-space profiles
 
-To understand *where* a component acts, we extract marginal profiles by
-averaging the trait map across each axis:
+To understand *where* a component acts, the model pre-computes marginal
+profiles by averaging each trait map across the opposite axis:
 
 ``` r
-K <- ncol(t_scores)
-seed_profiles <- matrix(NA, nrow = n_seed, ncol = K)
-roi_profiles  <- matrix(NA, nrow = n_roi,  ncol = K)
-
-for (k in seq_len(K)) {
-  tmap <- fit_sup$axis$trait_maps[[k]]
-  seed_profiles[, k] <- rowMeans(tmap)   # average across ROIs
-  roi_profiles[, k]  <- colMeans(tmap)   # average across seeds
-}
+# Pre-computed: no manual derivation needed
+seed_profiles <- fit_sup$axis$seed_profiles  # n_seed x K
+roi_profiles  <- fit_sup$axis$roi_profiles   # n_roi  x K
+dim(seed_profiles)
+#> [1] 4 2
+dim(roi_profiles)
+#> [1] 12  2
 ```
 
 The seed profile tells you which rows (seeds) are most involved in the
@@ -356,10 +376,10 @@ with high scores on component $`k`$ express the connectivity pattern in
 `trait_maps[[k]]` more strongly:
 
 ``` r
+# Subject scores come pre-labeled with subject IDs and component names
 t_scores <- fit_sup$axis$t_scores
-rownames(t_scores) <- fit_sup$subject_levels
 t_scores
-#>           [,1]       [,2]
+#>          comp1      comp2
 #> S1 -0.74220283  0.3029316
 #> S2  0.22759622 -0.9031354
 #> S3  2.70865789  0.3953440
@@ -384,17 +404,17 @@ external measures. Each column of $`A`$ shows how a trait loads onto the
 latent components:
 
 ``` r
+# A comes pre-labeled: rows = components, columns = trait names
 A <- fit_sup$axis$A
-colnames(A) <- colnames(y_traits)
-rownames(A) <- paste0("Comp", seq_len(K))
 A
 #>         accuracy      speed
-#> Comp1 -0.7721786 -0.2173421
-#> Comp2 -0.1092141 -0.9947347
+#> comp1 -0.7721786 -0.2173421
+#> comp2 -0.1092141 -0.9947347
 ```
 
-Read this as: “accuracy” is predicted by a weighted combination of
-component scores, with the weights given by column 1 of $`A`$.
+Read this row-by-row: the “accuracy” column shows how each component
+predicts accuracy; “speed” shows the same for speed. Or read
+column-wise: comp1 loads positively on accuracy but negatively on speed.
 
 ### Putting it all together
 
@@ -418,19 +438,19 @@ produce it for an arbitrary component $`k`$:
 
 ``` r
 k <- 1  # change to inspect other components
-tmap <- fit_sup$axis$trait_maps[[k]]
 
 par(mfrow = c(2, 2), mar = c(4, 4, 3, 1))
 
-# 1. Seed profile — which rows matter?
-barplot(rowMeans(tmap), names.arg = paste0("S", seq_len(nrow(tmap))),
+# 1. Seed profile — which rows matter? (pre-computed)
+barplot(fit_sup$axis$seed_profiles[, k],
         col = "steelblue", main = paste("Comp", k, "- seed profile"))
 
-# 2. ROI profile — which columns matter?
-barplot(colMeans(tmap), names.arg = paste0("R", seq_len(ncol(tmap))),
+# 2. ROI profile — which columns matter? (pre-computed)
+barplot(fit_sup$axis$roi_profiles[, k],
         col = "darkorange", main = paste("Comp", k, "- ROI profile"))
 
 # 3. Full connectivity map
+tmap <- fit_sup$axis$trait_maps[[k]]
 image(seq_len(nrow(tmap)), seq_len(ncol(tmap)), tmap,
       col = hcl.colors(64, "RdBu", rev = TRUE),
       main = paste("Comp", k, "- connectivity"))
@@ -444,7 +464,9 @@ plot(fit_sup$axis$t_scores[, k], y_traits[, 1], pch = 19,
 ### Interpreting the seed_repeat head
 
 In `seed_repeat` mode, there is no full seed-by-ROI trait map. Instead,
-the per-component footprint is a single ROI-space vector:
+the per-component footprint is a single ROI-space vector. The model also
+pre-computes an `roi_profiles` matrix (n_roi x K), analogous to the axis
+head’s profiles:
 
 ``` r
 fit_rep2 <- bilinear_mixed(
@@ -460,8 +482,12 @@ fit_rep2 <- bilinear_mixed(
   max_iter   = 30
 )
 
-# ROI loading vector for component 1
-roi_vec <- fit_rep2$repeat_head$roi_trait_maps[[1]]
+# Pre-computed ROI profiles matrix
+dim(fit_rep2$repeat_head$roi_profiles)
+#> [1] 12  2
+
+# Or access individual component vectors
+roi_vec <- fit_rep2$repeat_head$roi_trait_maps[["comp1"]]
 length(roi_vec)
 #> [1] 12
 ```
@@ -495,12 +521,13 @@ pattern.
 
 | What you want | seed_axis | seed_repeat |
 |:---|:---|:---|
-| Full seed x ROI maps | `trait_maps[[k]]`, `design_maps[[j]]` | Not available |
-| Per-ROI loading vectors | Derive via `colMeans(trait_maps[[k]])` | `roi_trait_maps[[k]]` directly |
-| Per-seed loading vectors | Derive via `rowMeans(trait_maps[[k]])` | Not available |
+| Full seed x ROI maps | `trait_maps[["comp1"]]`, `design_maps[[j]]` | Not available |
+| Per-seed profiles | `seed_profiles` (pre-computed, n_seed x K) | Not available |
+| Per-ROI profiles | `roi_profiles` (pre-computed, n_roi x K) | `roi_profiles` (pre-computed, n_roi x K) |
+| ROI component vectors | Derive via `roi_profiles[, k]` | `roi_trait_maps[["comp1"]]` directly |
 | Row-covariate effects | Not supported | `roi_design_maps` (main + interactions) |
-| Subject scores | `axis$t_scores` | `repeat_head$t_scores` |
-| Trait prediction | `axis$A` | `repeat_head$A` |
+| Subject scores | `axis$t_scores` (labeled) | `repeat_head$t_scores` (labeled) |
+| Trait prediction | `axis$A` (labeled) | `repeat_head$A` (labeled) |
 
 ## Inspecting design effects
 
@@ -566,8 +593,9 @@ node_profile
 ## The easy API
 
 For most analyses,
-[`bilinear_mixed_easy()`](../reference/bilinear_mixed_easy.md) picks
-sensible defaults automatically. You just specify a complexity profile:
+[`bilinear_mixed_easy()`](https://bbuchsbaum.github.io/muscal/reference/bilinear_mixed_easy.md)
+picks sensible defaults automatically. You just specify a complexity
+profile:
 
 ``` r
 fit_easy <- bilinear_mixed_easy(
@@ -595,7 +623,7 @@ The three profiles control how aggressively the model captures variance:
 | `"adaptive"` | 92%             | Thorough — higher ranks, more regularization |
 
 Behind the scenes,
-[`bilinear_mixed_recommend()`](../reference/bilinear_mixed_recommend.md)
+[`bilinear_mixed_recommend()`](https://bbuchsbaum.github.io/muscal/reference/bilinear_mixed_recommend.md)
 inspects your data to set ranks, regularization strengths, and mode:
 
 ``` r
@@ -618,8 +646,8 @@ str(rec[c("mode", "r_seed", "r_roi", "k_subject", "lambda_t")])
 ## Tuning via cross-validation
 
 When you need the best configuration,
-[`bilinear_mixed_tune()`](../reference/bilinear_mixed_tune.md) performs
-subject-blocked cross-validation over a grid of key parameters:
+[`bilinear_mixed_tune()`](https://bbuchsbaum.github.io/muscal/reference/bilinear_mixed_tune.md)
+performs subject-blocked cross-validation over a grid of key parameters:
 
 ``` r
 tuned <- bilinear_mixed_tune(
@@ -699,18 +727,18 @@ oscillates, increase the ridge penalties (`lambda_w`, `lambda_t`).
 
 | Function | Purpose |
 |:---|:---|
-| [`bilinear_mixed()`](../reference/bilinear_mixed.md) | Full control over all parameters |
-| [`bilinear_mixed_easy()`](../reference/bilinear_mixed_easy.md) | Automatic defaults with optional tuning |
-| [`bilinear_mixed_recommend()`](../reference/bilinear_mixed_recommend.md) | Data-adaptive parameter suggestions |
-| [`bilinear_mixed_tune()`](../reference/bilinear_mixed_tune.md) | Subject-blocked CV for rank and regularization |
+| [`bilinear_mixed()`](https://bbuchsbaum.github.io/muscal/reference/bilinear_mixed.md) | Full control over all parameters |
+| [`bilinear_mixed_easy()`](https://bbuchsbaum.github.io/muscal/reference/bilinear_mixed_easy.md) | Automatic defaults with optional tuning |
+| [`bilinear_mixed_recommend()`](https://bbuchsbaum.github.io/muscal/reference/bilinear_mixed_recommend.md) | Data-adaptive parameter suggestions |
+| [`bilinear_mixed_tune()`](https://bbuchsbaum.github.io/muscal/reference/bilinear_mixed_tune.md) | Subject-blocked CV for rank and regularization |
 
 ## Next steps
 
-- [`?bilinear_mixed`](../reference/bilinear_mixed.md) — full parameter
-  documentation
-- [`vignette("mfa")`](../articles/mfa.md) — Multiple Factor Analysis for
-  multi-block integration
-- [`vignette("penalized_mfa")`](../articles/penalized_mfa.md) — sparse
-  MFA with penalties
-- [`vignette("covstatis")`](../articles/covstatis.md) — STATIS analysis
-  for covariance matrices
+- [`?bilinear_mixed`](https://bbuchsbaum.github.io/muscal/reference/bilinear_mixed.md)
+  — full parameter documentation
+- [`vignette("mfa")`](https://bbuchsbaum.github.io/muscal/articles/mfa.md)
+  — Multiple Factor Analysis for multi-block integration
+- [`vignette("penalized_mfa")`](https://bbuchsbaum.github.io/muscal/articles/penalized_mfa.md)
+  — sparse MFA with penalties
+- [`vignette("covstatis")`](https://bbuchsbaum.github.io/muscal/articles/covstatis.md)
+  — STATIS analysis for covariance matrices

@@ -2,12 +2,13 @@
 
 ## Why Penalized MFA?
 
-Standard [`mfa()`](../reference/mfa.md) normalizes blocks so they
-contribute equally, but it places no constraint on the *loadings*
-themselves. Each block’s loadings can point in completely different
-directions. When you expect blocks to share a similar variable structure
-— say, the same brain regions measured under different conditions — you
-want corresponding variables to load similarly across blocks.
+Standard [`mfa()`](https://bbuchsbaum.github.io/muscal/reference/mfa.md)
+normalizes blocks so they contribute equally, but it places no
+constraint on the *loadings* themselves. Each block’s loadings can point
+in completely different directions. When you expect blocks to share a
+similar variable structure — say, the same brain regions measured under
+different conditions — you want corresponding variables to load
+similarly across blocks.
 
 Penalized MFA adds a regularization penalty that encourages loading
 matrices to be similar, while still allowing each block to express its
@@ -210,17 +211,17 @@ Penalized MFA is *not* appropriate when:
 - Blocks measure entirely different variables (the loading penalty is
   meaningless)
 - You need classical MFA normalization guarantees (use
-  [`mfa()`](../reference/mfa.md))
+  [`mfa()`](https://bbuchsbaum.github.io/muscal/reference/mfa.md))
 - Your goal is block-level outlier detection (use
-  [`covstatis()`](../reference/covstatis.md))
+  [`covstatis()`](https://bbuchsbaum.github.io/muscal/reference/covstatis.md))
 
 ## Next steps
 
-- [`vignette("mfa")`](../articles/mfa.md) — Standard MFA without loading
-  penalties
-- [`vignette("ipca")`](../articles/ipca.md) — iPCA, an alternative
-  integration approach
-- [`?penalized_mfa_clusterwise`](../reference/penalized_mfa_clusterwise.md)
+- [`vignette("mfa")`](https://bbuchsbaum.github.io/muscal/articles/mfa.md)
+  — Standard MFA without loading penalties
+- [`vignette("ipca")`](https://bbuchsbaum.github.io/muscal/articles/ipca.md)
+  — iPCA, an alternative integration approach
+- [`?penalized_mfa_clusterwise`](https://bbuchsbaum.github.io/muscal/reference/penalized_mfa_clusterwise.md)
   — Cluster-wise penalized MFA
 
 ## References

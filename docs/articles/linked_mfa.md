@@ -15,9 +15,11 @@ reference observations while allowing each auxiliary block to have its
 own row structure. You simply specify which rows of each auxiliary block
 correspond to which rows of the reference.
 
-> **Naming note:** [`anchored_mfa()`](../reference/linked_mfa.md) is the
-> primary function. [`linked_mfa()`](../reference/linked_mfa.md) is
-> retained as a convenience alias.
+> **Naming note:**
+> [`anchored_mfa()`](https://bbuchsbaum.github.io/muscal/reference/linked_mfa.md)
+> is the primary function.
+> [`linked_mfa()`](https://bbuchsbaum.github.io/muscal/reference/linked_mfa.md)
+> is retained as a convenience alias.
 
 ## Quick start
 
@@ -294,8 +296,8 @@ fit_grouped <- anchored_mfa(
 The `feature_lambda` parameter controls the strength of the prior.
 Higher values pull grouped features toward their shared center more
 strongly. Use
-[`plot_feature_groups()`](../reference/plot_feature_groups.md) to
-visualize the alignment.
+[`plot_feature_groups()`](https://bbuchsbaum.github.io/muscal/reference/plot_feature_groups.md)
+to visualize the alignment.
 
 ## When to use Anchored MFA
 
@@ -309,19 +311,20 @@ Anchored MFA is appropriate when:
 Anchored MFA is *not* appropriate when:
 
 - All blocks share identical observations (use
-  [`mfa()`](../reference/mfa.md) instead)
+  [`mfa()`](https://bbuchsbaum.github.io/muscal/reference/mfa.md)
+  instead)
 - There is no natural reference block
 - Block relationships are better captured by other methods (e.g., CCA
   for two blocks with different row and column spaces)
 
 ## Next steps
 
-- [`vignette("mfa")`](../articles/mfa.md) — Standard MFA when all blocks
-  share observations
-- [`?covstatis`](../reference/covstatis.md) — STATIS analysis for
-  covariance matrices
-- [`?penalized_mfa`](../reference/penalized_mfa.md) — MFA with sparsity
-  penalties
+- [`vignette("mfa")`](https://bbuchsbaum.github.io/muscal/articles/mfa.md)
+  — Standard MFA when all blocks share observations
+- [`?covstatis`](https://bbuchsbaum.github.io/muscal/reference/covstatis.md)
+  — STATIS analysis for covariance matrices
+- [`?penalized_mfa`](https://bbuchsbaum.github.io/muscal/reference/penalized_mfa.md)
+  — MFA with sparsity penalties
 
 ## References
 

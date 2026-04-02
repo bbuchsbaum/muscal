@@ -46,6 +46,9 @@ VignetteBuilder: knitr
 Depends:
     R (>= 3.5.0)
 Additional_repositories: https://bbuchsbaum.r-universe.dev
+Remotes:
+    bbuchsbaum/multidesign,
+    bbuchsbaum/genpca
 RoxygenNote: 7.3.3
 Config/Needs/website: bbuchsbaum/albersdown
 URL: https://bbuchsbaum.github.io/muscal/, https://github.com/bbuchsbaum/muscal

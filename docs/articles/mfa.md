@@ -256,21 +256,22 @@ MFA is appropriate when:
 MFA is *not* appropriate when:
 
 - Blocks have different observations (use
-  [`anchored_mfa()`](../reference/linked_mfa.md) instead).
+  [`anchored_mfa()`](https://bbuchsbaum.github.io/muscal/reference/linked_mfa.md)
+  instead).
 - You want blocks with more variables to naturally dominate (use
   standard PCA).
 - Your goal is prediction rather than exploratory structure discovery.
 
 ## Next steps
 
-- [`vignette("linked_mfa")`](../articles/linked_mfa.md) — Anchored MFA
-  for blocks with different row structures
-- [`?covstatis`](../reference/covstatis.md) — STATIS analysis for
-  covariance matrices
-- [`?penalized_mfa`](../reference/penalized_mfa.md) — MFA with sparsity
-  penalties
-- [`?ipca`](../reference/ipca.md) — Integrative PCA with multiplicative
-  penalties
+- [`vignette("linked_mfa")`](https://bbuchsbaum.github.io/muscal/articles/linked_mfa.md)
+  — Anchored MFA for blocks with different row structures
+- [`?covstatis`](https://bbuchsbaum.github.io/muscal/reference/covstatis.md)
+  — STATIS analysis for covariance matrices
+- [`?penalized_mfa`](https://bbuchsbaum.github.io/muscal/reference/penalized_mfa.md)
+  — MFA with sparsity penalties
+- [`?ipca`](https://bbuchsbaum.github.io/muscal/reference/ipca.md) —
+  Integrative PCA with multiplicative penalties
 
 ## References
 

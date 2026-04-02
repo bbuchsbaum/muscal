@@ -159,7 +159,7 @@ head(proj, 4)
 
 For a richer analysis of new subjects — including RV coefficients and
 distance to the compromise — use
-[`project_subjects()`](../reference/project_subjects.md):
+[`project_subjects()`](https://bbuchsbaum.github.io/muscal/reference/project_subjects.md):
 
 ``` r
 result <- project_subjects(fit, list(new_cor), subject_ids = "New_Subject")
@@ -198,18 +198,20 @@ COVSTATIS is appropriate when:
 COVSTATIS is *not* appropriate when:
 
 - Your data are raw observation-by-variable matrices (use
-  [`mfa()`](../reference/mfa.md) instead)
+  [`mfa()`](https://bbuchsbaum.github.io/muscal/reference/mfa.md)
+  instead)
 - You need supervised discrimination (use
-  [`bada()`](../reference/bada.md) or
-  [`bamfa()`](../reference/bamfa.md))
+  [`bada()`](https://bbuchsbaum.github.io/muscal/reference/bada.md) or
+  [`bamfa()`](https://bbuchsbaum.github.io/muscal/reference/bamfa.md))
 
 ## Next steps
 
-- [`vignette("mfa")`](../articles/mfa.md) — MFA for raw data blocks
-- [`?project_subjects`](../reference/project_subjects.md) — Detailed
-  new-subject projection
-- [`?project_covariate`](../reference/project_covariate.md) —
-  Supplementary variable analysis
+- [`vignette("mfa")`](https://bbuchsbaum.github.io/muscal/articles/mfa.md)
+  — MFA for raw data blocks
+- [`?project_subjects`](https://bbuchsbaum.github.io/muscal/reference/project_subjects.md)
+  — Detailed new-subject projection
+- [`?project_covariate`](https://bbuchsbaum.github.io/muscal/reference/project_covariate.md)
+  — Supplementary variable analysis
 
 ## References
 

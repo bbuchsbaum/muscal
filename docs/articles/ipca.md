@@ -94,9 +94,9 @@ blocks dominate; high lambda (right) equalizes contributions.
 
 ## Tuning lambda with held-out data
 
-[`ipca_tune_alpha()`](../reference/ipca_tune_alpha.md) selects the
-optimal penalty by holding out a fraction of the data and measuring
-reconstruction error:
+[`ipca_tune_alpha()`](https://bbuchsbaum.github.io/muscal/reference/ipca_tune_alpha.md)
+selects the optimal penalty by holding out a fraction of the data and
+measuring reconstruction error:
 
 ``` r
 tune <- ipca_tune_alpha(
@@ -177,20 +177,20 @@ iPCA is appropriate when:
 iPCA is *not* appropriate when:
 
 - Blocks have different observations (use
-  [`anchored_mfa()`](../reference/linked_mfa.md))
+  [`anchored_mfa()`](https://bbuchsbaum.github.io/muscal/reference/linked_mfa.md))
 - You need classical MFA block weights for interpretation (use
-  [`mfa()`](../reference/mfa.md))
+  [`mfa()`](https://bbuchsbaum.github.io/muscal/reference/mfa.md))
 - Your data are covariance matrices (use
-  [`covstatis()`](../reference/covstatis.md))
+  [`covstatis()`](https://bbuchsbaum.github.io/muscal/reference/covstatis.md))
 
 ## Next steps
 
-- [`vignette("mfa")`](../articles/mfa.md) — Classical MFA with fixed
-  normalization
-- [`vignette("penalized_mfa")`](../articles/penalized_mfa.md) — MFA with
-  loading similarity penalties
-- [`?ipca_tune_alpha`](../reference/ipca_tune_alpha.md) — Detailed
-  tuning options
+- [`vignette("mfa")`](https://bbuchsbaum.github.io/muscal/articles/mfa.md)
+  — Classical MFA with fixed normalization
+- [`vignette("penalized_mfa")`](https://bbuchsbaum.github.io/muscal/articles/penalized_mfa.md)
+  — MFA with loading similarity penalties
+- [`?ipca_tune_alpha`](https://bbuchsbaum.github.io/muscal/reference/ipca_tune_alpha.md)
+  — Detailed tuning options
 
 ## References
 

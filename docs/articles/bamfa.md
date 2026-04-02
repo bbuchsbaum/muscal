@@ -188,17 +188,19 @@ BaMFA is appropriate when:
 
 BaMFA is *not* appropriate when:
 
-- You only care about the consensus (use [`mfa()`](../reference/mfa.md)
-  — simpler and faster)
+- You only care about the consensus (use
+  [`mfa()`](https://bbuchsbaum.github.io/muscal/reference/mfa.md) —
+  simpler and faster)
 - Blocks have different observations (use
-  [`anchored_mfa()`](../reference/linked_mfa.md))
+  [`anchored_mfa()`](https://bbuchsbaum.github.io/muscal/reference/linked_mfa.md))
 - Your data are covariance matrices (use
-  [`covstatis()`](../reference/covstatis.md))
+  [`covstatis()`](https://bbuchsbaum.github.io/muscal/reference/covstatis.md))
 
 ## Next steps
 
-- [`vignette("mfa")`](../articles/mfa.md) — Standard MFA for
-  consensus-only analysis
-- [`vignette("penalized_mfa")`](../articles/penalized_mfa.md) —
-  Penalized MFA for loading similarity
-- [`?bamfa`](../reference/bamfa.md) — Full parameter documentation
+- [`vignette("mfa")`](https://bbuchsbaum.github.io/muscal/articles/mfa.md)
+  — Standard MFA for consensus-only analysis
+- [`vignette("penalized_mfa")`](https://bbuchsbaum.github.io/muscal/articles/penalized_mfa.md)
+  — Penalized MFA for loading similarity
+- [`?bamfa`](https://bbuchsbaum.github.io/muscal/reference/bamfa.md) —
+  Full parameter documentation
