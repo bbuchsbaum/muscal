@@ -120,3 +120,11 @@ component estimation
 projection of new data, and a fairly broad set of plotting helpers for
 scores, loadings, block weights, partial scores, convergence traces, and
 coverage diagnostics.
+
+## Development
+
+For local site builds, use `Rscript scripts/build-pkgdown.R`. On this
+setup, the default
+[`pkgdown::build_site()`](https://pkgdown.r-lib.org/reference/build_site.html)
+call can fail in its `callr` subprocess even when the package itself
+installs and the GitHub Pages build path works.
