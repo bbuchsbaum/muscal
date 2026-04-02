@@ -79,7 +79,6 @@
 <url><loc>https://bbuchsbaum.github.io/muscal/reference/predict.bamfa.html</loc></url>
 <url><loc>https://bbuchsbaum.github.io/muscal/reference/predict.graph_anchored_mfa.html</loc></url>
 <url><loc>https://bbuchsbaum.github.io/muscal/reference/predict.mfa.html</loc></url>
-<url><loc>https://bbuchsbaum.github.io/muscal/reference/prepare_block_preprocessors.html</loc></url>
 <url><loc>https://bbuchsbaum.github.io/muscal/reference/print.bamfa.html</loc></url>
 <url><loc>https://bbuchsbaum.github.io/muscal/reference/print.penalized_mfa.html</loc></url>
 <url><loc>https://bbuchsbaum.github.io/muscal/reference/print.penalized_mfa_clusterwise.html</loc></url>
@@ -91,7 +90,6 @@
 <url><loc>https://bbuchsbaum.github.io/muscal/reference/project_covariate.html</loc></url>
 <url><loc>https://bbuchsbaum.github.io/muscal/reference/project_subjects.html</loc></url>
 <url><loc>https://bbuchsbaum.github.io/muscal/reference/reconstruct.covstatis.html</loc></url>
-<url><loc>https://bbuchsbaum.github.io/muscal/reference/ridge_solve.html</loc></url>
 <url><loc>https://bbuchsbaum.github.io/muscal/reference/roi_map.html</loc></url>
 <url><loc>https://bbuchsbaum.github.io/muscal/reference/should_precompute.html</loc></url>
 <url><loc>https://bbuchsbaum.github.io/muscal/reference/significant_components.html</loc></url>

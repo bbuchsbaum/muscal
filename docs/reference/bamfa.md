@@ -206,7 +206,7 @@ Expectation-Maximization):
 ## See also
 
 [`pca`](https://bbuchsbaum.github.io/multivarious/reference/pca.html),
-[`multiblock`](https://rdrr.io/pkg/multidesign/man/multiblock.html)
+[`multiblock`](https://bbuchsbaum.github.io/multidesign/reference/multiblock.html)
 
 ## Examples
 

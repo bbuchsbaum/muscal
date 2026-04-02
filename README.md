@@ -95,3 +95,9 @@ Beyond the core factor methods, `muscal` also includes helpers for simulation
 (`estimate_components()`, `significant_components()`), projection of new data,
 and a fairly broad set of plotting helpers for scores, loadings, block weights,
 partial scores, convergence traces, and coverage diagnostics.
+
+## Development
+
+For local site builds, use `Rscript scripts/build-pkgdown.R`. On this setup,
+the default `pkgdown::build_site()` call can fail in its `callr` subprocess
+even when the package itself installs and the GitHub Pages build path works.

@@ -12,6 +12,7 @@
 ^check_todo\.md$
 ^dev$
 ^docs$
+^scripts$
 ^src$
 ^_pkgdown\.yml$
 ^pkgdown$
