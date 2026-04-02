@@ -13,3 +13,6 @@
 ^dev$
 ^docs$
 ^src$
+^_pkgdown\.yml$
+^pkgdown$
+^\.github$

@@ -74,6 +74,7 @@ articles below.
 
 ## Where to start
 
+- Package site: <https://bbuchsbaum.github.io/muscal/>
 - Package overview: [docs/index.md](docs/index.md)
 - Articles index: [docs/articles/index.md](docs/articles/index.md)
 - Reference index: [docs/reference/index.md](docs/reference/index.md)

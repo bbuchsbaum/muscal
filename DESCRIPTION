@@ -48,3 +48,5 @@ Depends:
 Additional_repositories: https://bbuchsbaum.r-universe.dev
 RoxygenNote: 7.3.3
 Config/Needs/website: albersdown
+URL: https://bbuchsbaum.github.io/muscal/, https://github.com/bbuchsbaum/muscal
+BugReports: https://github.com/bbuchsbaum/muscal/issues
