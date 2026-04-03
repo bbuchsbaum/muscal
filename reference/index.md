@@ -108,7 +108,7 @@
 - [`plot_partial_scores()`](https://bbuchsbaum.github.io/muscal/reference/plot_partial_scores.md)
   : Plot Partial Factor Scores
 - [`plot_subjects()`](https://bbuchsbaum.github.io/muscal/reference/plot_subjects.md)
-  : Plot subject clouds in RV and ROI spaces
+  : Plot subject scores in RV space
 - [`plot_variance()`](https://bbuchsbaum.github.io/muscal/reference/plot_variance.md)
   [`plot_variance.covstatis()`](https://bbuchsbaum.github.io/muscal/reference/plot_variance.md)
   [`plot_variance.bada()`](https://bbuchsbaum.github.io/muscal/reference/plot_variance.md)
@@ -142,7 +142,9 @@
 - [`project_cov()`](https://bbuchsbaum.github.io/muscal/reference/project_cov.md)
   : Project a Covariance Matrix (generic)
 - [`project_covariate()`](https://bbuchsbaum.github.io/muscal/reference/project_covariate.md)
-  : Project a Subject-Level Covariate (generic)
+  [`project_table_covariate()`](https://bbuchsbaum.github.io/muscal/reference/project_covariate.md)
+  [`project_feature_covariate()`](https://bbuchsbaum.github.io/muscal/reference/project_covariate.md)
+  : Project a Table- or Feature-Level Covariate (generic)
 - [`project_subjects()`](https://bbuchsbaum.github.io/muscal/reference/project_subjects.md)
   : Project and Summarize New Subject Data (generic)
 - [`reconstruct(`*`<covstatis>`*`)`](https://bbuchsbaum.github.io/muscal/reference/reconstruct.covstatis.md)

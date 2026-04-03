@@ -30,7 +30,8 @@ autoplot(
 
 - type:
 
-  \`"roi"\` for ROI-level scores, \`"subjects"\` for subject G-scores.
+  \`"roi"\` for ROI-level scores, \`"subjects"\` for subject scores in
+  RV/table space.
 
 - labels:
 

@@ -155,9 +155,9 @@ representative of the group.
 <div class="sourceCode" id="cb5"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="https://ggplot2.tidyverse.org/reference/autoplot.html" class="external-link">autoplot</a></span><span class="op">(</span><span class="va">fit</span>, type <span class="op">=</span> <span class="st">"subjects"</span><span class="op">)</span></span></code></pre></div>
 <div class="figure">
-<img src="covstatis_files/figure-html/subject-scores-1.png" class="r-plt" alt="Subject scores. Subjects close together have similar correlation structure." width="576"><p class="caption">
-Subject scores. Subjects close together have similar correlation
-structure.
+<img src="covstatis_files/figure-html/subject-scores-1.png" class="r-plt" alt="Subject scores in RV space. Subjects close together have similar correlation structure." width="576"><p class="caption">
+Subject scores in RV space. Subjects close together have similar
+correlation structure.
 </p>
 </div>
 </div>
@@ -226,16 +226,20 @@ distance to the compromise — use <code><a href="../reference/project_subjects.
 <h2 id="projecting-a-covariate">Projecting a covariate<a class="anchor" aria-label="anchor" href="#projecting-a-covariate"></a>
 </h2>
 <p>You can ask: “which compromise dimensions relate to an external
-variable?” For example, projecting a subject-level cognitive score:</p>
+variable?” Table-side covariates have one value per input table/block.
+For example, projecting a subject-level cognitive score:</p>
 <div class="sourceCode" id="cb11"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="co"># Simulated covariate (e.g., memory score per subject)</span></span>
 <span><span class="va">y</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/stats/Normal.html" class="external-link">rnorm</a></span><span class="op">(</span><span class="va">n_subjects</span><span class="op">)</span></span>
-<span><span class="va">dim_cos</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/project_covariate.html">project_covariate</a></span><span class="op">(</span><span class="va">fit</span>, <span class="va">y</span>, what <span class="op">=</span> <span class="st">"dimension"</span>, scale <span class="op">=</span> <span class="st">"cosine"</span><span class="op">)</span></span>
+<span><span class="va">dim_cos</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/project_covariate.html">project_table_covariate</a></span><span class="op">(</span><span class="va">fit</span>, <span class="va">y</span>, what <span class="op">=</span> <span class="st">"dimension"</span>, scale <span class="op">=</span> <span class="st">"cosine"</span><span class="op">)</span></span>
 <span><span class="va">dim_cos</span></span>
-<span><span class="co">#&gt; Dim1 Dim2 Dim3 </span></span>
-<span><span class="co">#&gt;    0    0    0</span></span></code></pre></div>
+<span><span class="co">#&gt;       Dim1       Dim2       Dim3 </span></span>
+<span><span class="co">#&gt; -0.5593003 -0.1042932 -0.1058820</span></span></code></pre></div>
 <p>Values near +/- 1 indicate that a compromise dimension strongly
-tracks the covariate.</p>
+tracks the covariate. For feature-side covariates (one value per matrix
+feature), use <code><a href="../reference/project_covariate.html">project_feature_covariate()</a></code>. The generic
+wrapper <code><a href="../reference/project_covariate.html">project_covariate()</a></code> also accepts
+<code>side = "table"</code> or <code>side = "feature"</code>.</p>
 </div>
 <div class="section level2">
 <h2 id="when-to-use-covstatis">When to use COVSTATIS<a class="anchor" aria-label="anchor" href="#when-to-use-covstatis"></a>

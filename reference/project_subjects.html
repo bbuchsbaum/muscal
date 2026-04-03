@@ -120,7 +120,8 @@ If not provided, names will be taken from <code>new_data</code> or generated aut
     <h2 id="details">Details<a class="anchor" aria-label="anchor" href="#details"></a></h2>
     <p>The function performs the following steps for each new matrix:</p><ol><li><p>Applies the same pre-processing (double-centering, normalization) as the original model.</p></li>
 <li><p>Calculates ROI-level factor scores (<code>roi_scores</code>), representing the coordinates of each ROI in the compromise space.</p></li>
-<li><p>Calculates subject-level scores (<code>subject_scores</code> or "g-scores") as the barycentric mean of the ROI scores.</p></li>
+<li><p>Calculates subject-level scores (<code>subject_scores</code>) in the RV/table space by
+projecting the new table against the fitted interstructure axes.</p></li>
 <li><p>Calculates <code>subject_cosines</code> indicating the alignment of the subject's scores with each compromise dimension.</p></li>
 <li><p>Calculates a global <code>rv_coefficient</code> measuring the overall similarity between the new matrix and the group compromise matrix.</p></li>
 <li><p>Calculates the <code>distance_to_compromise</code>, the Frobenius distance between the new matrix and the full compromise matrix.</p></li>

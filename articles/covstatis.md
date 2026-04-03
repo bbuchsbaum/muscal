@@ -92,11 +92,12 @@ You can also view subjects in the compromise space:
 autoplot(fit, type = "subjects")
 ```
 
-![Subject scores. Subjects close together have similar correlation
+![Subject scores in RV space. Subjects close together have similar
+correlation
 structure.](covstatis_files/figure-html/subject-scores-1.png)
 
-Subject scores. Subjects close together have similar correlation
-structure.
+Subject scores in RV space. Subjects close together have similar
+correlation structure.
 
 ## Variance explained
 
@@ -171,19 +172,25 @@ result$scalar_summaries
 ## Projecting a covariate
 
 You can ask: “which compromise dimensions relate to an external
-variable?” For example, projecting a subject-level cognitive score:
+variable?” Table-side covariates have one value per input table/block.
+For example, projecting a subject-level cognitive score:
 
 ``` r
 # Simulated covariate (e.g., memory score per subject)
 y <- rnorm(n_subjects)
-dim_cos <- project_covariate(fit, y, what = "dimension", scale = "cosine")
+dim_cos <- project_table_covariate(fit, y, what = "dimension", scale = "cosine")
 dim_cos
-#> Dim1 Dim2 Dim3 
-#>    0    0    0
+#>       Dim1       Dim2       Dim3 
+#> -0.5593003 -0.1042932 -0.1058820
 ```
 
 Values near +/- 1 indicate that a compromise dimension strongly tracks
-the covariate.
+the covariate. For feature-side covariates (one value per matrix
+feature), use
+[`project_feature_covariate()`](https://bbuchsbaum.github.io/muscal/reference/project_covariate.md).
+The generic wrapper
+[`project_covariate()`](https://bbuchsbaum.github.io/muscal/reference/project_covariate.md)
+also accepts `side = "table"` or `side = "feature"`.
 
 ## When to use COVSTATIS
 
