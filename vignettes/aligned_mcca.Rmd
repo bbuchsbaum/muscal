@@ -49,7 +49,7 @@ library(multivarious)
 library(ggplot2)
 ```
 
-```{r simulate-data, include = FALSE}
+```{r simulate-data}
 set.seed(42)
 N <- 75
 k <- 2
