@@ -2,7 +2,7 @@
 % Please edit documentation in R/covstatis.R
 \name{plot_subjects}
 \alias{plot_subjects}
-\title{Plot subject clouds in RV and ROI spaces}
+\title{Plot subject scores in RV space}
 \usage{
 plot_subjects(x, dim = c(1, 2))
 }
@@ -12,5 +12,5 @@ plot_subjects(x, dim = c(1, 2))
 \item{dim}{A numeric vector of length 2 specifying the dimensions to plot.}
 }
 \description{
-Plot subject clouds in RV and ROI spaces
+Plot subject scores in RV space
 }

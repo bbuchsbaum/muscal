@@ -231,14 +231,20 @@ project_subjects <- function(x, new_data, ...) {
 }
 
 
-#' Project a Subject-Level Covariate (generic)
+#' Project a Table- or Feature-Level Covariate (generic)
 #'
 #' @description
-#' Generic for projecting a subject-level covariate into the space of a fitted model,
-#' treating it as a supplementary variable without re-fitting the model.
+#' Generic for projecting a table-level or feature-level covariate into the
+#' space of a fitted model, treating it as a supplementary variable without
+#' re-fitting the model.
 #'
 #' @param x A fitted model object (e.g., `covstatis`).
-#' @param y Numeric vector representing the covariate, with length equal to the number of subjects in the model.
+#' @param y Numeric vector representing the covariate. Its length depends on
+#'   `side`: one value per table/block for `side = "table"`, or one value per
+#'   feature for `side = "feature"`.
+#' @param side Which side the covariate belongs to: `"table"` for a value per
+#'   input table/block, or `"feature"` for a value per row/column entity in the
+#'   square matrices.
 #' @param ... other arguments passed to methods.
 #'
 #' @return The return value depends on the method, but is typically a projection
@@ -246,8 +252,24 @@ project_subjects <- function(x, new_data, ...) {
 #'
 #' @export
 #' @rdname project_covariate
-project_covariate <- function(x, y, ...) {
+project_covariate <- function(x, y, side = c("table", "feature"), ...) {
   UseMethod("project_covariate")
+}
+
+#' @rdname project_covariate
+#' @description
+#' Convenience wrapper for `project_covariate(..., side = "table")`.
+#' @export
+project_table_covariate <- function(x, y, ...) {
+  project_covariate(x, y, side = "table", ...)
+}
+
+#' @rdname project_covariate
+#' @description
+#' Convenience wrapper for `project_covariate(..., side = "feature")`.
+#' @export
+project_feature_covariate <- function(x, y, ...) {
+  project_covariate(x, y, side = "feature", ...)
 }
 
 

@@ -45,7 +45,8 @@ The function performs the following steps for each new matrix:
 \enumerate{
 \item Applies the same pre-processing (double-centering, normalization) as the original model.
 \item Calculates ROI-level factor scores (\code{roi_scores}), representing the coordinates of each ROI in the compromise space.
-\item Calculates subject-level scores (\code{subject_scores} or "g-scores") as the barycentric mean of the ROI scores.
+\item Calculates subject-level scores (\code{subject_scores}) in the RV/table space by
+projecting the new table against the fitted interstructure axes.
 \item Calculates \code{subject_cosines} indicating the alignment of the subject's scores with each compromise dimension.
 \item Calculates a global \code{rv_coefficient} measuring the overall similarity between the new matrix and the group compromise matrix.
 \item Calculates the \code{distance_to_compromise}, the Frobenius distance between the new matrix and the full compromise matrix.

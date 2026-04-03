@@ -1301,11 +1301,11 @@ plot_block_fit <- function(x, normalize = TRUE, ...) {
 
 #' Plot COVSTATIS Results
 #'
-#' Displays ROI scores or subject G-scores from a COVSTATIS analysis.
+#' Displays ROI scores or subject scores from a COVSTATIS analysis.
 #'
 #' @param x A fitted `covstatis` object.
 #' @param dims Integer vector of length 2 specifying which components to plot.
-#' @param type `"roi"` for ROI-level scores, `"subjects"` for subject G-scores.
+#' @param type `"roi"` for ROI-level scores, `"subjects"` for subject scores in RV/table space.
 #' @param labels Logical; if `TRUE`, label points.
 #' @param col Point colors.
 #' @param pch Point character.
@@ -1325,9 +1325,8 @@ plot.covstatis <- function(x, dims = c(1, 2), type = c("roi", "subjects"),
     if (is.null(main)) main <- "COVSTATIS ROI Scores"
     point_labels <- x$labels
   } else {
-    # G-scores: barycentric mean of partial scores per subject
-    S <- do.call(rbind, lapply(x$partial_scores, colMeans))
-    if (is.null(main)) main <- "COVSTATIS Subject G-Scores"
+    S <- .get_table_scores(x)
+    if (is.null(main)) main <- "COVSTATIS Subject Scores"
     point_labels <- x$block_labels
   }
 
@@ -1350,7 +1349,7 @@ plot.covstatis <- function(x, dims = c(1, 2), type = c("roi", "subjects"),
 #'
 #' @param object A fitted `covstatis` object.
 #' @param dims Integer vector of length 2 specifying components to plot.
-#' @param type `"roi"` for ROI-level scores, `"subjects"` for subject G-scores.
+#' @param type `"roi"` for ROI-level scores, `"subjects"` for subject scores in RV/table space.
 #' @param labels Logical; if `TRUE`, add text labels.
 #' @param color Optional variable for point coloring.
 #' @param alpha Point transparency.
@@ -1371,8 +1370,8 @@ autoplot.covstatis <- function(object, dims = c(1, 2), type = c("roi", "subjects
     title <- "COVSTATIS ROI Scores"
     point_labels <- object$labels
   } else {
-    S <- do.call(rbind, lapply(object$partial_scores, colMeans))
-    title <- "COVSTATIS Subject G-Scores"
+    S <- .get_table_scores(object)
+    title <- "COVSTATIS Subject Scores"
     point_labels <- object$block_labels
   }
 

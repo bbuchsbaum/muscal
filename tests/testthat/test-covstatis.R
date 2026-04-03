@@ -134,6 +134,16 @@ test_that("dcenter=TRUE makes results invariant to constant shifts", {
   expect_equal(res_orig$sdev, res_shifted$sdev, tolerance = 1e-9)
 })
 
+test_that("default subject scores use nondegenerate RV-space coordinates", {
+  res <- covstatis(subject_data, ncomp = n_comp_fit)
+
+  G <- muscal:::.get_table_scores(res)
+  T_scores <- muscal:::rv_subject_scores(res)
+
+  expect_equal(G, T_scores, tolerance = 1e-12)
+  expect_true(max(abs(G)) > 1e-6)
+})
+
 
 context("covstatis: projection and summary methods")
 
@@ -144,6 +154,11 @@ test_that("project_subjects works correctly for known cases", {
   # project_cov on a training matrix should recover its partial_scores
   proj_subj1 <- project_subjects(res, subject_data[[1]], subject_ids = "Subj_1")
   expect_equal(proj_subj1$roi_scores$Subj_1, res$partial_scores[[1]], tolerance = 1e-9)
+  expect_equal(
+    unname(drop(proj_subj1$subject_scores[1, ])),
+    unname(drop(muscal:::rv_subject_scores(res)[1, ])),
+    tolerance = 1e-9
+  )
   
   # Test Case 2: Projecting a matrix that lies perfectly in the compromise space
   S_compromise_processed <- reconstruct(res)
@@ -168,10 +183,65 @@ test_that("project_subjects works correctly for known cases", {
   proj_ortho <- project_subjects(res, S_ortho_raw)
   S_ortho_processed <- muscal:::.pre_process_new_cov(res, S_ortho_raw)
   
-  # RV should be 0, distance should be the matrix's full norm, and scores should be 0
+  # RV should be 0, distance should be the matrix's full norm, and ROI scores
+  # should vanish because the matrix is orthogonal to the retained compromise basis.
   expect_equal(proj_ortho$scalar_summaries$rv_coefficient, 0, tolerance = 1e-9)
   expect_equal(proj_ortho$scalar_summaries$distance_to_compromise, 
                frobenius_norm(S_ortho_processed), 
                tolerance = 1e-9)
-  expect_true(all(abs(proj_ortho$subject_scores) < 1e-9))
-}) 
+  expect_true(all(abs(proj_ortho$roi_scores[[1]]) < 1e-9))
+})
+
+test_that("project_table_covariate uses table scores that remain informative with double centering", {
+  res <- covstatis(subject_data, ncomp = n_comp_fit)
+  y <- seq_along(subject_data)
+
+  dim_cos <- project_table_covariate(res, y, what = "dimension", scale = "cosine")
+  T_scores <- muscal:::rv_subject_scores(res)
+  manual_cos <- as.numeric(t(T_scores) %*% y) /
+    (sqrt(colSums(T_scores^2)) * sqrt(sum(y^2)))
+  names(manual_cos) <- paste0("Dim", seq_along(manual_cos))
+
+  expect_equal(dim_cos, manual_cos, tolerance = 1e-10)
+  expect_true(any(abs(dim_cos) > 1e-6))
+})
+
+test_that("project_feature_covariate aligns with feature-space scores", {
+  res <- covstatis(subject_data, ncomp = n_comp_fit)
+  z <- seq_len(nrow(res$roi_scores))
+
+  dim_cos <- project_feature_covariate(res, z, scale = "cosine")
+  F_scores <- res$roi_scores
+  manual_cos <- as.numeric(t(F_scores) %*% z) /
+    (sqrt(colSums(F_scores^2)) * sqrt(sum(z^2)))
+  names(manual_cos) <- paste0("Dim", seq_along(manual_cos))
+
+  expect_equal(dim_cos, manual_cos, tolerance = 1e-10)
+  expect_true(any(abs(dim_cos) > 1e-6))
+})
+
+test_that("project_covariate remains backward compatible for table-side input", {
+  res <- covstatis(subject_data, ncomp = n_comp_fit)
+  y <- seq_along(subject_data)
+
+  expect_equal(
+    project_covariate(res, y, what = "dimension", scale = "cosine"),
+    project_table_covariate(res, y, what = "dimension", scale = "cosine")
+  )
+  expect_equal(
+    project_covariate(res, y, what = "observation", scale = "beta"),
+    project_table_covariate(res, y, what = "feature", scale = "beta")
+  )
+})
+
+test_that("project_subjects round-trips subject scores under default preprocessing", {
+  res <- covstatis(subject_data, ncomp = n_comp_fit)
+  proj_subj1 <- project_subjects(res, subject_data[[1]], subject_ids = "Subj_1")
+
+  expect_equal(
+    unname(drop(proj_subj1$subject_scores[1, ])),
+    unname(drop(muscal:::rv_subject_scores(res)[1, ])),
+    tolerance = 1e-9
+  )
+  expect_true(any(abs(proj_subj1$subject_scores[1, ]) > 1e-6))
+})

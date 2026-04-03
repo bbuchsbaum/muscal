@@ -21,7 +21,7 @@
 
 \item{dims}{Integer vector of length 2 specifying which components to plot.}
 
-\item{type}{`"roi"` for ROI-level scores, `"subjects"` for subject G-scores.}
+\item{type}{`"roi"` for ROI-level scores, `"subjects"` for subject scores in RV/table space.}
 
 \item{labels}{Logical; if `TRUE`, label points.}
 
@@ -39,5 +39,5 @@
 Invisibly returns the plotted scores.
 }
 \description{
-Displays ROI scores or subject G-scores from a COVSTATIS analysis.
+Displays ROI scores or subject scores from a COVSTATIS analysis.
 }

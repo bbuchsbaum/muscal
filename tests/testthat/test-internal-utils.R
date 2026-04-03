@@ -45,11 +45,37 @@ test_that("ls_ridge handles zero predictors and ridge solution", {
 
 # --- project_covariate ------------------------------------------------------
 
-test_that("project_covariate beta scaling matches manual formula", {
+test_that("project_table_covariate beta scaling matches manual formula", {
   y <- rnorm(length(res_none$partial_scores))
-  beta_res <- project_covariate(res_none, y, what = "dimension", scale = "beta")
-  G <- muscal:::.get_G_scores(res_none)
+  beta_res <- project_table_covariate(res_none, y, what = "dimension", scale = "beta")
+  G <- muscal:::.get_table_scores(res_none)
   manual <- as.numeric(t(G) %*% y / colSums(G^2))
   expect_equal(as.numeric(beta_res), manual)
 })
 
+test_that("project_feature_covariate beta scaling matches manual formula", {
+  z <- rnorm(nrow(res_none$roi_scores))
+  beta_res <- project_feature_covariate(res_none, z, scale = "beta")
+  F <- res_none$roi_scores
+  manual <- as.numeric(t(F) %*% z / colSums(F^2))
+  expect_equal(as.numeric(beta_res), manual)
+})
+
+test_that("project_covariate wrapper dispatches by side", {
+  y <- rnorm(length(res_none$partial_scores))
+  z <- rnorm(nrow(res_none$roi_scores))
+
+  expect_equal(
+    project_covariate(res_none, y, side = "table", what = "dimension", scale = "beta"),
+    project_table_covariate(res_none, y, what = "dimension", scale = "beta")
+  )
+  expect_equal(
+    project_covariate(res_none, z, side = "feature", scale = "beta"),
+    project_feature_covariate(res_none, z, scale = "beta")
+  )
+})
+
+test_that("project_feature_covariate validates feature length", {
+  bad <- rnorm(nrow(res_none$roi_scores) + 1)
+  expect_error(project_feature_covariate(res_none, bad), "equal")
+})

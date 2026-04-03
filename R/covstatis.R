@@ -156,8 +156,15 @@ covstatis.list <- function(data, ncomp=2, normalize=TRUE, dcenter=TRUE, ...) {
     S <- lapply(S, mfa_norm)
   }
   
+  # Cache vectorized preprocessed tables for RV-space diagnostics and
+  # supplementary subject projection.
+  table_matrix <- vapply(S, c, numeric(length(S[[1]])), USE.NAMES = FALSE)
+
   # RV-matrix and weights
-  C <- compute_prodmat(S, normalize = (norm_method == "frobenius"))
+  C <- crossprod(table_matrix)
+  if (norm_method == "frobenius") {
+    diag(C) <- 1
+  }
   eigC <- eigen(C, symmetric = TRUE)
   alpha_vec <- eigC$vectors[,1]
   alpha_vec <- alpha_vec * sign(sum(alpha_vec))
@@ -193,6 +200,7 @@ covstatis.list <- function(data, ncomp=2, normalize=TRUE, dcenter=TRUE, ...) {
                                   eigC=eigC,
                                  compromise_full=Sall,
                                  partial_scores=partial_scores,
+                                 table_matrix=table_matrix,
                                  block_labels=block_labels, 
                                  labels=labels)
   ret
@@ -270,7 +278,8 @@ reconstruct.covstatis <- function(x, comp = 1:multivarious::ncomp(x), ...) {
 #' The function performs the following steps for each new matrix:
 #' 1.  Applies the same pre-processing (double-centering, normalization) as the original model.
 #' 2.  Calculates ROI-level factor scores (`roi_scores`), representing the coordinates of each ROI in the compromise space.
-#' 3.  Calculates subject-level scores (`subject_scores` or "g-scores") as the barycentric mean of the ROI scores.
+#' 3.  Calculates subject-level scores (`subject_scores`) in the RV/table space by
+#'     projecting the new table against the fitted interstructure axes.
 #' 4.  Calculates `subject_cosines` indicating the alignment of the subject's scores with each compromise dimension.
 #' 5.  Calculates a global `rv_coefficient` measuring the overall similarity between the new matrix and the group compromise matrix.
 #' 6.  Calculates the `distance_to_compromise`, the Frobenius distance between the new matrix and the full compromise matrix.
@@ -297,6 +306,19 @@ project_subjects.covstatis <- function(x, new_data, subject_ids = NULL, ...) {
   denom_compromise <- sum(compromise^2)
   U <- coefficients(x)
   P <- U %*% t(U)
+  if (is.null(x$table_matrix)) {
+    stop(
+      "This covstatis object does not store the preprocessed training tables needed ",
+      "for subject projection. Refit the model with the current muscal version.",
+      call. = FALSE
+    )
+  }
+  n_axes <- ncol(U)
+  rv_vectors <- x$eigC$vectors[, seq_len(n_axes), drop = FALSE]
+  rv_values <- x$eigC$values[seq_len(n_axes)]
+  rv_scale <- numeric(n_axes)
+  keep_scale <- abs(rv_values) > 1e-12
+  rv_scale[keep_scale] <- x$sdev[keep_scale] / rv_values[keep_scale]
   
   res_list <- lapply(seq_along(new_data), function(i) {
     S_raw <- new_data[[i]]
@@ -307,12 +329,13 @@ project_subjects.covstatis <- function(x, new_data, subject_ids = NULL, ...) {
     # 2. ROI coordinates ("Partial-F")
     F_new <- S_new %*% x$projmat
     
-    # 3. Subject coordinate ("G-scores")
-    g_scores <- colMeans(F_new)
+    # 3. Subject coordinates in RV/table space
+    rv_profile <- drop(crossprod(x$table_matrix, c(S_new)))
+    subject_scores <- drop(rv_profile %*% rv_vectors) * rv_scale
     
     # 4. Cosine alignment
-    norm_g <- sqrt(sum(g_scores^2))
-    cosines <- if (norm_g > 1e-9) g_scores / norm_g else g_scores * 0
+    norm_g <- sqrt(sum(subject_scores^2))
+    cosines <- if (norm_g > 1e-9) subject_scores / norm_g else subject_scores * 0
     
     # 5A. RV coefficient (against compromise)
     numer <- sum(S_new * compromise)
@@ -325,7 +348,7 @@ project_subjects.covstatis <- function(x, new_data, subject_ids = NULL, ...) {
     dist <- sqrt(sum(Residual^2))
     
     list(
-      g_scores = g_scores,
+      subject_scores = subject_scores,
       cosines = cosines,
       rv_coefficient = rv,
       distance_to_compromise = dist,
@@ -334,7 +357,7 @@ project_subjects.covstatis <- function(x, new_data, subject_ids = NULL, ...) {
   })
   
   # Consolidate results
-  g_scores_mat <- do.call(rbind, lapply(res_list, `[[`, "g_scores"))
+  g_scores_mat <- do.call(rbind, lapply(res_list, `[[`, "subject_scores"))
   rownames(g_scores_mat) <- subject_ids
   colnames(g_scores_mat) <- paste0("Dim", 1:ncol(g_scores_mat))
   
@@ -360,34 +383,46 @@ project_subjects.covstatis <- function(x, new_data, subject_ids = NULL, ...) {
   )
 }
 
-#' Retrieve Subject G-Scores from a covstatis object
+#' Retrieve subject scores from a covstatis object
 #'
-#' This internal helper function calculates the subject-level G-scores from a
-#' fitted `covstatis` model. The G-scores represent the coordinates of each subject
-#' in the compromise space and are computed as the barycentric mean of the ROI-level
-#' partial factor scores for each subject.
+#' This internal helper returns the subject-level coordinates used for plotting
+#' and supplementary covariate projection. The historical "G-score" name is
+#' retained for compatibility, but the coordinates live in the RV/table space.
+#' Barycentric means of partial ROI scores collapse to zero after double-centering,
+#' so they are not used here.
 #'
 #' @param x A fitted `covstatis` object, which contains `partial_scores`.
-#' @return A numeric matrix of G-scores with dimensions `n_subjects` x `n_components`.
+#' @return A numeric matrix of table scores with dimensions `n_tables` x `n_components`.
 #' @noRd
 #' @keywords internal
-.get_G_scores <- function(x) {
-  do.call(rbind, lapply(x$partial_scores, colMeans))
+.get_table_scores <- function(x) {
+  rv_subject_scores(x)
 }
 
 #' @rdname project_covariate
 #' @description
-#' This function projects a subject-level covariate into the space of a fitted `covstatis` model,
-#' treating it as a supplementary variable without re-fitting the model.
-#' @param what  `"dimension"` (default) returns cosine / β per compromise
-#'              dimension; `"observation"` returns an ROI-wise pattern.
+#' This function projects a table-level or feature-level covariate into the
+#' space of a fitted `covstatis` model, treating it as a supplementary variable
+#' without re-fitting the model.
+#' @param side Which side the covariate belongs to: `"table"` for one value per
+#'   input table/block, or `"feature"` for one value per matrix feature.
+#' @param what For `side = "table"`, `"dimension"` (default) returns cosine / β
+#'   per compromise dimension and `"feature"` returns a feature-wise pattern.
+#'   `"observation"` is accepted as a backwards-compatible alias for `"feature"`.
+#'   For `side = "feature"`, only `"dimension"` is currently supported.
 #' @param scale  `"cosine"` (−1…1) or `"beta"` (regression coeff.).
 #' @return If `what = "dimension"`, a named numeric vector of length `ncomp(x)`.
-#'         If `what = "observation"`, an `R × ncomp` matrix.
+#'         If `side = "table"` and `what = "feature"`, a `p × ncomp` matrix.
 #' @details
-#' The interpretation of the output depends on the `what` parameter:
-#' - **Dimension-wise cosine**: This is the correlation between the covariate `y` and the subject G-scores. It indicates which compromise dimensions are most strongly associated with the covariate.
-#' - **Observation matrix**: This is a weighted sum of each subject's partial factor scores (`Partial-F`). It represents the spatial signature in the compromise space associated with a one-unit change in the covariate.
+#' The interpretation of the output depends on `side`:
+#' - **Table-side covariate**: `y` has length equal to the number of input
+#'   tables/blocks. Dimension-wise output quantifies how strongly the covariate
+#'   aligns with the RV/table-space axes. Feature-wise output is a weighted sum
+#'   of partial factor scores and gives a feature pattern associated with the
+#'   covariate.
+#' - **Feature-side covariate**: `y` has length equal to the matrix dimension
+#'   (`p`). Dimension-wise output quantifies how strongly the covariate aligns
+#'   with the compromise feature-space axes.
 #' 
 #' @examples
 #' # Create a list of correlation matrices
@@ -397,59 +432,99 @@ project_subjects.covstatis <- function(x, new_data, subject_ids = NULL, ...) {
 #' # Apply COVSTATIS
 #' res <- covstatis(Xs, ncomp=3)
 #' 
-#' # Create a random covariate vector (e.g., episodic memory scores)
+#' # Table-side covariate: one value per table/block
 #' y <- rnorm(length(Xs))
 #' 
 #' # Project the covariate to get dimension-wise coordinates
-#' dim_cos <- project_covariate(res, y, what = "dimension", scale = "cosine")
+#' dim_cos <- project_table_covariate(res, y, what = "dimension", scale = "cosine")
 #' 
-#' # Project the covariate to get an ROI-wise pattern
-#' roi_beta <- project_covariate(res, y, what = "observation", scale = "beta")
+#' # Project the covariate to get a feature-wise pattern
+#' feature_beta <- project_table_covariate(res, y, what = "feature", scale = "beta")
+#' 
+#' # Feature-side covariate: one value per feature/row-column entity
+#' z <- rnorm(nrow(Xs[[1]]))
+#' feature_dim_cos <- project_feature_covariate(res, z, scale = "cosine")
 #'
 #' @export
-project_covariate.covstatis <- function(x, y,
-                              what = c("dimension", "observation"),
-                              scale = c("cosine", "beta"), ...) {
-  what  <- match.arg(what)
+project_covariate.covstatis <- function(x, y, side = c("table", "feature"),
+                              what = NULL, scale = c("cosine", "beta"), ...) {
+  side <- match.arg(side)
   scale <- match.arg(scale)
   
-  ns <- length(x$partial_scores)
-  chk::chk_vector(y)
-  chk::chk_equal(length(y), ns)
-  
-  G <- .get_G_scores(x)        # ns × D
-  if (what == "dimension") {
-    if (scale == "cosine") {
-      numer <- as.numeric(t(G) %*% y)            # length D
-      denom <- sqrt(colSums(G^2)) * sqrt(sum(y^2))
-      denom[denom < 1e-12] <- Inf
-      out   <- numer / denom
-    } else { # beta
-      denom <- colSums(G^2)
-      denom[denom < 1e-12] <- Inf
-      out <- as.numeric(t(G) %*% y / denom)
+  if (side == "table") {
+    if (is.null(what)) {
+      what <- "dimension"
     }
-    out[!is.finite(out)] <- 0
-    names(out) <- paste0("Dim", seq_along(out))
+    what <- match.arg(what, c("dimension", "feature", "observation"))
+    if (what == "observation") {
+      what <- "feature"
+    }
+    
+    ns <- length(x$partial_scores)
+    chk::chk_vector(y)
+    chk::chk_equal(length(y), ns)
+    
+    G <- .get_table_scores(x)        # ns × D
+    if (what == "dimension") {
+      if (scale == "cosine") {
+        numer <- as.numeric(t(G) %*% y)            # length D
+        denom <- sqrt(colSums(G^2)) * sqrt(sum(y^2))
+        denom[denom < 1e-12] <- Inf
+        out   <- numer / denom
+      } else { # beta
+        denom <- colSums(G^2)
+        denom[denom < 1e-12] <- Inf
+        out <- as.numeric(t(G) %*% y / denom)
+      }
+      out[!is.finite(out)] <- 0
+      names(out) <- paste0("Dim", seq_along(out))
+      return(out)
+    }
+    
+    ## --- feature-wise pattern -----------------------------------------
+    R  <- nrow(x$partial_scores[[1]])
+    D  <- ncol(x$partial_scores[[1]])
+    out <- matrix(0, R, D)
+    for (k in seq_len(ns)) out <- out + y[k] * x$partial_scores[[k]]
+    if (scale == "cosine") {
+      norm_out <- sqrt(sum(out^2))
+      if (norm_out > 1e-12) out <- out / norm_out
+    } else {                     # beta-style scaling
+      denom <- colSums(G^2)      # D-vector
+      denom[denom < 1e-12] <- Inf
+      out   <- out / matrix(denom, R, D, byrow = TRUE)
+      out[!is.finite(out)] <- 0
+    }
+    dimnames(out) <- list(x$labels, paste0("Dim", 1:D))
     return(out)
   }
   
-  ## --- observation-wise pattern ------------------------------------
-  R  <- nrow(x$partial_scores[[1]])
-  D  <- ncol(x$partial_scores[[1]])
-  out <- matrix(0, R, D)
-  for (k in seq_len(ns)) out <- out + y[k] * x$partial_scores[[k]]
-  if (scale == "cosine") {
-    norm_out <- sqrt(sum(out^2))
-    if (norm_out > 1e-12) out <- out / norm_out
-  } else {                     # beta-style scaling
-    denom <- colSums(G^2)      # D-vector
-    denom[denom < 1e-12] <- Inf
-    out   <- out / matrix(denom, R, D, byrow = TRUE)
-    out[!is.finite(out)] <- 0
+  if (is.null(what)) {
+    what <- "dimension"
   }
-  dimnames(out) <- list(x$labels, paste0("Dim", 1:D))
+  what <- match.arg(what, c("dimension"))
+  feature_scores <- x$roi_scores
+  chk::chk_vector(y)
+  chk::chk_equal(length(y), nrow(feature_scores))
+  
+  if (scale == "cosine") {
+    numer <- as.numeric(t(feature_scores) %*% y)
+    denom <- sqrt(colSums(feature_scores^2)) * sqrt(sum(y^2))
+    denom[denom < 1e-12] <- Inf
+    out <- numer / denom
+  } else {
+    denom <- colSums(feature_scores^2)
+    denom[denom < 1e-12] <- Inf
+    out <- as.numeric(t(feature_scores) %*% y / denom)
+  }
+  out[!is.finite(out)] <- 0
+  names(out) <- paste0("Dim", seq_along(out))
   out
+}
+
+# Compatibility shim for historical internal name.
+.get_G_scores <- function(x) {
+  .get_table_scores(x)
 }
 
 #' Subject coordinates in the RV/table space
@@ -504,17 +579,14 @@ roi_map <- function(x, d) {
   x$roi_scores[, d]
 }
 
-#' Plot subject clouds in RV and ROI spaces
+#' Plot subject scores in RV space
 #'
 #' @param x A fitted `covstatis` object.
 #' @param dim A numeric vector of length 2 specifying the dimensions to plot.
 #' @importFrom graphics par plot
 #' @export
 plot_subjects <- function(x, dim = c(1,2)) {
-  G <- .get_G_scores(x)
   T_scores <- rv_subject_scores(x)
-  old_par <- par(mfrow = c(1,2))
-  on.exit(par(old_par))
-  plot(G[,dim], main = "G-scores (compromise space)", xlab = paste("Dim", dim[1]), ylab = paste("Dim", dim[2]))
-  plot(T_scores[,dim], main = "T-scores (RV space)",   xlab = paste("Dim", dim[1]), ylab = paste("Dim", dim[2]))
+  plot(T_scores[,dim], main = "Subject scores (RV space)",
+       xlab = paste("Dim", dim[1]), ylab = paste("Dim", dim[2]))
 }

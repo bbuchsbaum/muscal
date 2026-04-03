@@ -20,7 +20,7 @@
 
 \item{dims}{Integer vector of length 2 specifying components to plot.}
 
-\item{type}{`"roi"` for ROI-level scores, `"subjects"` for subject G-scores.}
+\item{type}{`"roi"` for ROI-level scores, `"subjects"` for subject scores in RV/table space.}
 
 \item{labels}{Logical; if `TRUE`, add text labels.}
 

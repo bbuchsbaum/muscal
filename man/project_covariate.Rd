@@ -2,15 +2,22 @@
 % Please edit documentation in R/all_generic.R, R/covstatis.R
 \name{project_covariate}
 \alias{project_covariate}
+\alias{project_table_covariate}
+\alias{project_feature_covariate}
 \alias{project_covariate.covstatis}
-\title{Project a Subject-Level Covariate (generic)}
+\title{Project a Table- or Feature-Level Covariate (generic)}
 \usage{
-project_covariate(x, y, ...)
+project_covariate(x, y, side = c("table", "feature"), ...)
+
+project_table_covariate(x, y, ...)
+
+project_feature_covariate(x, y, ...)
 
 \method{project_covariate}{covstatis}(
   x,
   y,
-  what = c("dimension", "observation"),
+  side = c("table", "feature"),
+  what = NULL,
   scale = c("cosine", "beta"),
   ...
 )
@@ -18,12 +25,19 @@ project_covariate(x, y, ...)
 \arguments{
 \item{x}{A fitted model object (e.g., `covstatis`).}
 
-\item{y}{Numeric vector representing the covariate, with length equal to the number of subjects in the model.}
+\item{y}{Numeric vector representing the covariate. Its length depends on
+`side`: one value per table/block for `side = "table"`, or one value per
+feature for `side = "feature"`.}
+
+\item{side}{Which side the covariate belongs to: `"table"` for one value per
+input table/block, or `"feature"` for one value per matrix feature.}
 
 \item{...}{other arguments passed to methods.}
 
-\item{what}{`"dimension"` (default) returns cosine / β per compromise
-dimension; `"observation"` returns an ROI-wise pattern.}
+\item{what}{For `side = "table"`, `"dimension"` (default) returns cosine / β
+per compromise dimension and `"feature"` returns a feature-wise pattern.
+`"observation"` is accepted as a backwards-compatible alias for `"feature"`.
+For `side = "feature"`, only `"dimension"` is currently supported.}
 
 \item{scale}{`"cosine"` (−1…1) or `"beta"` (regression coeff.).}
 }
@@ -32,19 +46,31 @@ The return value depends on the method, but is typically a projection
   of the covariate onto the model's components or a spatial pattern.
 
 If `what = "dimension"`, a named numeric vector of length `ncomp(x)`.
-        If `what = "observation"`, an `R × ncomp` matrix.
+        If `side = "table"` and `what = "feature"`, a `p × ncomp` matrix.
 }
 \description{
-Generic for projecting a subject-level covariate into the space of a fitted model,
-treating it as a supplementary variable without re-fitting the model.
+Generic for projecting a table-level or feature-level covariate into the
+space of a fitted model, treating it as a supplementary variable without
+re-fitting the model.
 
-This function projects a subject-level covariate into the space of a fitted `covstatis` model,
-treating it as a supplementary variable without re-fitting the model.
+Convenience wrapper for `project_covariate(..., side = "table")`.
+
+Convenience wrapper for `project_covariate(..., side = "feature")`.
+
+This function projects a table-level or feature-level covariate into the
+space of a fitted `covstatis` model, treating it as a supplementary variable
+without re-fitting the model.
 }
 \details{
-The interpretation of the output depends on the `what` parameter:
-- **Dimension-wise cosine**: This is the correlation between the covariate `y` and the subject G-scores. It indicates which compromise dimensions are most strongly associated with the covariate.
-- **Observation matrix**: This is a weighted sum of each subject's partial factor scores (`Partial-F`). It represents the spatial signature in the compromise space associated with a one-unit change in the covariate.
+The interpretation of the output depends on `side`:
+- **Table-side covariate**: `y` has length equal to the number of input
+  tables/blocks. Dimension-wise output quantifies how strongly the covariate
+  aligns with the RV/table-space axes. Feature-wise output is a weighted sum
+  of partial factor scores and gives a feature pattern associated with the
+  covariate.
+- **Feature-side covariate**: `y` has length equal to the matrix dimension
+  (`p`). Dimension-wise output quantifies how strongly the covariate aligns
+  with the compromise feature-space axes.
 }
 \examples{
 # Create a list of correlation matrices
@@ -54,13 +80,17 @@ Xs <- lapply(Xs, cor)
 # Apply COVSTATIS
 res <- covstatis(Xs, ncomp=3)
 
-# Create a random covariate vector (e.g., episodic memory scores)
+# Table-side covariate: one value per table/block
 y <- rnorm(length(Xs))
 
 # Project the covariate to get dimension-wise coordinates
-dim_cos <- project_covariate(res, y, what = "dimension", scale = "cosine")
+dim_cos <- project_table_covariate(res, y, what = "dimension", scale = "cosine")
 
-# Project the covariate to get an ROI-wise pattern
-roi_beta <- project_covariate(res, y, what = "observation", scale = "beta")
+# Project the covariate to get a feature-wise pattern
+feature_beta <- project_table_covariate(res, y, what = "feature", scale = "beta")
+
+# Feature-side covariate: one value per feature/row-column entity
+z <- rnorm(nrow(Xs[[1]]))
+feature_dim_cos <- project_feature_covariate(res, z, scale = "cosine")
 
 }
