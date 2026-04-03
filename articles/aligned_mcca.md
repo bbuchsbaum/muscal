@@ -22,6 +22,37 @@ library(ggplot2)
 ```
 
 ``` r
+set.seed(42)
+N <- 75
+k <- 2
+Z <- scale(matrix(rnorm(N * k), nrow = N, ncol = k), center = TRUE, scale = FALSE)
+
+idx1 <- sort(sample.int(N, 60, replace = FALSE))
+idx2 <- sort(c(setdiff(seq_len(N), idx1), sample(idx1, 40, replace = FALSE)))
+idx3 <- sort(sample.int(N, 55, replace = FALSE))
+
+make_block <- function(idx, p, noise_sd = 0.1) {
+  A <- matrix(rnorm(p * k), nrow = p, ncol = k)
+  X <- Z[idx, , drop = FALSE] %*% t(A) +
+    matrix(rnorm(length(idx) * p, sd = noise_sd), nrow = length(idx), ncol = p)
+  scale(X, center = TRUE, scale = FALSE)
+}
+
+blocks <- list(
+  transcriptomics = make_block(idx1, 20),
+  imaging = make_block(idx2, 22),
+  physiology = make_block(idx3, 18)
+)
+row_index <- list(transcriptomics = idx1, imaging = idx2, physiology = idx3)
+coverage <- tabulate(c(idx1, idx2, idx3), nbins = N)
+
+full_blocks <- list(
+  transcriptomics = make_block(seq_len(N), 20),
+  imaging = make_block(seq_len(N), 22)
+)
+```
+
+``` r
 c(
   n_transcriptomics_rows = nrow(blocks$transcriptomics),
   n_imaging_rows = nrow(blocks$imaging),
