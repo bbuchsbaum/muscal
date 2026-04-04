@@ -139,11 +139,29 @@ The loading dimensions tell you how much information each block carries.
 The objective trace tells you whether the alternating updates have
 settled cleanly.
 
+## What about inference and validation?
+
+[`aligned_mfa()`](https://bbuchsbaum.github.io/muscal/reference/aligned_mfa.md)
+already fits into the package’s task-aware prediction surface: it
+exposes aligned scores and reconstructions, so you can evaluate held-out
+workflows with explicit
+[`cv_muscal()`](https://bbuchsbaum.github.io/muscal/reference/cv_muscal.md)
+callbacks when you have a clear fold construction strategy.
+
+It also now exposes generic refit metadata, so
+[`infer_muscal()`](https://bbuchsbaum.github.io/muscal/reference/infer_muscal.md)
+can be used for bootstrap or permutation summaries. For this method,
+fit-quality statistics are often more informative than raw component
+standard deviations, because the score space is orthonormalized during
+fitting.
+
 ## Where next?
 
 - [`vignette("linked_mfa")`](https://bbuchsbaum.github.io/muscal/articles/linked_mfa.md)
   for the anchored version with an explicit reference block
 - [`vignette("mfa")`](https://bbuchsbaum.github.io/muscal/articles/mfa.md)
   for the classical same-row setting
+- [`vignette("model_evaluation")`](https://bbuchsbaum.github.io/muscal/articles/model_evaluation.md)
+  for the shared evaluation API across supported methods
 - [`?aligned_mfa`](https://bbuchsbaum.github.io/muscal/reference/aligned_mfa.md)
   for `feature_groups`, `feature_lambda`, and weighting options

@@ -12,8 +12,9 @@ articles:
   linked_mfa: linked_mfa.html
   mcca: mcca.html
   mfa: mfa.html
+  model_evaluation: model_evaluation.html
   penalized_mfa: penalized_mfa.html
-last_built: 2026-04-03T01:28Z
+last_built: 2026-04-04T22:15Z
 urls:
   reference: https://bbuchsbaum.github.io/muscal/reference
   article: https://bbuchsbaum.github.io/muscal/articles

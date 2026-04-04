@@ -11,7 +11,9 @@ scale or dimensionality but should still agree on the same latent
 structure.
 
 If your main question is “what common signal do these blocks line up
-on?”, MCCA is often the right first model.
+on?”, MCCA is a strong next step after
+[`vignette("mfa")`](https://bbuchsbaum.github.io/muscal/articles/mfa.md)
+when correlation structure matters more than variance balancing.
 
 ## What does a quick fit look like?
 
@@ -96,6 +98,60 @@ Each block has its own partial score matrix. Their sum reproduces the
 compromise scores, so large disagreements across partial scores tell you
 where the blocks are pulling in different directions.
 
+## Inference and validation
+
+MCCA now participates in the same generic evaluation surface as MFA and
+iPCA. For this method, the most natural resampling question is whether
+the shared score space is more coherent than what you would get after
+breaking row alignment across blocks.
+
+``` r
+boot <- infer_muscal(
+  fit,
+  method = "bootstrap",
+  statistic = "sdev",
+  nrep = 6,
+  seed = 303
+)
+
+boot$summary
+#> # A tibble: 2 × 7
+#>   component label observed  mean       sd lower upper
+#>       <int> <chr>    <dbl> <dbl>    <dbl> <dbl> <dbl>
+#> 1         1 comp1     1.73  1.73 0.000175  1.73  1.73
+#> 2         2 comp2     1.73  1.73 0.000385  1.73  1.73
+```
+
+``` r
+perm <- infer_muscal(
+  fit,
+  method = "permutation",
+  statistic = "sdev",
+  nrep = 9,
+  seed = 404
+)
+
+perm$component_results
+#> # A tibble: 2 × 6
+#>   component label observed p_value lower_ci upper_ci
+#>       <int> <chr>    <dbl>   <dbl>    <dbl>    <dbl>
+#> 1         1 comp1     1.73     0.1     1.51     1.56
+#> 2         2 comp2     1.73     0.1     1.49     1.53
+```
+
+``` r
+stopifnot(all(is.finite(boot$summary$mean)))
+stopifnot(all(boot$summary$upper >= boot$summary$lower))
+stopifnot(all(perm$component_results$p_value >= 0))
+stopifnot(all(perm$component_results$p_value <= 1))
+```
+
+Because
+[`mcca()`](https://bbuchsbaum.github.io/muscal/reference/mcca.md) is a
+same-row model, you can also score held-out rows with the generic
+reconstruction workflow shown in
+[`vignette("model_evaluation")`](https://bbuchsbaum.github.io/muscal/articles/model_evaluation.md).
+
 ## When should you reach for MCCA?
 
 Use [`mcca()`](https://bbuchsbaum.github.io/muscal/reference/mcca.md)
@@ -114,6 +170,8 @@ than a canonical-correlation view.
 
 - [`vignette("mfa")`](https://bbuchsbaum.github.io/muscal/articles/mfa.md)
   for variance-based multiblock integration
+- [`vignette("model_evaluation")`](https://bbuchsbaum.github.io/muscal/articles/model_evaluation.md)
+  for generic inference and held-out evaluation workflows
 - [`vignette("aligned_mcca")`](https://bbuchsbaum.github.io/muscal/articles/aligned_mcca.md)
   for the same idea when blocks do not share the same rows
 - [`?mcca`](https://bbuchsbaum.github.io/muscal/reference/mcca.md) for

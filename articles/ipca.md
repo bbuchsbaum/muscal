@@ -144,6 +144,63 @@ dim(proj)
 #> [1] 5 3
 ```
 
+## Inference and validation
+
+iPCA now participates in the same generic evaluation surface as MFA. Use
+[`infer_muscal()`](https://bbuchsbaum.github.io/muscal/reference/infer_muscal.md)
+for resampling-based summaries, and
+[`cv_muscal()`](https://bbuchsbaum.github.io/muscal/reference/cv_muscal.md)
+when you want explicit fold-wise reconstruction metrics.
+
+``` r
+boot <- infer_muscal(
+  fit,
+  method = "bootstrap",
+  statistic = "sdev",
+  nrep = 6,
+  seed = 303
+)
+
+boot$summary
+#> # A tibble: 3 × 7
+#>   component label observed  mean      sd lower upper
+#>       <int> <chr>    <dbl> <dbl>   <dbl> <dbl> <dbl>
+#> 1         1 comp1     1.03  1.07 0.0134   1.06  1.09
+#> 2         2 comp2     1.03  1.06 0.00881  1.05  1.07
+#> 3         3 comp3     1.03  1.05 0.00476  1.04  1.05
+```
+
+``` r
+perm <- infer_muscal(
+  fit,
+  method = "permutation",
+  statistic = "sdev",
+  nrep = 9,
+  seed = 404
+)
+
+perm$component_results
+#> # A tibble: 3 × 6
+#>   component label observed p_value lower_ci upper_ci
+#>       <int> <chr>    <dbl>   <dbl>    <dbl>    <dbl>
+#> 1         1 comp1     1.03     0.8     1.03     1.04
+#> 2         2 comp2     1.03     0.7     1.03     1.03
+#> 3         3 comp3     1.03     0.8     1.03     1.03
+```
+
+``` r
+stopifnot(all(is.finite(boot$summary$mean)))
+stopifnot(all(boot$summary$upper >= boot$summary$lower))
+stopifnot(all(perm$component_results$p_value >= 0))
+stopifnot(all(perm$component_results$p_value <= 1))
+```
+
+For a package-level walkthrough of
+[`infer_muscal()`](https://bbuchsbaum.github.io/muscal/reference/infer_muscal.md),
+[`cv_muscal()`](https://bbuchsbaum.github.io/muscal/reference/cv_muscal.md),
+and the task-aware metric registry, see
+[`vignette("model_evaluation")`](https://bbuchsbaum.github.io/muscal/articles/model_evaluation.md).
+
 ## Computation methods
 
 iPCA supports two internal methods:
@@ -184,6 +241,8 @@ iPCA is *not* appropriate when:
 
 - [`vignette("mfa")`](https://bbuchsbaum.github.io/muscal/articles/mfa.md)
   — Classical MFA with fixed normalization
+- [`vignette("model_evaluation")`](https://bbuchsbaum.github.io/muscal/articles/model_evaluation.md)
+  — Generic inference and held-out evaluation workflows
 - [`vignette("penalized_mfa")`](https://bbuchsbaum.github.io/muscal/articles/penalized_mfa.md)
   — MFA with loading similarity penalties
 - [`?ipca_tune_alpha`](https://bbuchsbaum.github.io/muscal/reference/ipca_tune_alpha.md)

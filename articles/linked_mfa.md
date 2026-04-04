@@ -221,6 +221,105 @@ variance.](linked_mfa_files/figure-html/block-fit-1.png)
 Relative reconstruction quality per block. Higher R-squared means the
 model captures more of that block’s variance.
 
+## Held-out prediction and validation
+
+Anchored MFA is often used because you want to predict rows of the
+reference block `Y` from an auxiliary modality. That makes held-out
+validation part of the core workflow, not an optional afterthought.
+
+Projecting new rows from a known block back into the reference space
+uses `predict(..., type = "response")`:
+
+``` r
+pred_x1 <- predict(fit, X1[1:5, , drop = FALSE], block = "X1", type = "response")
+truth_x1 <- Y[idx1[1:5], , drop = FALSE]
+
+stopifnot(identical(dim(pred_x1), dim(truth_x1)))
+stopifnot(all(is.finite(pred_x1)))
+
+round(cbind(pred_x1[1, 1:3], truth_x1[1, 1:3]), 3)
+#>     [,1]   [,2]
+#> y1 0.035  0.173
+#> y2 0.091 -0.160
+#> y3 0.152  0.474
+```
+
+For a simple held-out assessment, compute response-prediction metrics
+directly:
+
+``` r
+performance_metrics(
+  task = "response_prediction",
+  truth = truth_x1,
+  estimate = pred_x1,
+  metrics = c("mse", "mean_cosine_similarity")
+)
+#> # A tibble: 1 × 2
+#>      mse mean_cosine_similarity
+#>    <dbl>                  <dbl>
+#> 1 0.0393                  0.189
+```
+
+Cross-validation scales that idea to repeated folds with synchronized
+holdout across blocks:
+
+``` r
+d1 <- multidesign::multidesign(X1, data.frame(anchor = idx1, Y[idx1, , drop = FALSE]))
+d2 <- multidesign::multidesign(X2, data.frame(anchor = idx2, Y[idx2, , drop = FALSE]))
+hd <- multidesign::hyperdesign(list(X1 = d1, X2 = d2), block_names = c("X1", "X2"))
+
+folds <- multidesign::cv_rows(
+  hd,
+  rows = list(
+    list(X1 = 1:3, X2 = 1:3),
+    list(X1 = 4:6, X2 = 4:6)
+  ),
+  preserve_row_ids = TRUE
+)
+
+res_cv <- cv_muscal(
+  folds = folds,
+  fit_fn = function(analysis) {
+    X_blocks <- multidesign::xdata(analysis)
+    idx_blocks <- lapply(multidesign::design(analysis), function(des) des$anchor)
+    anchored_mfa(Y = Y, X = X_blocks, row_index = idx_blocks, ncomp = 3)
+  },
+  estimate_fn = function(model, assessment) {
+    X_blocks <- multidesign::xdata(assessment)
+    do.call(rbind, lapply(names(X_blocks), function(block_name) {
+      predict(model, X_blocks[[block_name]], block = block_name, type = "response")
+    }))
+  },
+  truth_fn = function(assessment) {
+    des_blocks <- multidesign::design(assessment)
+    do.call(rbind, lapply(des_blocks, function(des) {
+      as.matrix(des[, colnames(Y), drop = FALSE])
+    }))
+  },
+  task = "response_prediction",
+  metrics = c("mse", "mean_cosine_similarity")
+)
+
+res_cv$scores
+#> # A tibble: 2 × 3
+#>      mse mean_cosine_similarity .fold
+#>    <dbl>                  <dbl> <int>
+#> 1 0.0418               -0.104       1
+#> 2 0.0378                0.00714     2
+```
+
+``` r
+stopifnot(all(is.finite(res_cv$scores$mse)))
+stopifnot(all(is.finite(res_cv$scores$mean_cosine_similarity)))
+```
+
+Because
+[`anchored_mfa()`](https://bbuchsbaum.github.io/muscal/reference/linked_mfa.md)
+stores generic refit metadata, you can also use
+[`infer_muscal()`](https://bbuchsbaum.github.io/muscal/reference/infer_muscal.md)
+for bootstrap or permutation summaries. The shared workflow is shown in
+[`vignette("model_evaluation")`](https://bbuchsbaum.github.io/muscal/articles/model_evaluation.md).
+
 ### Variable loadings
 
 ``` r
@@ -316,6 +415,8 @@ Anchored MFA is *not* appropriate when:
 
 - [`vignette("mfa")`](https://bbuchsbaum.github.io/muscal/articles/mfa.md)
   — Standard MFA when all blocks share observations
+- [`vignette("model_evaluation")`](https://bbuchsbaum.github.io/muscal/articles/model_evaluation.md)
+  — Generic inference and held-out validation workflows
 - [`?covstatis`](https://bbuchsbaum.github.io/muscal/reference/covstatis.md)
   — STATIS analysis for covariance matrices
 - [`?penalized_mfa`](https://bbuchsbaum.github.io/muscal/reference/penalized_mfa.md)

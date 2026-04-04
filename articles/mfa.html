@@ -44,6 +44,7 @@
     <li><a class="dropdown-item" href="../articles/linked_mfa.html">Anchored Multiple Factor Analysis</a></li>
     <li><a class="dropdown-item" href="../articles/mcca.html">Multiblock Canonical Correlation Analysis</a></li>
     <li><a class="dropdown-item" href="../articles/mfa.html">Multiple Factor Analysis</a></li>
+    <li><a class="dropdown-item" href="../articles/model_evaluation.html">Model Evaluation and Inference</a></li>
     <li><a class="dropdown-item" href="../articles/penalized_mfa.html">Penalized Multiple Factor Analysis</a></li>
   </ul>
 </li>
@@ -196,14 +197,13 @@ Score plot colored by a grouping variable.
 <div class="section level3">
 <h3 id="variance-explained">Variance explained<a class="anchor" aria-label="anchor" href="#variance-explained"></a>
 </h3>
-<p>Assess how many components to retain:</p>
+<p>Assess how the retained components distribute variance:</p>
 <div class="sourceCode" id="cb8"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="../reference/plot_variance.html">plot_variance</a></span><span class="op">(</span><span class="va">fit</span>, type <span class="op">=</span> <span class="st">"bar"</span><span class="op">)</span></span></code></pre></div>
 <div class="figure">
-<img src="mfa_files/figure-html/variance-bar-1.png" class="r-plt" alt="Proportion of variance captured by each component. With three true latent factors and moderate noise, the first three components stand out clearly." width="576"><p class="caption">
-Proportion of variance captured by each component. With three true
-latent factors and moderate noise, the first three components stand out
-clearly.
+<img src="mfa_files/figure-html/variance-bar-1.png" class="r-plt" alt="Proportion of variance captured by each retained component in the three-component MFA solution." width="576"><p class="caption">
+Proportion of variance captured by each retained component in the
+three-component MFA solution.
 </p>
 </div>
 </div>
@@ -225,17 +225,20 @@ receive larger weights, equalizing their contribution.
 </h3>
 <p>Each block has its own “view” of the observations. Partial factor
 scores show where each block would place the observations, connected to
-the consensus position:</p>
+the consensus position. In a dense plot like this one, focus on the
+overall spread of the segments rather than trying to read every
+observation individually:</p>
 <div class="sourceCode" id="cb10"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="../reference/plot_partial_scores.html">plot_partial_scores</a></span><span class="op">(</span><span class="va">fit</span>, connect <span class="op">=</span> <span class="cn">TRUE</span>, show_consensus <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span></span></code></pre></div>
 <div class="figure">
-<img src="mfa_files/figure-html/partial-scores-1.png" class="r-plt" alt="Partial factor scores. Lines connect each block's view to the consensus. Short lines mean the blocks agree about that observation." width="672"><p class="caption">
-Partial factor scores. Lines connect each block’s view to the consensus.
-Short lines mean the blocks agree about that observation.
+<img src="mfa_files/figure-html/partial-scores-1.png" class="r-plt" alt="Partial factor scores. Lines connect each block's view to the consensus; tighter clouds and shorter segments indicate stronger agreement across blocks." width="672"><p class="caption">
+Partial factor scores. Lines connect each block’s view to the consensus;
+tighter clouds and shorter segments indicate stronger agreement across
+blocks.
 </p>
 </div>
-<p>Large divergence indicates disagreement between blocks for that
-observation.</p>
+<p>Observations with long segments are cases where one or more blocks
+disagree more strongly with the compromise position.</p>
 </div>
 <div class="section level3">
 <h3 id="block-similarity">Block similarity<a class="anchor" aria-label="anchor" href="#block-similarity"></a>
@@ -295,6 +298,91 @@ weights).</p></li>
 <span>                  normalization <span class="op">=</span> <span class="st">"custom"</span>, A <span class="op">=</span> <span class="va">custom_weights</span><span class="op">)</span></span></code></pre></div>
 </div>
 <div class="section level2">
+<h2 id="inference-and-validation">Inference and validation<a class="anchor" aria-label="anchor" href="#inference-and-validation"></a>
+</h2>
+<p>MFA is exploratory, but the package also supports resampling-based
+diagnostics and held-out reconstruction checks. These are useful when
+you want to know whether the leading components are stable and whether
+the fitted compromise generalizes to unseen rows.</p>
+<div class="sourceCode" id="cb14"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="va">boot</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/infer_muscal.html">infer_muscal</a></span><span class="op">(</span></span>
+<span>  <span class="va">fit</span>,</span>
+<span>  method <span class="op">=</span> <span class="st">"bootstrap"</span>,</span>
+<span>  statistic <span class="op">=</span> <span class="st">"sdev"</span>,</span>
+<span>  nrep <span class="op">=</span> <span class="fl">8</span>,</span>
+<span>  seed <span class="op">=</span> <span class="fl">101</span></span>
+<span><span class="op">)</span></span>
+<span></span>
+<span><span class="va">boot</span><span class="op">$</span><span class="va">summary</span></span>
+<span><span class="co">#&gt; <span style="color: #949494;"># A tibble: 3 × 7</span></span></span>
+<span><span class="co">#&gt;   component label observed  mean     sd lower upper</span></span>
+<span><span class="co">#&gt;       <span style="color: #949494; font-style: italic;">&lt;int&gt;</span> <span style="color: #949494; font-style: italic;">&lt;chr&gt;</span>    <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span> <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span>  <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span> <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span> <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span></span></span>
+<span><span class="co">#&gt; <span style="color: #BCBCBC;">1</span>         1 comp1     1.38  1.62 0.078<span style="text-decoration: underline;">9</span>  1.54  1.75</span></span>
+<span><span class="co">#&gt; <span style="color: #BCBCBC;">2</span>         2 comp2     1.37  1.45 0.058<span style="text-decoration: underline;">4</span>  1.35  1.52</span></span>
+<span><span class="co">#&gt; <span style="color: #BCBCBC;">3</span>         3 comp3     1.28  1.32 0.041<span style="text-decoration: underline;">8</span>  1.24  1.36</span></span></code></pre></div>
+<div class="sourceCode" id="cb15"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="va">perm</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/infer_muscal.html">infer_muscal</a></span><span class="op">(</span></span>
+<span>  <span class="va">fit</span>,</span>
+<span>  method <span class="op">=</span> <span class="st">"permutation"</span>,</span>
+<span>  statistic <span class="op">=</span> <span class="st">"sdev"</span>,</span>
+<span>  nrep <span class="op">=</span> <span class="fl">19</span>,</span>
+<span>  seed <span class="op">=</span> <span class="fl">202</span></span>
+<span><span class="op">)</span></span>
+<span></span>
+<span><span class="va">perm</span><span class="op">$</span><span class="va">component_results</span></span>
+<span><span class="co">#&gt; <span style="color: #949494;"># A tibble: 3 × 6</span></span></span>
+<span><span class="co">#&gt;   component label observed p_value lower_ci upper_ci</span></span>
+<span><span class="co">#&gt;       <span style="color: #949494; font-style: italic;">&lt;int&gt;</span> <span style="color: #949494; font-style: italic;">&lt;chr&gt;</span>    <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span>   <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span>    <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span>    <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span></span></span>
+<span><span class="co">#&gt; <span style="color: #BCBCBC;">1</span>         1 comp1     1.38    0.55     1.36     1.41</span></span>
+<span><span class="co">#&gt; <span style="color: #BCBCBC;">2</span>         2 comp2     1.37    0.15     1.31     1.37</span></span>
+<span><span class="co">#&gt; <span style="color: #BCBCBC;">3</span>         3 comp3     1.28    0.9      1.28     1.35</span></span></code></pre></div>
+<div class="sourceCode" id="cb16"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/base/stopifnot.html" class="external-link">stopifnot</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/all.html" class="external-link">all</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/is.finite.html" class="external-link">is.finite</a></span><span class="op">(</span><span class="va">boot</span><span class="op">$</span><span class="va">summary</span><span class="op">$</span><span class="va">mean</span><span class="op">)</span><span class="op">)</span><span class="op">)</span></span>
+<span><span class="fu"><a href="https://rdrr.io/r/base/stopifnot.html" class="external-link">stopifnot</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/all.html" class="external-link">all</a></span><span class="op">(</span><span class="va">boot</span><span class="op">$</span><span class="va">summary</span><span class="op">$</span><span class="va">upper</span> <span class="op">&gt;=</span> <span class="va">boot</span><span class="op">$</span><span class="va">summary</span><span class="op">$</span><span class="va">lower</span><span class="op">)</span><span class="op">)</span></span>
+<span><span class="fu"><a href="https://rdrr.io/r/base/stopifnot.html" class="external-link">stopifnot</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/all.html" class="external-link">all</a></span><span class="op">(</span><span class="va">perm</span><span class="op">$</span><span class="va">component_results</span><span class="op">$</span><span class="va">p_value</span> <span class="op">&gt;=</span> <span class="fl">0</span><span class="op">)</span><span class="op">)</span></span>
+<span><span class="fu"><a href="https://rdrr.io/r/base/stopifnot.html" class="external-link">stopifnot</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/all.html" class="external-link">all</a></span><span class="op">(</span><span class="va">perm</span><span class="op">$</span><span class="va">component_results</span><span class="op">$</span><span class="va">p_value</span> <span class="op">&lt;=</span> <span class="fl">1</span><span class="op">)</span><span class="op">)</span></span></code></pre></div>
+<p>For held-out evaluation, use <code><a href="../reference/cv_muscal.html">cv_muscal()</a></code> with row folds
+and reconstruction metrics:</p>
+<div class="sourceCode" id="cb17"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="va">X_concat</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/do.call.html" class="external-link">do.call</a></span><span class="op">(</span><span class="va">cbind</span>, <span class="va">sim</span><span class="op">$</span><span class="va">data_list</span><span class="op">)</span></span>
+<span><span class="va">md</span> <span class="op">&lt;-</span> <span class="fu">multidesign</span><span class="fu">::</span><span class="fu"><a href="https://bbuchsbaum.github.io/multidesign/reference/multidesign.html" class="external-link">multidesign</a></span><span class="op">(</span><span class="va">X_concat</span>, <span class="fu"><a href="https://rdrr.io/r/base/data.frame.html" class="external-link">data.frame</a></span><span class="op">(</span>batch <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/rep.html" class="external-link">rep</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"A"</span>, <span class="st">"B"</span><span class="op">)</span>, each <span class="op">=</span> <span class="fl">30</span><span class="op">)</span><span class="op">)</span><span class="op">)</span></span>
+<span><span class="va">folds</span> <span class="op">&lt;-</span> <span class="fu">multidesign</span><span class="fu">::</span><span class="fu"><a href="https://bbuchsbaum.github.io/multidesign/reference/cv_rows.html" class="external-link">cv_rows</a></span><span class="op">(</span><span class="va">md</span>, rows <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span><span class="fl">1</span><span class="op">:</span><span class="fl">6</span>, <span class="fl">31</span><span class="op">:</span><span class="fl">36</span><span class="op">)</span>, preserve_row_ids <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span></span>
+<span></span>
+<span><span class="va">res_cv</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/cv_muscal.html">cv_muscal</a></span><span class="op">(</span></span>
+<span>  folds <span class="op">=</span> <span class="va">folds</span>,</span>
+<span>  fit_fn <span class="op">=</span> <span class="kw">function</span><span class="op">(</span><span class="va">analysis</span><span class="op">)</span> <span class="op">{</span></span>
+<span>    <span class="va">Xa</span> <span class="op">&lt;-</span> <span class="fu">multidesign</span><span class="fu">::</span><span class="fu"><a href="https://bbuchsbaum.github.io/multidesign/reference/xdata.html" class="external-link">xdata</a></span><span class="op">(</span><span class="va">analysis</span><span class="op">)</span></span>
+<span>    <span class="fu"><a href="../reference/mfa.html">mfa</a></span><span class="op">(</span></span>
+<span>      <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span></span>
+<span>        X1 <span class="op">=</span> <span class="va">Xa</span><span class="op">[</span>, <span class="fl">1</span><span class="op">:</span><span class="fl">20</span>, drop <span class="op">=</span> <span class="cn">FALSE</span><span class="op">]</span>,</span>
+<span>        X2 <span class="op">=</span> <span class="va">Xa</span><span class="op">[</span>, <span class="fl">21</span><span class="op">:</span><span class="fl">50</span>, drop <span class="op">=</span> <span class="cn">FALSE</span><span class="op">]</span>,</span>
+<span>        X3 <span class="op">=</span> <span class="va">Xa</span><span class="op">[</span>, <span class="fl">51</span><span class="op">:</span><span class="fl">65</span>, drop <span class="op">=</span> <span class="cn">FALSE</span><span class="op">]</span>,</span>
+<span>        X4 <span class="op">=</span> <span class="va">Xa</span><span class="op">[</span>, <span class="fl">66</span><span class="op">:</span><span class="fl">90</span>, drop <span class="op">=</span> <span class="cn">FALSE</span><span class="op">]</span></span>
+<span>      <span class="op">)</span>,</span>
+<span>      ncomp <span class="op">=</span> <span class="fl">3</span></span>
+<span>    <span class="op">)</span></span>
+<span>  <span class="op">}</span>,</span>
+<span>  estimate_fn <span class="op">=</span> <span class="kw">function</span><span class="op">(</span><span class="va">model</span>, <span class="va">assessment</span><span class="op">)</span> <span class="op">{</span></span>
+<span>    <span class="fu"><a href="https://rdrr.io/r/stats/predict.html" class="external-link">predict</a></span><span class="op">(</span><span class="va">model</span>, <span class="fu">multidesign</span><span class="fu">::</span><span class="fu"><a href="https://bbuchsbaum.github.io/multidesign/reference/xdata.html" class="external-link">xdata</a></span><span class="op">(</span><span class="va">assessment</span><span class="op">)</span>, type <span class="op">=</span> <span class="st">"reconstruction"</span><span class="op">)</span></span>
+<span>  <span class="op">}</span>,</span>
+<span>  truth_fn <span class="op">=</span> <span class="kw">function</span><span class="op">(</span><span class="va">assessment</span><span class="op">)</span> <span class="fu">multidesign</span><span class="fu">::</span><span class="fu"><a href="https://bbuchsbaum.github.io/multidesign/reference/xdata.html" class="external-link">xdata</a></span><span class="op">(</span><span class="va">assessment</span><span class="op">)</span>,</span>
+<span>  metrics <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"mse"</span>, <span class="st">"rmse"</span>, <span class="st">"r2"</span><span class="op">)</span></span>
+<span><span class="op">)</span></span>
+<span></span>
+<span><span class="va">res_cv</span><span class="op">$</span><span class="va">scores</span></span>
+<span><span class="co">#&gt; <span style="color: #949494;"># A tibble: 2 × 4</span></span></span>
+<span><span class="co">#&gt;      mse  rmse      r2 .fold</span></span>
+<span><span class="co">#&gt;    <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span> <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span>   <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span> <span style="color: #949494; font-style: italic;">&lt;int&gt;</span></span></span>
+<span><span class="co">#&gt; <span style="color: #BCBCBC;">1</span> 0.101  0.318 -<span style="color: #BB0000;">0.036</span><span style="color: #BB0000; text-decoration: underline;">4</span>     1</span></span>
+<span><span class="co">#&gt; <span style="color: #BCBCBC;">2</span> 0.091<span style="text-decoration: underline;">1</span> 0.302 -<span style="color: #BB0000;">0.023</span><span style="color: #BB0000; text-decoration: underline;">3</span>     2</span></span></code></pre></div>
+<div class="sourceCode" id="cb18"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/base/stopifnot.html" class="external-link">stopifnot</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/all.html" class="external-link">all</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/is.finite.html" class="external-link">is.finite</a></span><span class="op">(</span><span class="va">res_cv</span><span class="op">$</span><span class="va">scores</span><span class="op">$</span><span class="va">mse</span><span class="op">)</span><span class="op">)</span><span class="op">)</span></span>
+<span><span class="fu"><a href="https://rdrr.io/r/base/stopifnot.html" class="external-link">stopifnot</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/all.html" class="external-link">all</a></span><span class="op">(</span><span class="va">res_cv</span><span class="op">$</span><span class="va">scores</span><span class="op">$</span><span class="va">rmse</span> <span class="op">&gt;=</span> <span class="fl">0</span><span class="op">)</span><span class="op">)</span></span></code></pre></div>
+<p>For a fuller walkthrough of <code><a href="../reference/infer_muscal.html">infer_muscal()</a></code>,
+<code><a href="../reference/cv_muscal.html">cv_muscal()</a></code>, and the available metric families, see
+<code><a href="../articles/model_evaluation.html">vignette("model_evaluation")</a></code>.</p>
+</div>
+<div class="section level2">
 <h2 id="when-to-use-mfa">When to use MFA<a class="anchor" aria-label="anchor" href="#when-to-use-mfa"></a>
 </h2>
 <p>MFA is appropriate when:</p>
@@ -321,16 +409,21 @@ discovery.</li>
 </h2>
 <ul>
 <li>
-<code><a href="../articles/linked_mfa.html">vignette("linked_mfa")</a></code> — Anchored MFA for blocks with
-different row structures</li>
+<code><a href="../articles/linked_mfa.html">vignette("linked_mfa")</a></code> — Continue to Anchored MFA when
+your blocks no longer share the same observations</li>
 <li>
-<code><a href="../reference/covstatis.html">?covstatis</a></code> — STATIS analysis for covariance
-matrices</li>
+<code><a href="../articles/model_evaluation.html">vignette("model_evaluation")</a></code> — Bootstrap, permutation,
+and held-out evaluation workflows across supported methods</li>
 <li>
-<code><a href="../reference/penalized_mfa.html">?penalized_mfa</a></code> — MFA with sparsity penalties</li>
+<code><a href="../articles/ipca.html">vignette("ipca")</a></code> — Compare MFA with adaptive block
+reweighting in Integrative PCA</li>
 <li>
-<code><a href="../reference/ipca.html">?ipca</a></code> — Integrative PCA with multiplicative
-penalties</li>
+<code><a href="../articles/mcca.html">vignette("mcca")</a></code> — Switch to a correlation-driven
+shared score space when cross-block agreement matters more than balanced
+variance</li>
+<li>
+<code><a href="../articles/penalized_mfa.html">vignette("penalized_mfa")</a></code> — Add structure-aware
+penalties to the MFA framework</li>
 </ul>
 </div>
 <div class="section level2">

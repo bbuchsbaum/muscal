@@ -44,6 +44,7 @@
     <li><a class="dropdown-item" href="../articles/linked_mfa.html">Anchored Multiple Factor Analysis</a></li>
     <li><a class="dropdown-item" href="../articles/mcca.html">Multiblock Canonical Correlation Analysis</a></li>
     <li><a class="dropdown-item" href="../articles/mfa.html">Multiple Factor Analysis</a></li>
+    <li><a class="dropdown-item" href="../articles/model_evaluation.html">Model Evaluation and Inference</a></li>
     <li><a class="dropdown-item" href="../articles/penalized_mfa.html">Penalized Multiple Factor Analysis</a></li>
   </ul>
 </li>
@@ -200,6 +201,20 @@ carries. The objective trace tells you whether the alternating updates
 have settled cleanly.</p>
 </div>
 <div class="section level2">
+<h2 id="what-about-inference-and-validation">What about inference and validation?<a class="anchor" aria-label="anchor" href="#what-about-inference-and-validation"></a>
+</h2>
+<p><code><a href="../reference/aligned_mfa.html">aligned_mfa()</a></code> already fits into the package’s task-aware
+prediction surface: it exposes aligned scores and reconstructions, so
+you can evaluate held-out workflows with explicit
+<code><a href="../reference/cv_muscal.html">cv_muscal()</a></code> callbacks when you have a clear fold
+construction strategy.</p>
+<p>It also now exposes generic refit metadata, so
+<code><a href="../reference/infer_muscal.html">infer_muscal()</a></code> can be used for bootstrap or permutation
+summaries. For this method, fit-quality statistics are often more
+informative than raw component standard deviations, because the score
+space is orthonormalized during fitting.</p>
+</div>
+<div class="section level2">
 <h2 id="where-next">Where next?<a class="anchor" aria-label="anchor" href="#where-next"></a>
 </h2>
 <ul>
@@ -208,6 +223,9 @@ have settled cleanly.</p>
 explicit reference block</li>
 <li>
 <code><a href="../articles/mfa.html">vignette("mfa")</a></code> for the classical same-row setting</li>
+<li>
+<code><a href="../articles/model_evaluation.html">vignette("model_evaluation")</a></code> for the shared evaluation
+API across supported methods</li>
 <li>
 <code><a href="../reference/aligned_mfa.html">?aligned_mfa</a></code> for <code>feature_groups</code>,
 <code>feature_lambda</code>, and weighting options</li>

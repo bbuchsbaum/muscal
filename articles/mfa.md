@@ -135,19 +135,17 @@ Score plot colored by a grouping variable.
 
 ### Variance explained
 
-Assess how many components to retain:
+Assess how the retained components distribute variance:
 
 ``` r
 plot_variance(fit, type = "bar")
 ```
 
-![Proportion of variance captured by each component. With three true
-latent factors and moderate noise, the first three components stand out
-clearly.](mfa_files/figure-html/variance-bar-1.png)
+![Proportion of variance captured by each retained component in the
+three-component MFA solution.](mfa_files/figure-html/variance-bar-1.png)
 
-Proportion of variance captured by each component. With three true
-latent factors and moderate noise, the first three components stand out
-clearly.
+Proportion of variance captured by each retained component in the
+three-component MFA solution.
 
 ### Block weights
 
@@ -168,21 +166,24 @@ receive larger weights, equalizing their contribution.
 
 Each block has its own “view” of the observations. Partial factor scores
 show where each block would place the observations, connected to the
-consensus position:
+consensus position. In a dense plot like this one, focus on the overall
+spread of the segments rather than trying to read every observation
+individually:
 
 ``` r
 plot_partial_scores(fit, connect = TRUE, show_consensus = TRUE)
 ```
 
 ![Partial factor scores. Lines connect each block's view to the
-consensus. Short lines mean the blocks agree about that
-observation.](mfa_files/figure-html/partial-scores-1.png)
+consensus; tighter clouds and shorter segments indicate stronger
+agreement across blocks.](mfa_files/figure-html/partial-scores-1.png)
 
-Partial factor scores. Lines connect each block’s view to the consensus.
-Short lines mean the blocks agree about that observation.
+Partial factor scores. Lines connect each block’s view to the consensus;
+tighter clouds and shorter segments indicate stronger agreement across
+blocks.
 
-Large divergence indicates disagreement between blocks for that
-observation.
+Observations with long segments are cases where one or more blocks
+disagree more strongly with the compromise position.
 
 ### Block similarity
 
@@ -243,6 +244,105 @@ fit_custom <- mfa(sim$data_list, ncomp = 3,
                   normalization = "custom", A = custom_weights)
 ```
 
+## Inference and validation
+
+MFA is exploratory, but the package also supports resampling-based
+diagnostics and held-out reconstruction checks. These are useful when
+you want to know whether the leading components are stable and whether
+the fitted compromise generalizes to unseen rows.
+
+``` r
+boot <- infer_muscal(
+  fit,
+  method = "bootstrap",
+  statistic = "sdev",
+  nrep = 8,
+  seed = 101
+)
+
+boot$summary
+#> # A tibble: 3 × 7
+#>   component label observed  mean     sd lower upper
+#>       <int> <chr>    <dbl> <dbl>  <dbl> <dbl> <dbl>
+#> 1         1 comp1     1.38  1.62 0.0789  1.54  1.75
+#> 2         2 comp2     1.37  1.45 0.0584  1.35  1.52
+#> 3         3 comp3     1.28  1.32 0.0418  1.24  1.36
+```
+
+``` r
+perm <- infer_muscal(
+  fit,
+  method = "permutation",
+  statistic = "sdev",
+  nrep = 19,
+  seed = 202
+)
+
+perm$component_results
+#> # A tibble: 3 × 6
+#>   component label observed p_value lower_ci upper_ci
+#>       <int> <chr>    <dbl>   <dbl>    <dbl>    <dbl>
+#> 1         1 comp1     1.38    0.55     1.36     1.41
+#> 2         2 comp2     1.37    0.15     1.31     1.37
+#> 3         3 comp3     1.28    0.9      1.28     1.35
+```
+
+``` r
+stopifnot(all(is.finite(boot$summary$mean)))
+stopifnot(all(boot$summary$upper >= boot$summary$lower))
+stopifnot(all(perm$component_results$p_value >= 0))
+stopifnot(all(perm$component_results$p_value <= 1))
+```
+
+For held-out evaluation, use
+[`cv_muscal()`](https://bbuchsbaum.github.io/muscal/reference/cv_muscal.md)
+with row folds and reconstruction metrics:
+
+``` r
+X_concat <- do.call(cbind, sim$data_list)
+md <- multidesign::multidesign(X_concat, data.frame(batch = rep(c("A", "B"), each = 30)))
+folds <- multidesign::cv_rows(md, rows = list(1:6, 31:36), preserve_row_ids = TRUE)
+
+res_cv <- cv_muscal(
+  folds = folds,
+  fit_fn = function(analysis) {
+    Xa <- multidesign::xdata(analysis)
+    mfa(
+      list(
+        X1 = Xa[, 1:20, drop = FALSE],
+        X2 = Xa[, 21:50, drop = FALSE],
+        X3 = Xa[, 51:65, drop = FALSE],
+        X4 = Xa[, 66:90, drop = FALSE]
+      ),
+      ncomp = 3
+    )
+  },
+  estimate_fn = function(model, assessment) {
+    predict(model, multidesign::xdata(assessment), type = "reconstruction")
+  },
+  truth_fn = function(assessment) multidesign::xdata(assessment),
+  metrics = c("mse", "rmse", "r2")
+)
+
+res_cv$scores
+#> # A tibble: 2 × 4
+#>      mse  rmse      r2 .fold
+#>    <dbl> <dbl>   <dbl> <int>
+#> 1 0.101  0.318 -0.0364     1
+#> 2 0.0911 0.302 -0.0233     2
+```
+
+``` r
+stopifnot(all(is.finite(res_cv$scores$mse)))
+stopifnot(all(res_cv$scores$rmse >= 0))
+```
+
+For a fuller walkthrough of
+[`infer_muscal()`](https://bbuchsbaum.github.io/muscal/reference/infer_muscal.md),
+[`cv_muscal()`](https://bbuchsbaum.github.io/muscal/reference/cv_muscal.md),
+and the available metric families, see
+[`vignette("model_evaluation")`](https://bbuchsbaum.github.io/muscal/articles/model_evaluation.md).
+
 ## When to use MFA
 
 MFA is appropriate when:
@@ -265,13 +365,18 @@ MFA is *not* appropriate when:
 ## Next steps
 
 - [`vignette("linked_mfa")`](https://bbuchsbaum.github.io/muscal/articles/linked_mfa.md)
-  — Anchored MFA for blocks with different row structures
-- [`?covstatis`](https://bbuchsbaum.github.io/muscal/reference/covstatis.md)
-  — STATIS analysis for covariance matrices
-- [`?penalized_mfa`](https://bbuchsbaum.github.io/muscal/reference/penalized_mfa.md)
-  — MFA with sparsity penalties
-- [`?ipca`](https://bbuchsbaum.github.io/muscal/reference/ipca.md) —
-  Integrative PCA with multiplicative penalties
+  — Continue to Anchored MFA when your blocks no longer share the same
+  observations
+- [`vignette("model_evaluation")`](https://bbuchsbaum.github.io/muscal/articles/model_evaluation.md)
+  — Bootstrap, permutation, and held-out evaluation workflows across
+  supported methods
+- [`vignette("ipca")`](https://bbuchsbaum.github.io/muscal/articles/ipca.md)
+  — Compare MFA with adaptive block reweighting in Integrative PCA
+- [`vignette("mcca")`](https://bbuchsbaum.github.io/muscal/articles/mcca.md)
+  — Switch to a correlation-driven shared score space when cross-block
+  agreement matters more than balanced variance
+- [`vignette("penalized_mfa")`](https://bbuchsbaum.github.io/muscal/articles/penalized_mfa.md)
+  — Add structure-aware penalties to the MFA framework
 
 ## References
 

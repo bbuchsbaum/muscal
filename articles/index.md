@@ -22,5 +22,7 @@
   Analysis](https://bbuchsbaum.github.io/muscal/articles/mcca.md):
 - [Multiple Factor
   Analysis](https://bbuchsbaum.github.io/muscal/articles/mfa.md):
+- [Model Evaluation and
+  Inference](https://bbuchsbaum.github.io/muscal/articles/model_evaluation.md):
 - [Penalized Multiple Factor
   Analysis](https://bbuchsbaum.github.io/muscal/articles/penalized_mfa.md):
