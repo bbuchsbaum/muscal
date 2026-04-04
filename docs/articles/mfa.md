@@ -135,19 +135,17 @@ Score plot colored by a grouping variable.
 
 ### Variance explained
 
-Assess how many components to retain:
+Assess how the retained components distribute variance:
 
 ``` r
 plot_variance(fit, type = "bar")
 ```
 
-![Proportion of variance captured by each component. With three true
-latent factors and moderate noise, the first three components stand out
-clearly.](mfa_files/figure-html/variance-bar-1.png)
+![Proportion of variance captured by each retained component in the
+three-component MFA solution.](mfa_files/figure-html/variance-bar-1.png)
 
-Proportion of variance captured by each component. With three true
-latent factors and moderate noise, the first three components stand out
-clearly.
+Proportion of variance captured by each retained component in the
+three-component MFA solution.
 
 ### Block weights
 
@@ -168,21 +166,24 @@ receive larger weights, equalizing their contribution.
 
 Each block has its own “view” of the observations. Partial factor scores
 show where each block would place the observations, connected to the
-consensus position:
+consensus position. In a dense plot like this one, focus on the overall
+spread of the segments rather than trying to read every observation
+individually:
 
 ``` r
 plot_partial_scores(fit, connect = TRUE, show_consensus = TRUE)
 ```
 
 ![Partial factor scores. Lines connect each block's view to the
-consensus. Short lines mean the blocks agree about that
-observation.](mfa_files/figure-html/partial-scores-1.png)
+consensus; tighter clouds and shorter segments indicate stronger
+agreement across blocks.](mfa_files/figure-html/partial-scores-1.png)
 
-Partial factor scores. Lines connect each block’s view to the consensus.
-Short lines mean the blocks agree about that observation.
+Partial factor scores. Lines connect each block’s view to the consensus;
+tighter clouds and shorter segments indicate stronger agreement across
+blocks.
 
-Large divergence indicates disagreement between blocks for that
-observation.
+Observations with long segments are cases where one or more blocks
+disagree more strongly with the compromise position.
 
 ### Block similarity
 
@@ -265,13 +266,15 @@ MFA is *not* appropriate when:
 ## Next steps
 
 - [`vignette("linked_mfa")`](https://bbuchsbaum.github.io/muscal/articles/linked_mfa.md)
-  — Anchored MFA for blocks with different row structures
-- [`?covstatis`](https://bbuchsbaum.github.io/muscal/reference/covstatis.md)
-  — STATIS analysis for covariance matrices
-- [`?penalized_mfa`](https://bbuchsbaum.github.io/muscal/reference/penalized_mfa.md)
-  — MFA with sparsity penalties
-- [`?ipca`](https://bbuchsbaum.github.io/muscal/reference/ipca.md) —
-  Integrative PCA with multiplicative penalties
+  — Continue to Anchored MFA when your blocks no longer share the same
+  observations
+- [`vignette("ipca")`](https://bbuchsbaum.github.io/muscal/articles/ipca.md)
+  — Compare MFA with adaptive block reweighting in Integrative PCA
+- [`vignette("mcca")`](https://bbuchsbaum.github.io/muscal/articles/mcca.md)
+  — Switch to a correlation-driven shared score space when cross-block
+  agreement matters more than balanced variance
+- [`vignette("penalized_mfa")`](https://bbuchsbaum.github.io/muscal/articles/penalized_mfa.md)
+  — Add structure-aware penalties to the MFA framework
 
 ## References
 

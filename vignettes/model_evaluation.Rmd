@@ -1,0 +1,334 @@
+---
+title: Model Evaluation and Inference
+output: rmarkdown::html_vignette
+vignette: >
+  %\VignetteIndexEntry{Model Evaluation and Inference}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+params:
+  family: red
+  preset: homage
+css: albers.css
+resource_files:
+- albers.css
+- albers.js
+includes:
+  in_header: |-
+    <script src="albers.js"></script>
+    <script>document.addEventListener('DOMContentLoaded',function(){document.body.classList.add('palette-red');});</script>
+
+---
+
+```{r setup, include = FALSE}
+if (requireNamespace("ggplot2", quietly = TRUE) && requireNamespace("albersdown", quietly = TRUE) && exists("params")) ggplot2::theme_set(albersdown::theme_albers(params$family))
+CAN_EVAL <- requireNamespace("genpca", quietly = TRUE) &&
+  requireNamespace("multidesign", quietly = TRUE)
+knitr::opts_chunk$set(
+  collapse = TRUE,
+  comment = "#>",
+  message = FALSE,
+  warning = FALSE,
+  fig.width = 6,
+  fig.height = 4,
+  eval = CAN_EVAL
+)
+```
+
+## Why evaluate a multiblock model?
+
+Exploratory score plots are useful, but they are not the whole story. In
+`muscal`, the main evaluation questions are usually:
+
+- Are the leading components stable under resampling?
+- Is the shared structure stronger than a row-shuffled null?
+- How well does the fitted model reconstruct or predict held-out data?
+
+This vignette shows the package-level tools for answering those questions. The
+same workflow applies across methods that expose a standard fit contract.
+
+## Load the package
+
+```{r load-packages}
+library(muscal)
+library(multivarious)
+library(ggplot2)
+```
+
+## What does the evaluation API cover?
+
+`muscal` exposes one generic resampling helper and one generic CV helper:
+
+```{r metric-overview}
+metric_registry()
+default_metrics("reconstruction")
+default_metrics("response_prediction")
+```
+
+The registered task families are:
+
+- `reconstruction` for same-row multiblock models such as `mfa()`
+- `response_prediction` for anchored models that predict a reference block
+- `retrieval_alignment` for row-alignment style retrieval tasks
+
+## Bootstrap and permutation inference for MFA
+
+We start with a standard same-row MFA problem.
+
+```{r simulate-mfa}
+sim <- synthetic_multiblock(
+  S = 3, n = 48,
+  p = c(12, 10, 8),
+  r = 2, sigma = 0.25, seed = 7
+)
+
+fit_mfa <- mfa(sim$data_list, ncomp = 2)
+
+stopifnot(all(is.finite(scores(fit_mfa))))
+stopifnot(length(fit_mfa$sdev) == 2)
+```
+
+### Bootstrap component stability
+
+Bootstrap inference is useful when you want interval estimates for the leading
+component strengths.
+
+```{r mfa-bootstrap}
+boot_mfa <- infer_muscal(
+  fit_mfa,
+  method = "bootstrap",
+  statistic = "sdev",
+  nrep = 8,
+  seed = 101
+)
+
+boot_mfa$summary
+```
+
+```{r mfa-bootstrap-check}
+stopifnot(all(is.finite(boot_mfa$summary$mean)))
+stopifnot(all(boot_mfa$summary$upper >= boot_mfa$summary$lower))
+```
+
+```{r mfa-bootstrap-plot, echo = FALSE, fig.cap = "Bootstrap summary for MFA component strengths. Error bars show percentile intervals over resampled refits."}
+ggplot(boot_mfa$summary, aes(component, observed)) +
+  geom_point(size = 2.5, color = "#9c2f2f") +
+  geom_errorbar(aes(ymin = lower, ymax = upper), width = 0.12, color = "#9c2f2f") +
+  geom_point(aes(y = mean), shape = 1, size = 2.5, color = "grey35") +
+  scale_x_continuous(breaks = boot_mfa$summary$component) +
+  labs(x = "Component", y = "Singular value")
+```
+
+### Permutation test for shared signal
+
+Permutation inference asks whether the observed leading components are stronger
+than what you would expect after breaking row-wise alignment across blocks.
+
+```{r mfa-permutation}
+perm_mfa <- infer_muscal(
+  fit_mfa,
+  method = "permutation",
+  statistic = "sdev",
+  nrep = 19,
+  seed = 202
+)
+
+perm_mfa$component_results
+```
+
+```{r mfa-permutation-check}
+stopifnot(all(perm_mfa$component_results$p_value >= 0))
+stopifnot(all(perm_mfa$component_results$p_value <= 1))
+```
+
+## Reconstruction cross-validation for MFA
+
+For same-row methods, the usual held-out target is reconstruction error.
+
+```{r mfa-cv-setup}
+X_concat <- do.call(cbind, sim$data_list)
+md <- multidesign::multidesign(X_concat, data.frame(batch = rep(c("A", "B"), each = 24)))
+folds_mfa <- multidesign::cv_rows(
+  md,
+  rows = list(1:6, 25:30),
+  preserve_row_ids = TRUE
+)
+```
+
+```{r mfa-cv}
+res_mfa_cv <- cv_muscal(
+  folds = folds_mfa,
+  fit_fn = function(analysis) {
+    Xa <- multidesign::xdata(analysis)
+    mfa(
+      list(
+        X1 = Xa[, 1:12, drop = FALSE],
+        X2 = Xa[, 13:22, drop = FALSE],
+        X3 = Xa[, 23:30, drop = FALSE]
+      ),
+      ncomp = 2
+    )
+  },
+  estimate_fn = function(model, assessment) {
+    predict(model, multidesign::xdata(assessment), type = "reconstruction")
+  },
+  truth_fn = function(assessment) multidesign::xdata(assessment),
+  metrics = c("mse", "rmse", "r2")
+)
+
+res_mfa_cv$scores
+```
+
+```{r mfa-cv-check}
+stopifnot(all(is.finite(res_mfa_cv$scores$mse)))
+stopifnot(all(res_mfa_cv$scores$rmse >= 0))
+```
+
+## Response-prediction cross-validation for Anchored MFA
+
+Anchored MFA has a different evaluation target: predicting rows of the
+reference block `Y` from auxiliary blocks with incomplete overlap.
+
+```{r simulate-anchored, include = FALSE}
+set.seed(42)
+N <- 36
+r <- 2
+
+F_true <- matrix(rnorm(N * r), N, r)
+F_true <- qr.Q(qr(scale(F_true, scale = FALSE)))
+
+B_ref <- svd(matrix(rnorm(9 * r), 9, r))$u
+Y <- F_true %*% t(B_ref) + 0.2 * matrix(rnorm(N * 9), N, 9)
+Y <- scale(Y, scale = FALSE)
+colnames(Y) <- paste0("y", seq_len(ncol(Y)))
+
+idx1 <- sort(sample.int(N, 24))
+idx2 <- sort(sample.int(N, 22))
+V1 <- svd(matrix(rnorm(14 * r), 14, r))$u
+V2 <- svd(matrix(rnorm(11 * r), 11, r))$u
+
+X1 <- scale(F_true[idx1, ] %*% t(V1) + 0.2 * matrix(rnorm(length(idx1) * 14), length(idx1), 14), scale = FALSE)
+X2 <- scale(F_true[idx2, ] %*% t(V2) + 0.2 * matrix(rnorm(length(idx2) * 11), length(idx2), 11), scale = FALSE)
+```
+
+```{r anchored-fit}
+fit_anchor <- anchored_mfa(
+  Y = Y,
+  X = list(X1 = X1, X2 = X2),
+  row_index = list(X1 = idx1, X2 = idx2),
+  ncomp = 2
+)
+
+stopifnot(all(is.finite(scores(fit_anchor))))
+stopifnot(setequal(fit_anchor$oos_types, c("response", "scores", "reconstruction")))
+```
+
+```{r anchored-cv-setup}
+d1 <- multidesign::multidesign(X1, data.frame(anchor = idx1, Y[idx1, , drop = FALSE]))
+d2 <- multidesign::multidesign(X2, data.frame(anchor = idx2, Y[idx2, , drop = FALSE]))
+hd <- multidesign::hyperdesign(list(X1 = d1, X2 = d2), block_names = c("X1", "X2"))
+
+folds_anchor <- multidesign::cv_rows(
+  hd,
+  rows = list(
+    list(X1 = 1:3, X2 = 1:3),
+    list(X1 = 4:6, X2 = 4:6)
+  ),
+  preserve_row_ids = TRUE
+)
+```
+
+```{r anchored-cv}
+res_anchor_cv <- cv_muscal(
+  folds = folds_anchor,
+  fit_fn = function(analysis) {
+    X_blocks <- multidesign::xdata(analysis)
+    idx_blocks <- lapply(multidesign::design(analysis), function(des) des$anchor)
+    anchored_mfa(Y = Y, X = X_blocks, row_index = idx_blocks, ncomp = 2)
+  },
+  estimate_fn = function(model, assessment) {
+    X_blocks <- multidesign::xdata(assessment)
+    do.call(rbind, lapply(names(X_blocks), function(block_name) {
+      predict(model, X_blocks[[block_name]], block = block_name, type = "response")
+    }))
+  },
+  truth_fn = function(assessment) {
+    des_blocks <- multidesign::design(assessment)
+    do.call(rbind, lapply(des_blocks, function(des) {
+      as.matrix(des[, colnames(Y), drop = FALSE])
+    }))
+  },
+  task = "response_prediction",
+  metrics = c("mse", "mean_cosine_similarity")
+)
+
+res_anchor_cv$scores
+```
+
+```{r anchored-cv-check}
+stopifnot(all(is.finite(res_anchor_cv$scores$mse)))
+stopifnot(all(is.finite(res_anchor_cv$scores$mean_cosine_similarity)))
+```
+
+## Inference for graph-anchored models
+
+`graph_anchored_mfa()` uses the same anchored prediction target, but adds a
+graph penalty over auxiliary features. The evaluation workflow stays the same:
+you can still use `infer_muscal()` for resampling summaries and `cv_muscal()`
+for held-out prediction.
+
+```{r graph-anchored-fit}
+colnames(X1) <- c(paste0("f", 1:4), paste0("u1_", 1:10))
+colnames(X2) <- c(paste0("f", 1:4), paste0("u2_", 1:7))
+
+fit_graph <- graph_anchored_mfa(
+  Y = Y,
+  X = list(X1 = X1, X2 = X2),
+  row_index = list(X1 = idx1, X2 = idx2),
+  ncomp = 2,
+  feature_graph = "colnames",
+  graph_lambda = 2
+)
+
+stopifnot(fit_graph$fit_spec$refit_supported)
+stopifnot(all(is.finite(scores(fit_graph))))
+```
+
+```{r graph-anchored-bootstrap}
+boot_graph <- infer_muscal(
+  fit_graph,
+  method = "bootstrap",
+  statistic = "sdev",
+  nrep = 6,
+  seed = 303
+)
+
+boot_graph$summary
+```
+
+```{r graph-anchored-check}
+stopifnot(all(is.finite(boot_graph$summary$mean)))
+stopifnot(all(boot_graph$summary$upper >= boot_graph$summary$lower))
+```
+
+## Choosing the right validation path
+
+- Use `infer_muscal()` when the fitted method stores refit metadata and you want
+  bootstrap intervals or permutation p-values.
+- Use `cv_muscal()` when you care about held-out reconstruction or prediction
+  error.
+- Use method-specific tuning helpers such as `ipca_tune_alpha()` when the model
+  has a dedicated hyperparameter-selection routine.
+
+Not every method currently exposes generic refit metadata. When that is not yet
+available, you can still use `cv_muscal()` by providing explicit `fit_fn`,
+`estimate_fn`, and `truth_fn` callbacks. At present, `mfa()`,
+`mcca()`, `ipca()`, `anchored_mfa()`, `aligned_mfa()`, and
+`graph_anchored_mfa()` all support generic `infer_muscal()` workflows directly.
+
+## Next steps
+
+- `vignette("mfa")` for the core same-row MFA workflow
+- `vignette("mcca")` for correlation-driven same-row integration
+- `vignette("ipca")` for adaptive integration with both tuning and generic evaluation
+- `vignette("linked_mfa")` for anchored prediction with incomplete overlap
+- `?graph_anchored_mfa` for graph-regularized anchored integration

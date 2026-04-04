@@ -46,6 +46,29 @@ test_that("mcca handles p > n blocks without error", {
   expect_equal(abs(cor(proj[, 1], s_fit[, 1])), 1, tolerance = 1e-6)
 })
 
+test_that("mcca exposes a standard out-of-sample contract", {
+  set.seed(33)
+  sim <- .sim_mcca_blocks(n = 50, k = 2, p_vec = c(14, 16, 12), noise_sd = 0.04)
+  fit <- mcca(sim$blocks, ncomp = 2, ridge = 1e-6)
+
+  expect_equal(fit$task, "reconstruction")
+  expect_equal(fit$fit_spec$method, "mcca")
+  expect_true(fit$fit_spec$refit_supported)
+  expect_setequal(fit$oos_types, c("scores", "reconstruction"))
+
+  X_concat <- do.call(cbind, sim$blocks)
+  X_new <- X_concat + matrix(rnorm(length(X_concat), sd = 0.03), nrow = nrow(X_concat))
+
+  scores_new <- predict(fit, X_new, type = "scores")
+  recon_new <- predict(fit, X_new, type = "reconstruction")
+
+  expect_equal(scores_new, project(fit, X_new))
+  expect_equal(dim(scores_new), c(nrow(X_new), multivarious::ncomp(fit)))
+  expect_equal(dim(recon_new), dim(X_new))
+  expect_equal(predict(fit, type = "scores"), multivarious::scores(fit))
+  expect_error(predict(fit, type = "reconstruction"), "`new_data` must be supplied")
+})
+
 test_that("mcca passes basic mathematical sanity checks on synthetic low-rank data", {
   set.seed(10)
   sim <- .sim_mcca_blocks(n = 80, k = 3, p_vec = c(20, 25, 30), noise_sd = 0.03)

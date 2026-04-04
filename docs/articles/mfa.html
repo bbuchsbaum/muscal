@@ -196,14 +196,13 @@ Score plot colored by a grouping variable.
 <div class="section level3">
 <h3 id="variance-explained">Variance explained<a class="anchor" aria-label="anchor" href="#variance-explained"></a>
 </h3>
-<p>Assess how many components to retain:</p>
+<p>Assess how the retained components distribute variance:</p>
 <div class="sourceCode" id="cb8"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="../reference/plot_variance.html">plot_variance</a></span><span class="op">(</span><span class="va">fit</span>, type <span class="op">=</span> <span class="st">"bar"</span><span class="op">)</span></span></code></pre></div>
 <div class="figure">
-<img src="mfa_files/figure-html/variance-bar-1.png" class="r-plt" alt="Proportion of variance captured by each component. With three true latent factors and moderate noise, the first three components stand out clearly." width="576"><p class="caption">
-Proportion of variance captured by each component. With three true
-latent factors and moderate noise, the first three components stand out
-clearly.
+<img src="mfa_files/figure-html/variance-bar-1.png" class="r-plt" alt="Proportion of variance captured by each retained component in the three-component MFA solution." width="576"><p class="caption">
+Proportion of variance captured by each retained component in the
+three-component MFA solution.
 </p>
 </div>
 </div>
@@ -225,17 +224,20 @@ receive larger weights, equalizing their contribution.
 </h3>
 <p>Each block has its own “view” of the observations. Partial factor
 scores show where each block would place the observations, connected to
-the consensus position:</p>
+the consensus position. In a dense plot like this one, focus on the
+overall spread of the segments rather than trying to read every
+observation individually:</p>
 <div class="sourceCode" id="cb10"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="../reference/plot_partial_scores.html">plot_partial_scores</a></span><span class="op">(</span><span class="va">fit</span>, connect <span class="op">=</span> <span class="cn">TRUE</span>, show_consensus <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span></span></code></pre></div>
 <div class="figure">
-<img src="mfa_files/figure-html/partial-scores-1.png" class="r-plt" alt="Partial factor scores. Lines connect each block's view to the consensus. Short lines mean the blocks agree about that observation." width="672"><p class="caption">
-Partial factor scores. Lines connect each block’s view to the consensus.
-Short lines mean the blocks agree about that observation.
+<img src="mfa_files/figure-html/partial-scores-1.png" class="r-plt" alt="Partial factor scores. Lines connect each block's view to the consensus; tighter clouds and shorter segments indicate stronger agreement across blocks." width="672"><p class="caption">
+Partial factor scores. Lines connect each block’s view to the consensus;
+tighter clouds and shorter segments indicate stronger agreement across
+blocks.
 </p>
 </div>
-<p>Large divergence indicates disagreement between blocks for that
-observation.</p>
+<p>Observations with long segments are cases where one or more blocks
+disagree more strongly with the compromise position.</p>
 </div>
 <div class="section level3">
 <h3 id="block-similarity">Block similarity<a class="anchor" aria-label="anchor" href="#block-similarity"></a>
@@ -321,16 +323,18 @@ discovery.</li>
 </h2>
 <ul>
 <li>
-<code><a href="../articles/linked_mfa.html">vignette("linked_mfa")</a></code> — Anchored MFA for blocks with
-different row structures</li>
+<code><a href="../articles/linked_mfa.html">vignette("linked_mfa")</a></code> — Continue to Anchored MFA when
+your blocks no longer share the same observations</li>
 <li>
-<code><a href="../reference/covstatis.html">?covstatis</a></code> — STATIS analysis for covariance
-matrices</li>
+<code><a href="../articles/ipca.html">vignette("ipca")</a></code> — Compare MFA with adaptive block
+reweighting in Integrative PCA</li>
 <li>
-<code><a href="../reference/penalized_mfa.html">?penalized_mfa</a></code> — MFA with sparsity penalties</li>
+<code><a href="../articles/mcca.html">vignette("mcca")</a></code> — Switch to a correlation-driven
+shared score space when cross-block agreement matters more than balanced
+variance</li>
 <li>
-<code><a href="../reference/ipca.html">?ipca</a></code> — Integrative PCA with multiplicative
-penalties</li>
+<code><a href="../articles/penalized_mfa.html">vignette("penalized_mfa")</a></code> — Add structure-aware
+penalties to the MFA framework</li>
 </ul>
 </div>
 <div class="section level2">

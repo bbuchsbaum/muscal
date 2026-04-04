@@ -79,8 +79,9 @@ The function performs the following steps for each new matrix:
 2.  Calculates ROI-level factor scores (`roi_scores`), representing the
     coordinates of each ROI in the compromise space.
 
-3.  Calculates subject-level scores (`subject_scores` or "g-scores") as
-    the barycentric mean of the ROI scores.
+3.  Calculates subject-level scores (`subject_scores`) in the RV/table
+    space by projecting the new table against the fitted interstructure
+    axes.
 
 4.  Calculates `subject_cosines` indicating the alignment of the
     subject's scores with each compromise dimension.

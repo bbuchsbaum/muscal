@@ -116,7 +116,7 @@ test_that("aligned_mfa exposes a standard out-of-sample contract", {
 
   expect_equal(fit$task, "row_alignment")
   expect_equal(fit$fit_spec$method, "aligned_mfa")
-  expect_false(fit$fit_spec$refit_supported)
+  expect_true(fit$fit_spec$refit_supported)
   expect_setequal(fit$oos_types, c("scores", "reconstruction"))
   expect_true(all(c("X1", "X2") %in% names(fit$block_preproc)))
 

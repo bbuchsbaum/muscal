@@ -74,6 +74,8 @@ ipca.multiblock <- function(data,
                             .init_state = NULL,
                             .return_state = FALSE,
                             ...) {
+  fit_call <- match.call(expand.dots = FALSE)
+  fit_dots <- list(...)
   chk::chk_true(length(data) > 1)
   for (i in seq_along(data)) {
     chk::chkor_vld(chk::vld_matrix(data[[i]]), chk::vld_s4_class(data[[i]], "Matrix"))
@@ -113,6 +115,7 @@ ipca.multiblock <- function(data,
   if (is.null(names(data))) {
     names(data) <- paste0("B", seq_len(K))
   }
+  data_refit <- lapply(data, function(x) as.matrix(x))
 
   prep <- prepare_block_preprocessors(data, preproc, check_consistent_ncol = FALSE)
   Xp <- lapply(prep$Xp, function(x) {
@@ -216,7 +219,49 @@ ipca.multiblock <- function(data,
   if (isTRUE(.return_state) && !is.null(fit$warm_state)) {
     out$warm_state <- fit$warm_state
   }
-  out
+  .muscal_attach_fit_contract(
+    out,
+    method = "ipca",
+    task = "reconstruction",
+    oos_types = c("scores", "reconstruction"),
+    fit_call = fit_call,
+    refit_supported = TRUE,
+    prediction_target = "blocks",
+    refit = .muscal_make_refit_spec(
+      data = data_refit,
+      fit_fn = function(data) {
+        do.call(
+          ipca,
+          c(
+            list(
+              data = data,
+              preproc = preproc,
+              ncomp = ncomp,
+              lambda = lambda,
+              method = method,
+              max_iter = max_iter,
+              tol = tol,
+              normalize_trace = normalize_trace,
+              use_future = use_future,
+              eig_solver = eig_solver,
+              eig_rank = eig_rank,
+              eig_trunc_min_n = eig_trunc_min_n
+            ),
+            fit_dots
+          )
+        )
+      },
+      bootstrap_fn = function(data) {
+        n <- nrow(data[[1L]])
+        idx <- sample.int(n, size = n, replace = TRUE)
+        lapply(data, function(block) block[idx, , drop = FALSE])
+      },
+      permutation_fn = function(data) {
+        lapply(data, function(block) block[sample.int(nrow(block)), , drop = FALSE])
+      },
+      resample_unit = "rows"
+    )
+  )
 }
 
 
@@ -391,6 +436,34 @@ project.ipca <- function(x, new_data, ...) {
   }
 
   Xp %*% x$v
+}
+
+#' Predict from an iPCA Fit
+#'
+#' @param object A fitted `ipca` object.
+#' @param new_data Optional matrix/data.frame or list of blocks with the same
+#'   structure as the training data.
+#' @param type One of `"scores"` or `"reconstruction"`.
+#' @param ... Additional arguments passed to the underlying projection helpers.
+#'
+#' @return A numeric matrix of projected scores or reconstructed observations.
+#' @export
+predict.ipca <- function(object, new_data = NULL,
+                         type = c("scores", "reconstruction"), ...) {
+  type <- match.arg(type)
+
+  if (is.null(new_data)) {
+    if (type == "scores") {
+      return(multivarious::scores(object))
+    }
+    stop("`new_data` must be supplied when type = 'reconstruction'.", call. = FALSE)
+  }
+
+  if (type == "scores") {
+    return(multivarious::project(object, new_data, ...))
+  }
+
+  multivarious::reconstruct_new(object, new_data, ...)
 }
 
 

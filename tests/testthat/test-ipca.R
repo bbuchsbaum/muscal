@@ -65,6 +65,29 @@ test_that("project.ipca supports matrix and list inputs", {
   expect_lt(rel, 5e-2)
 })
 
+test_that("ipca exposes a standard out-of-sample contract", {
+  set.seed(41)
+  blocks <- .sim_ipca_blocks(n = 40, r = 2, p_vec = c(14, 18, 12), noise_sd = 0.04)
+  fit <- ipca(blocks, ncomp = 2, lambda = 1, method = "gram", max_iter = 50, tol = 1e-6)
+
+  expect_equal(fit$task, "reconstruction")
+  expect_equal(fit$fit_spec$method, "ipca")
+  expect_true(fit$fit_spec$refit_supported)
+  expect_setequal(fit$oos_types, c("scores", "reconstruction"))
+
+  X_concat <- do.call(cbind, blocks)
+  X_new <- X_concat + matrix(rnorm(length(X_concat), sd = 0.03), nrow = nrow(X_concat))
+
+  scores_new <- predict(fit, X_new, type = "scores")
+  recon_new <- predict(fit, X_new, type = "reconstruction")
+
+  expect_equal(scores_new, project(fit, X_new))
+  expect_equal(dim(scores_new), c(nrow(X_new), multivarious::ncomp(fit)))
+  expect_equal(dim(recon_new), dim(X_new))
+  expect_equal(predict(fit, type = "scores"), multivarious::scores(fit))
+  expect_error(predict(fit, type = "reconstruction"), "`new_data` must be supplied")
+})
+
 test_that("ipca dense and gram methods agree on score subspace", {
   set.seed(4)
   blocks <- .sim_ipca_blocks(n = 50, r = 2, p_vec = c(12, 15, 10), noise_sd = 0.04)

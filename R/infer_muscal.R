@@ -272,3 +272,40 @@ infer_muscal <- function(object,
   out$Y <- as.matrix(data$Y)[sample.int(nrow(data$Y)), , drop = FALSE]
   out
 }
+
+.muscal_bootstrap_aligned_data <- function(data) {
+  X <- data$X
+  row_index <- data$row_index
+  N <- as.integer(data$N)
+
+  sampled <- sample.int(N, size = N, replace = TRUE)
+
+  X_boot <- lapply(X, function(block) block[0, , drop = FALSE])
+  row_index_boot <- lapply(row_index, function(idx) integer(0))
+  names(X_boot) <- names(X)
+  names(row_index_boot) <- names(row_index)
+
+  for (new_row in seq_along(sampled)) {
+    old_row <- sampled[[new_row]]
+    for (block_id in seq_along(X)) {
+      keep <- which(row_index[[block_id]] == old_row)
+      if (length(keep) == 0L) {
+        next
+      }
+      X_boot[[block_id]] <- rbind(X_boot[[block_id]], X[[block_id]][keep, , drop = FALSE])
+      row_index_boot[[block_id]] <- c(row_index_boot[[block_id]], rep.int(new_row, length(keep)))
+    }
+  }
+
+  list(
+    X = X_boot,
+    row_index = row_index_boot,
+    N = N
+  )
+}
+
+.muscal_permute_aligned_data <- function(data) {
+  out <- data
+  out$row_index <- lapply(data$row_index, sample)
+  out
+}

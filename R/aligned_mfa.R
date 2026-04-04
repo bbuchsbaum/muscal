@@ -81,6 +81,7 @@ aligned_mfa <- function(X,
                         verbose = FALSE,
                         ...) {
   fit_call <- match.call(expand.dots = FALSE)
+  fit_dots <- list(...)
   normalization <- match.arg(normalization)
 
   chk::chk_list(X)
@@ -105,6 +106,7 @@ aligned_mfa <- function(X,
     chk::chk_true(is.matrix(x) || is.data.frame(x))
     as.matrix(x)
   })
+  data_refit <- lapply(X, function(x) x)
 
   if (is.null(names(X))) names(X) <- paste0("X", seq_along(X))
   if (is.null(names(row_index))) names(row_index) <- names(X)
@@ -343,8 +345,41 @@ aligned_mfa <- function(X,
     task = "row_alignment",
     oos_types = c("scores", "reconstruction"),
     fit_call = fit_call,
-    refit_supported = FALSE,
-    prediction_target = "blocks"
+    refit_supported = TRUE,
+    prediction_target = "blocks",
+    refit = .muscal_make_refit_spec(
+      data = list(
+        X = data_refit,
+        row_index = row_index,
+        N = N
+      ),
+      fit_fn = function(data) {
+        do.call(
+          aligned_mfa,
+          c(
+            list(
+              X = data$X,
+              row_index = data$row_index,
+              N = data$N,
+              preproc = preproc,
+              ncomp = ncomp,
+              normalization = normalization,
+              alpha = alpha,
+              feature_groups = feature_groups,
+              feature_lambda = feature_lambda,
+              max_iter = max_iter,
+              tol = tol,
+              ridge = ridge,
+              verbose = FALSE
+            ),
+            fit_dots
+          )
+        )
+      },
+      bootstrap_fn = .muscal_bootstrap_aligned_data,
+      permutation_fn = .muscal_permute_aligned_data,
+      resample_unit = "latent_rows"
+    )
   )
 }
 

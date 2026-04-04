@@ -136,6 +136,8 @@ mcca.list <- function(data, preproc = multivarious::center(), ncomp = 2,
 mcca.multiblock <- function(data, preproc = multivarious::center(), ncomp = 2,
                             ridge = 1e-6, block_weights = NULL,
                             use_future = FALSE, ...) {
+  fit_call <- match.call(expand.dots = FALSE)
+  fit_dots <- list(...)
   chk::chk_true(length(data) > 1)
   for (i in seq_along(data)) {
     chk::chkor_vld(chk::vld_matrix(data[[i]]), chk::vld_s4_class(data[[i]], "Matrix"))
@@ -147,6 +149,7 @@ mcca.multiblock <- function(data, preproc = multivarious::center(), ncomp = 2,
 
   S <- length(data)
   if (is.null(names(data))) names(data) <- paste0("B", seq_len(S))
+  data_refit <- lapply(data, function(x) as.matrix(x))
 
   if (is.null(block_weights)) block_weights <- rep(1, S)
   chk::chk_numeric(block_weights)
@@ -291,7 +294,7 @@ mcca.multiblock <- function(data, preproc = multivarious::center(), ncomp = 2,
     error = function(e) NULL
   )
 
-  multivarious::multiblock_biprojector(
+  out <- multivarious::multiblock_biprojector(
     v = v_concat,
     s = S_scores,
     sdev = sdev,
@@ -310,4 +313,70 @@ mcca.multiblock <- function(data, preproc = multivarious::center(), ncomp = 2,
     names = names(data),
     classes = "mcca"
   )
+
+  .muscal_attach_fit_contract(
+    out,
+    method = "mcca",
+    task = "reconstruction",
+    oos_types = c("scores", "reconstruction"),
+    fit_call = fit_call,
+    refit_supported = TRUE,
+    prediction_target = "blocks",
+    refit = .muscal_make_refit_spec(
+      data = data_refit,
+      fit_fn = function(data) {
+        do.call(
+          mcca,
+          c(
+            list(
+              data = data,
+              preproc = preproc,
+              ncomp = ncomp,
+              ridge = ridge,
+              block_weights = block_weights,
+              use_future = use_future
+            ),
+            fit_dots
+          )
+        )
+      },
+      bootstrap_fn = function(data) {
+        n <- nrow(data[[1L]])
+        idx <- sample.int(n, size = n, replace = TRUE)
+        lapply(data, function(block) block[idx, , drop = FALSE])
+      },
+      permutation_fn = function(data) {
+        lapply(data, function(block) block[sample.int(nrow(block)), , drop = FALSE])
+      },
+      resample_unit = "rows"
+    )
+  )
+}
+
+#' Predict from an MCCA Fit
+#'
+#' @param object A fitted `mcca` object.
+#' @param new_data Optional matrix/data.frame or list of blocks with the same
+#'   structure as the training data.
+#' @param type One of `"scores"` or `"reconstruction"`.
+#' @param ... Additional arguments passed to the underlying projection helpers.
+#'
+#' @return A numeric matrix of projected scores or reconstructed observations.
+#' @export
+predict.mcca <- function(object, new_data = NULL,
+                         type = c("scores", "reconstruction"), ...) {
+  type <- match.arg(type)
+
+  if (is.null(new_data)) {
+    if (type == "scores") {
+      return(multivarious::scores(object))
+    }
+    stop("`new_data` must be supplied when type = 'reconstruction'.", call. = FALSE)
+  }
+
+  if (type == "scores") {
+    return(multivarious::project(object, new_data, ...))
+  }
+
+  multivarious::reconstruct_new(object, new_data, ...)
 }

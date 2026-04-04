@@ -1,6 +1,6 @@
 # Plot COVSTATIS Results
 
-Displays ROI scores or subject G-scores from a COVSTATIS analysis.
+Displays ROI scores or subject scores from a COVSTATIS analysis.
 
 ## Usage
 
@@ -31,7 +31,8 @@ plot(
 
 - type:
 
-  \`"roi"\` for ROI-level scores, \`"subjects"\` for subject G-scores.
+  \`"roi"\` for ROI-level scores, \`"subjects"\` for subject scores in
+  RV/table space.
 
 - labels:
 

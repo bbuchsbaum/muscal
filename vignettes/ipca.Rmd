@@ -182,6 +182,46 @@ proj <- project(fit, new_blocks)
 dim(proj)
 ```
 
+## Inference and validation
+
+iPCA now participates in the same generic evaluation surface as MFA. Use
+`infer_muscal()` for resampling-based summaries, and `cv_muscal()` when you
+want explicit fold-wise reconstruction metrics.
+
+```{r ipca-bootstrap}
+boot <- infer_muscal(
+  fit,
+  method = "bootstrap",
+  statistic = "sdev",
+  nrep = 6,
+  seed = 303
+)
+
+boot$summary
+```
+
+```{r ipca-permutation}
+perm <- infer_muscal(
+  fit,
+  method = "permutation",
+  statistic = "sdev",
+  nrep = 9,
+  seed = 404
+)
+
+perm$component_results
+```
+
+```{r ipca-inference-checks}
+stopifnot(all(is.finite(boot$summary$mean)))
+stopifnot(all(boot$summary$upper >= boot$summary$lower))
+stopifnot(all(perm$component_results$p_value >= 0))
+stopifnot(all(perm$component_results$p_value <= 1))
+```
+
+For a package-level walkthrough of `infer_muscal()`, `cv_muscal()`, and the
+task-aware metric registry, see `vignette("model_evaluation")`.
+
 ## Computation methods
 
 iPCA supports two internal methods:
@@ -215,6 +255,8 @@ iPCA is *not* appropriate when:
 ## Next steps
 
 - `vignette("mfa")` — Classical MFA with fixed normalization
+- `vignette("model_evaluation")` — Generic inference and held-out evaluation
+  workflows
 - `vignette("penalized_mfa")` — MFA with loading similarity penalties
 - `?ipca_tune_alpha` — Detailed tuning options
 

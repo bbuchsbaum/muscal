@@ -1,6 +1,6 @@
-# Plot subject clouds in RV and ROI spaces
+# Plot subject scores in RV space
 
-Plot subject clouds in RV and ROI spaces
+Plot subject scores in RV space
 
 ## Usage
 

@@ -379,6 +379,7 @@ test_that("graph_anchored_mfa projects scores and predicts Y for new rows", {
 
   expect_equal(fit$fit_spec$method, "graph_anchored_mfa")
   expect_equal(fit$task, "response_prediction")
+  expect_true(fit$fit_spec$refit_supported)
   expect_setequal(fit$oos_types, c("response", "scores", "reconstruction"))
   expect_equal(dim(scores_new), c(4, 2))
   expect_equal(dim(scores_from_predict), c(4, 2))

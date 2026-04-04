@@ -99,6 +99,7 @@ graph_anchored_mfa <- function(Y,
                                verbose = FALSE,
                                ...) {
   fit_call <- match.call(expand.dots = FALSE)
+  fit_dots <- list(...)
   normalization <- match.arg(normalization)
   graph_form <- match.arg(graph_form)
 
@@ -124,6 +125,12 @@ graph_anchored_mfa <- function(Y,
   X <- flat$X
   row_index <- flat$row_index
   block_info <- flat$block_info
+  data_refit <- list(
+    Y = as.matrix(Y),
+    X = lapply(X, function(x) as.matrix(x)),
+    row_index = lapply(row_index, as.integer),
+    block_info = block_info
+  )
 
   if (length(X) < 1L) {
     stop("At least one auxiliary block is required.", call. = FALSE)
@@ -387,8 +394,39 @@ graph_anchored_mfa <- function(Y,
     task = "response_prediction",
     oos_types = c("response", "scores", "reconstruction"),
     fit_call = fit_call,
-    refit_supported = FALSE,
-    prediction_target = "Y"
+    refit_supported = TRUE,
+    prediction_target = "Y",
+    refit = .muscal_make_refit_spec(
+      data = data_refit,
+      fit_fn = function(data) {
+        do.call(
+          graph_anchored_mfa,
+          c(
+            list(
+              Y = data$Y,
+              X = data$X,
+              row_index = data$row_index,
+              block_info = data$block_info,
+              preproc = preproc,
+              ncomp = ncomp,
+              normalization = normalization,
+              alpha = alpha,
+              feature_graph = feature_graph,
+              graph_lambda = graph_lambda,
+              graph_form = graph_form,
+              max_iter = max_iter,
+              tol = tol,
+              ridge = ridge,
+              verbose = FALSE
+            ),
+            fit_dots
+          )
+        )
+      },
+      bootstrap_fn = .muscal_bootstrap_anchored_data,
+      permutation_fn = .muscal_permute_anchored_data,
+      resample_unit = "anchor_rows"
+    )
   )
 }
 

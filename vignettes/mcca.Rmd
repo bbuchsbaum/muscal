@@ -40,7 +40,8 @@ onto coherently, so it is a natural choice when blocks differ in scale or
 dimensionality but should still agree on the same latent structure.
 
 If your main question is "what common signal do these blocks line up on?",
-MCCA is often the right first model.
+MCCA is a strong next step after `vignette("mfa")` when correlation structure
+matters more than variance balancing.
 
 ## What does a quick fit look like?
 
@@ -142,6 +143,47 @@ Each block has its own partial score matrix. Their sum reproduces the
 compromise scores, so large disagreements across partial scores tell you where
 the blocks are pulling in different directions.
 
+## Inference and validation
+
+MCCA now participates in the same generic evaluation surface as MFA and iPCA.
+For this method, the most natural resampling question is whether the shared
+score space is more coherent than what you would get after breaking row
+alignment across blocks.
+
+```{r mcca-bootstrap}
+boot <- infer_muscal(
+  fit,
+  method = "bootstrap",
+  statistic = "sdev",
+  nrep = 6,
+  seed = 303
+)
+
+boot$summary
+```
+
+```{r mcca-permutation}
+perm <- infer_muscal(
+  fit,
+  method = "permutation",
+  statistic = "sdev",
+  nrep = 9,
+  seed = 404
+)
+
+perm$component_results
+```
+
+```{r mcca-inference-checks}
+stopifnot(all(is.finite(boot$summary$mean)))
+stopifnot(all(boot$summary$upper >= boot$summary$lower))
+stopifnot(all(perm$component_results$p_value >= 0))
+stopifnot(all(perm$component_results$p_value <= 1))
+```
+
+Because `mcca()` is a same-row model, you can also score held-out rows with the
+generic reconstruction workflow shown in `vignette("model_evaluation")`.
+
 ## When should you reach for MCCA?
 
 Use `mcca()` when:
@@ -157,5 +199,6 @@ rather than a canonical-correlation view.
 ## Where next?
 
 - `vignette("mfa")` for variance-based multiblock integration
+- `vignette("model_evaluation")` for generic inference and held-out evaluation workflows
 - `vignette("aligned_mcca")` for the same idea when blocks do not share the same rows
 - `?mcca` for tuning `ridge` and `block_weights`

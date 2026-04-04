@@ -109,35 +109,35 @@ subject-specific structure (2 local factors per subject).</p>
 <div class="sourceCode" id="cb3"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">fit</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/bamfa.html">bamfa</a></span><span class="op">(</span><span class="va">data_list</span>, k_g <span class="op">=</span> <span class="fl">3</span>, k_l <span class="op">=</span> <span class="fl">2</span>, niter <span class="op">=</span> <span class="fl">20</span><span class="op">)</span></span>
 <span><span class="va">fit</span></span>
-<span><span class="co">#&gt; Barycentric Multiple Factor Analysis (BaMFA) </span></span>
+<span><span class="co">#&gt; <span style="color: #0000BB; font-weight: bold;">Barycentric Multiple Factor Analysis (BaMFA)</span> </span></span>
 <span><span class="co">#&gt; </span></span>
-<span><span class="co">#&gt; Model Structure: </span></span>
-<span><span class="co">#&gt;   Global components (k_g): 3 </span></span>
-<span><span class="co">#&gt;   Local components (k_l requested): 2 </span></span>
-<span><span class="co">#&gt;   Convergence after 20 iterations</span></span>
-<span><span class="co">#&gt;   Local score regularization (lambda_l): 0 </span></span>
+<span><span class="co">#&gt; <span style="color: #00BB00;">Model Structure:</span> </span></span>
+<span><span class="co">#&gt;   Global components (k_g): <span style="font-weight: bold;">3</span> </span></span>
+<span><span class="co">#&gt;   Local components (k_l requested): <span style="font-weight: bold;">2</span> </span></span>
+<span><span class="co">#&gt;   Convergence after <span style="font-weight: bold;">20</span> iterations</span></span>
+<span><span class="co">#&gt;   Local score regularization (lambda_l): <span style="font-weight: bold;">0</span> </span></span>
 <span><span class="co">#&gt; </span></span>
-<span><span class="co">#&gt; Block Information: </span></span>
-<span><span class="co">#&gt;   Block 1 ( Subject_1 ): </span></span>
-<span><span class="co">#&gt;     Features: 20 </span></span>
-<span><span class="co">#&gt;     Local components retained: 2 </span></span>
-<span><span class="co">#&gt;   Block 2 ( Subject_2 ): </span></span>
-<span><span class="co">#&gt;     Features: 20 </span></span>
-<span><span class="co">#&gt;     Local components retained: 2 </span></span>
-<span><span class="co">#&gt;   Block 3 ( Subject_3 ): </span></span>
-<span><span class="co">#&gt;     Features: 20 </span></span>
-<span><span class="co">#&gt;     Local components retained: 2 </span></span>
-<span><span class="co">#&gt;   Block 4 ( Subject_4 ): </span></span>
-<span><span class="co">#&gt;     Features: 20 </span></span>
-<span><span class="co">#&gt;     Local components retained: 2 </span></span>
-<span><span class="co">#&gt;   Block 5 ( Subject_5 ): </span></span>
-<span><span class="co">#&gt;     Features: 20 </span></span>
-<span><span class="co">#&gt;     Local components retained: 2 </span></span>
-<span><span class="co">#&gt;   Block 6 ( Subject_6 ): </span></span>
-<span><span class="co">#&gt;     Features: 20 </span></span>
-<span><span class="co">#&gt;     Local components retained: 2 </span></span>
+<span><span class="co">#&gt; <span style="color: #00BB00;">Block Information:</span> </span></span>
+<span><span class="co">#&gt;   Block <span style="font-weight: bold;">1</span> ( <span style="color: #0000BB;">Subject_1</span> ): </span></span>
+<span><span class="co">#&gt;     Features: <span style="color: #BBBB00;">20</span> </span></span>
+<span><span class="co">#&gt;     Local components retained: <span style="color: #BBBB00;">2</span> </span></span>
+<span><span class="co">#&gt;   Block <span style="font-weight: bold;">2</span> ( <span style="color: #0000BB;">Subject_2</span> ): </span></span>
+<span><span class="co">#&gt;     Features: <span style="color: #BBBB00;">20</span> </span></span>
+<span><span class="co">#&gt;     Local components retained: <span style="color: #BBBB00;">2</span> </span></span>
+<span><span class="co">#&gt;   Block <span style="font-weight: bold;">3</span> ( <span style="color: #0000BB;">Subject_3</span> ): </span></span>
+<span><span class="co">#&gt;     Features: <span style="color: #BBBB00;">20</span> </span></span>
+<span><span class="co">#&gt;     Local components retained: <span style="color: #BBBB00;">2</span> </span></span>
+<span><span class="co">#&gt;   Block <span style="font-weight: bold;">4</span> ( <span style="color: #0000BB;">Subject_4</span> ): </span></span>
+<span><span class="co">#&gt;     Features: <span style="color: #BBBB00;">20</span> </span></span>
+<span><span class="co">#&gt;     Local components retained: <span style="color: #BBBB00;">2</span> </span></span>
+<span><span class="co">#&gt;   Block <span style="font-weight: bold;">5</span> ( <span style="color: #0000BB;">Subject_5</span> ): </span></span>
+<span><span class="co">#&gt;     Features: <span style="color: #BBBB00;">20</span> </span></span>
+<span><span class="co">#&gt;     Local components retained: <span style="color: #BBBB00;">2</span> </span></span>
+<span><span class="co">#&gt;   Block <span style="font-weight: bold;">6</span> ( <span style="color: #0000BB;">Subject_6</span> ): </span></span>
+<span><span class="co">#&gt;     Features: <span style="color: #BBBB00;">20</span> </span></span>
+<span><span class="co">#&gt;     Local components retained: <span style="color: #BBBB00;">2</span> </span></span>
 <span><span class="co">#&gt; </span></span>
-<span><span class="co">#&gt; Final reconstruction error (per feature): 0.0733104</span></span></code></pre></div>
+<span><span class="co">#&gt; Final reconstruction error (per feature): <span style="font-weight: bold;">0.0733104</span></span></span></code></pre></div>
 <div class="figure">
 <img src="bamfa_files/figure-html/quick-score-plot-1.png" class="r-plt" alt="Mean global scores across subjects. These capture the consensus structure shared by all blocks." width="576"><p class="caption">
 Mean global scores across subjects. These capture the consensus

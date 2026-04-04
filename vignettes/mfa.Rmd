@@ -140,9 +140,9 @@ autoplot(fit, color = groups)
 
 ### Variance explained
 
-Assess how many components to retain:
+Assess how the retained components distribute variance:
 
-```{r variance-bar, fig.cap = "Proportion of variance captured by each component. With three true latent factors and moderate noise, the first three components stand out clearly."}
+```{r variance-bar, fig.cap = "Proportion of variance captured by each retained component in the three-component MFA solution."}
 plot_variance(fit, type = "bar")
 ```
 
@@ -158,13 +158,15 @@ plot_block_weights(fit)
 
 Each block has its own "view" of the observations. Partial factor scores show
 where each block would place the observations, connected to the consensus
-position:
+position. In a dense plot like this one, focus on the overall spread of the
+segments rather than trying to read every observation individually:
 
-```{r partial-scores, fig.cap = "Partial factor scores. Lines connect each block's view to the consensus. Short lines mean the blocks agree about that observation.", fig.width = 7, fig.height = 5}
+```{r partial-scores, fig.cap = "Partial factor scores. Lines connect each block's view to the consensus; tighter clouds and shorter segments indicate stronger agreement across blocks.", fig.width = 7, fig.height = 5}
 plot_partial_scores(fit, connect = TRUE, show_consensus = TRUE)
 ```
 
-Large divergence indicates disagreement between blocks for that observation.
+Observations with long segments are cases where one or more blocks disagree more
+strongly with the compromise position.
 
 ### Block similarity
 
@@ -211,6 +213,84 @@ fit_custom <- mfa(sim$data_list, ncomp = 3,
                   normalization = "custom", A = custom_weights)
 ```
 
+## Inference and validation
+
+MFA is exploratory, but the package also supports resampling-based diagnostics
+and held-out reconstruction checks. These are useful when you want to know
+whether the leading components are stable and whether the fitted compromise
+generalizes to unseen rows.
+
+```{r bootstrap-sdev}
+boot <- infer_muscal(
+  fit,
+  method = "bootstrap",
+  statistic = "sdev",
+  nrep = 8,
+  seed = 101
+)
+
+boot$summary
+```
+
+```{r permutation-sdev}
+perm <- infer_muscal(
+  fit,
+  method = "permutation",
+  statistic = "sdev",
+  nrep = 19,
+  seed = 202
+)
+
+perm$component_results
+```
+
+```{r inference-checks}
+stopifnot(all(is.finite(boot$summary$mean)))
+stopifnot(all(boot$summary$upper >= boot$summary$lower))
+stopifnot(all(perm$component_results$p_value >= 0))
+stopifnot(all(perm$component_results$p_value <= 1))
+```
+
+For held-out evaluation, use `cv_muscal()` with row folds and reconstruction
+metrics:
+
+```{r mfa-cv}
+X_concat <- do.call(cbind, sim$data_list)
+md <- multidesign::multidesign(X_concat, data.frame(batch = rep(c("A", "B"), each = 30)))
+folds <- multidesign::cv_rows(md, rows = list(1:6, 31:36), preserve_row_ids = TRUE)
+
+res_cv <- cv_muscal(
+  folds = folds,
+  fit_fn = function(analysis) {
+    Xa <- multidesign::xdata(analysis)
+    mfa(
+      list(
+        X1 = Xa[, 1:20, drop = FALSE],
+        X2 = Xa[, 21:50, drop = FALSE],
+        X3 = Xa[, 51:65, drop = FALSE],
+        X4 = Xa[, 66:90, drop = FALSE]
+      ),
+      ncomp = 3
+    )
+  },
+  estimate_fn = function(model, assessment) {
+    predict(model, multidesign::xdata(assessment), type = "reconstruction")
+  },
+  truth_fn = function(assessment) multidesign::xdata(assessment),
+  metrics = c("mse", "rmse", "r2")
+)
+
+res_cv$scores
+```
+
+```{r cv-check}
+stopifnot(all(is.finite(res_cv$scores$mse)))
+stopifnot(all(res_cv$scores$rmse >= 0))
+```
+
+For a fuller walkthrough of `infer_muscal()`, `cv_muscal()`, and the available
+metric families, see `vignette("model_evaluation")`.
+
 ## When to use MFA
 
 MFA is appropriate when:
@@ -229,11 +309,16 @@ MFA is *not* appropriate when:
 
 ## Next steps
 
-- `vignette("linked_mfa")` — Anchored MFA for blocks with different row
-  structures
-- `?covstatis` — STATIS analysis for covariance matrices
-- `?penalized_mfa` — MFA with sparsity penalties
-- `?ipca` — Integrative PCA with multiplicative penalties
+- `vignette("linked_mfa")` — Continue to Anchored MFA when your blocks no
+  longer share the same observations
+- `vignette("model_evaluation")` — Bootstrap, permutation, and held-out
+  evaluation workflows across supported methods
+- `vignette("ipca")` — Compare MFA with adaptive block reweighting in
+  Integrative PCA
+- `vignette("mcca")` — Switch to a correlation-driven shared score space when
+  cross-block agreement matters more than balanced variance
+- `vignette("penalized_mfa")` — Add structure-aware penalties to the MFA
+  framework
 
 ## References
 

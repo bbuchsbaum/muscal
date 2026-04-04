@@ -198,8 +198,21 @@ ggplot(obj_df, aes(iteration, objective)) +
 The loading dimensions tell you how much information each block carries. The
 objective trace tells you whether the alternating updates have settled cleanly.
 
+## What about inference and validation?
+
+`aligned_mfa()` already fits into the package's task-aware prediction surface:
+it exposes aligned scores and reconstructions, so you can evaluate held-out
+workflows with explicit `cv_muscal()` callbacks when you have a clear fold
+construction strategy.
+
+It also now exposes generic refit metadata, so `infer_muscal()` can be used for
+bootstrap or permutation summaries. For this method, fit-quality statistics are
+often more informative than raw component standard deviations, because the score
+space is orthonormalized during fitting.
+
 ## Where next?
 
 - `vignette("linked_mfa")` for the anchored version with an explicit reference block
 - `vignette("mfa")` for the classical same-row setting
+- `vignette("model_evaluation")` for the shared evaluation API across supported methods
 - `?aligned_mfa` for `feature_groups`, `feature_lambda`, and weighting options
