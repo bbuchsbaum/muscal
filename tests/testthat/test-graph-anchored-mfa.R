@@ -7,6 +7,217 @@ library(muscal)
   norm(P1 - P2, type = "F") / (norm(P2, type = "F") + 1e-12)
 }
 
+.graph_anchor_exact_fixture <- function() {
+  set.seed(1201)
+
+  N <- 72
+  k <- 2
+  S <- scale(matrix(rnorm(N * k), N, k), center = TRUE, scale = FALSE)
+  B <- matrix(
+    c(1.2, -0.4,
+      0.8, 0.6,
+      -0.7, 0.9),
+    nrow = 3,
+    byrow = TRUE
+  )
+  V_shared <- matrix(
+    c(1.0, 0.0,
+      0.8, 0.2,
+      -0.6, 1.1,
+      0.4, -0.9),
+    nrow = 4,
+    byrow = TRUE
+  )
+  V1_unique <- matrix(
+    c(0.7, 0.3,
+      -0.5, 0.6),
+    nrow = 2,
+    byrow = TRUE
+  )
+  V2_unique <- matrix(
+    c(-0.4, 0.8,
+      0.9, -0.2),
+    nrow = 2,
+    byrow = TRUE
+  )
+
+  Y <- S %*% t(B)
+  X1 <- cbind(S %*% t(V_shared), S %*% t(V1_unique))
+  X2 <- cbind(S %*% t(V_shared), S %*% t(V2_unique))
+  colnames(X1) <- c(paste0("f", 1:4), "u1", "u2")
+  colnames(X2) <- c(paste0("f", 1:4), "v1", "v2")
+
+  edge_graph <- data.frame(
+    block1 = rep("X1", 4),
+    feature1 = paste0("f", 1:4),
+    block2 = rep("X2", 4),
+    feature2 = paste0("f", 1:4),
+    weight = 1,
+    stringsAsFactors = FALSE
+  )
+
+  list(
+    Y = Y,
+    X = list(X1 = X1, X2 = X2),
+    row_index = list(X1 = seq_len(N), X2 = seq_len(N)),
+    S = S,
+    feature_graph = edge_graph,
+    shared = paste0("f", 1:4),
+    ncomp = k
+  )
+}
+
+.graph_anchor_sparse_borrowing_fixture <- function() {
+  set.seed(1202)
+
+  N <- 90
+  k <- 2
+  S <- scale(matrix(rnorm(N * k), N, k), center = TRUE, scale = FALSE)
+  B <- matrix(
+    c(1.2, -0.4,
+      0.8, 0.6,
+      -0.7, 0.9),
+    nrow = 3,
+    byrow = TRUE
+  )
+  V_shared <- matrix(
+    c(1.0, 0.0,
+      0.8, 0.2,
+      -0.6, 1.1,
+      0.4, -0.9),
+    nrow = 4,
+    byrow = TRUE
+  )
+  V1_unique <- matrix(
+    c(0.7, 0.3,
+      -0.5, 0.6),
+    nrow = 2,
+    byrow = TRUE
+  )
+  V2_unique <- matrix(
+    c(-0.4, 0.8,
+      0.9, -0.2),
+    nrow = 2,
+    byrow = TRUE
+  )
+
+  Y <- S %*% t(B) + matrix(rnorm(N * 3, sd = 0.05), N, 3)
+  X1_full <- cbind(S %*% t(V_shared), S %*% t(V1_unique)) +
+    matrix(rnorm(N * 6, sd = 0.30), N, 6)
+  X2 <- cbind(S %*% t(V_shared), S %*% t(V2_unique)) +
+    matrix(rnorm(N * 6, sd = 0.05), N, 6)
+  idx1 <- sort(sample.int(N, 10))
+  X1 <- X1_full[idx1, , drop = FALSE]
+
+  colnames(X1) <- c(paste0("f", 1:4), "u1", "u2")
+  colnames(X2) <- c(paste0("f", 1:4), "v1", "v2")
+
+  wrong_graph <- data.frame(
+    block1 = rep("X1", 4),
+    feature1 = paste0("f", 1:4),
+    block2 = rep("X2", 4),
+    feature2 = paste0("f", 4:1),
+    weight = 1,
+    stringsAsFactors = FALSE
+  )
+
+  list(
+    Y = Y,
+    X = list(X1 = X1, X2 = X2),
+    X1_full = X1_full,
+    row_index = list(X1 = idx1, X2 = seq_len(N)),
+    S = S,
+    shared = paste0("f", 1:4),
+    wrong_graph = wrong_graph,
+    ncomp = k
+  )
+}
+
+test_that("graph_anchored_mfa exactly recovers a noiseless low-rank oracle with a consistent graph", {
+  sim <- .graph_anchor_exact_fixture()
+
+  fit <- graph_anchored_mfa(
+    Y = sim$Y,
+    X = sim$X,
+    row_index = sim$row_index,
+    ncomp = sim$ncomp,
+    preproc = multivarious::pass(),
+    normalization = "None",
+    feature_graph = sim$feature_graph,
+    graph_lambda = 6,
+    max_iter = 100,
+    tol = 1e-10,
+    ridge = 1e-10
+  )
+
+  expect_lt(.score_subspace_rel(multivarious::scores(fit), sim$S), 1e-10)
+  expect_lt(mean((predict(fit, sim$X$X1, block = "X1", type = "response", preprocess = FALSE) - sim$Y)^2), 1e-20)
+  expect_lt(mean((predict(fit, sim$X$X1, block = "X1", type = "reconstruction", preprocess = FALSE) - sim$X$X1)^2), 1e-20)
+
+  linked_gap <- rowSums((fit$V_list$X1[sim$shared, , drop = FALSE] - fit$V_list$X2[sim$shared, , drop = FALSE])^2)
+  expect_lt(max(linked_gap), 1e-18)
+})
+
+test_that("graph_anchored_mfa borrows through the correct graph under sparse noisy coverage", {
+  sim <- .graph_anchor_sparse_borrowing_fixture()
+
+  fit_none <- graph_anchored_mfa(
+    Y = sim$Y,
+    X = sim$X,
+    row_index = sim$row_index,
+    ncomp = sim$ncomp,
+    preproc = multivarious::pass(),
+    normalization = "None",
+    graph_lambda = 0,
+    max_iter = 120,
+    tol = 1e-8,
+    ridge = 1e-8
+  )
+
+  fit_correct <- graph_anchored_mfa(
+    Y = sim$Y,
+    X = sim$X,
+    row_index = sim$row_index,
+    ncomp = sim$ncomp,
+    preproc = multivarious::pass(),
+    normalization = "None",
+    feature_graph = "colnames",
+    graph_lambda = 10,
+    max_iter = 120,
+    tol = 1e-8,
+    ridge = 1e-8
+  )
+
+  fit_wrong <- graph_anchored_mfa(
+    Y = sim$Y,
+    X = sim$X,
+    row_index = sim$row_index,
+    ncomp = sim$ncomp,
+    preproc = multivarious::pass(),
+    normalization = "None",
+    feature_graph = sim$wrong_graph,
+    graph_lambda = 10,
+    max_iter = 120,
+    tol = 1e-8,
+    ridge = 1e-8
+  )
+
+  mse_none <- mean((predict(fit_none, sim$X1_full, block = "X1", type = "response", preprocess = FALSE) - sim$Y)^2)
+  mse_correct <- mean((predict(fit_correct, sim$X1_full, block = "X1", type = "response", preprocess = FALSE) - sim$Y)^2)
+  mse_wrong <- mean((predict(fit_wrong, sim$X1_full, block = "X1", type = "response", preprocess = FALSE) - sim$Y)^2)
+
+  recon_none <- mean((predict(fit_none, sim$X1_full, block = "X1", type = "reconstruction", preprocess = FALSE) - sim$X1_full)^2)
+  recon_correct <- mean((predict(fit_correct, sim$X1_full, block = "X1", type = "reconstruction", preprocess = FALSE) - sim$X1_full)^2)
+
+  linked_gap_none <- mean(rowSums((fit_none$V_list$X1[sim$shared, , drop = FALSE] - fit_none$V_list$X2[sim$shared, , drop = FALSE])^2))
+  linked_gap_correct <- mean(rowSums((fit_correct$V_list$X1[sim$shared, , drop = FALSE] - fit_correct$V_list$X2[sim$shared, , drop = FALSE])^2))
+
+  expect_lt(mse_correct, mse_none)
+  expect_lt(mse_correct, 0.2 * mse_wrong)
+  expect_lt(recon_correct, recon_none)
+  expect_lt(linked_gap_correct, 1e-3 * linked_gap_none)
+})
+
 test_that("graph_anchored_mfa reduces to anchored_mfa when graph penalty is off", {
   set.seed(11)
   N <- 40
