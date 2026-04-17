@@ -19,6 +19,38 @@ SEXP muscal_apply_row_system_cpp(List A_list, Eigen::Map<Eigen::MatrixXd> S) {
 }
 
 // [[Rcpp::export]]
+SEXP muscal_apply_row_operator_cpp(List A_list,
+                                   Eigen::Map<Eigen::MatrixXd> S,
+                                   SEXP graph_laplacian,
+                                   const double graph_lambda,
+                                   const double ridge) {
+  const int n = S.rows();
+  const int k = S.cols();
+  Eigen::MatrixXd out(n, k);
+
+  for (int i = 0; i < n; ++i) {
+    Eigen::Map<Eigen::MatrixXd> Ai = as<Eigen::Map<Eigen::MatrixXd> >(A_list[i]);
+    out.row(i) = (Ai * S.row(i).transpose()).transpose();
+  }
+
+  if (graph_laplacian != R_NilValue && graph_lambda > 0.0) {
+    if (Rf_isS4(graph_laplacian)) {
+      Eigen::MappedSparseMatrix<double> L = as<Eigen::MappedSparseMatrix<double> >(graph_laplacian);
+      out.noalias() += graph_lambda * (L * S);
+    } else {
+      Eigen::Map<Eigen::MatrixXd> L = as<Eigen::Map<Eigen::MatrixXd> >(graph_laplacian);
+      out.noalias() += graph_lambda * (L * S);
+    }
+  }
+
+  if (ridge > 0.0) {
+    out.noalias() += ridge * S;
+  }
+
+  return wrap(out);
+}
+
+// [[Rcpp::export]]
 List muscal_rowsum_counts_cpp(Eigen::Map<Eigen::MatrixXd> X,
                               IntegerVector idx,
                               const int N) {

@@ -361,6 +361,7 @@ graph_anchored_mfa <- function(Y,
           alpha_blocks = alpha_blocks[-1],
           score_graph_laplacian = score_graph_spec$L,
           score_graph_lambda = score_graph_lambda,
+          local = local,
           ridge = ridge
         )
       } else {
@@ -877,6 +878,7 @@ coupled_graph_anchored_mfa <- function(Y,
           coupling_lambda = coupling_lambda,
           score_graph_laplacian = score_graph_spec$L,
           score_graph_lambda = score_graph_lambda,
+          local = local,
           ridge = ridge
         )
       } else {
@@ -887,6 +889,7 @@ coupled_graph_anchored_mfa <- function(Y,
           row_index = row_index,
           alpha_y = alpha_blocks[1],
           coupling_lambda = coupling_lambda,
+          local = local,
           ridge = ridge
         )
       }
@@ -1856,18 +1859,20 @@ predict.coupled_graph_anchored_mfa <- function(object,
                                        alpha_blocks,
                                        score_graph_laplacian,
                                        score_graph_lambda,
+                                       local = NULL,
                                        ridge = 1e-8) {
-  N <- nrow(Y)
   K <- ncol(B)
-  local <- .gamfa_score_system(
-    Y = Y,
-    B = B,
-    X_list = X_list,
-    V_list = V_list,
-    row_index = row_index,
-    alpha_y = alpha_y,
-    alpha_blocks = alpha_blocks
-  )
+  if (is.null(local)) {
+    local <- .gamfa_score_system(
+      Y = Y,
+      B = B,
+      X_list = X_list,
+      V_list = V_list,
+      row_index = row_index,
+      alpha_y = alpha_y,
+      alpha_blocks = alpha_blocks
+    )
+  }
 
   apply_A <- function(S) {
     .muscal_apply_row_operator(
@@ -2076,15 +2081,18 @@ predict.coupled_graph_anchored_mfa <- function(object,
                                   row_index,
                                   alpha_y,
                                   coupling_lambda,
+                                  local = NULL,
                                   ridge = 1e-8) {
-  local <- .cgamfa_score_system(
-    Y = Y,
-    B = B,
-    Z_list = Z_list,
-    row_index = row_index,
-    alpha_y = alpha_y,
-    coupling_lambda = coupling_lambda
-  )
+  if (is.null(local)) {
+    local <- .cgamfa_score_system(
+      Y = Y,
+      B = B,
+      Z_list = Z_list,
+      row_index = row_index,
+      alpha_y = alpha_y,
+      coupling_lambda = coupling_lambda
+    )
+  }
   N <- nrow(Y)
   K <- ncol(B)
   S <- matrix(0, nrow = N, ncol = K)
@@ -2103,17 +2111,19 @@ predict.coupled_graph_anchored_mfa <- function(object,
                                         coupling_lambda,
                                         score_graph_laplacian,
                                         score_graph_lambda,
+                                        local = NULL,
                                         ridge = 1e-8) {
-  N <- nrow(Y)
   K <- ncol(B)
-  local <- .cgamfa_score_system(
-    Y = Y,
-    B = B,
-    Z_list = Z_list,
-    row_index = row_index,
-    alpha_y = alpha_y,
-    coupling_lambda = coupling_lambda
-  )
+  if (is.null(local)) {
+    local <- .cgamfa_score_system(
+      Y = Y,
+      B = B,
+      Z_list = Z_list,
+      row_index = row_index,
+      alpha_y = alpha_y,
+      coupling_lambda = coupling_lambda
+    )
+  }
 
   apply_A <- function(S) {
     .muscal_apply_row_operator(

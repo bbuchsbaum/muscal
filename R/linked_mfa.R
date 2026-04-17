@@ -625,9 +625,12 @@ linked_mfa <- function(Y,
                                        graph_laplacian = NULL,
                                        graph_lambda = 0,
                                        ridge = 0) {
+  if (exists("muscal_apply_row_operator_cpp", mode = "function")) {
+    return(muscal_apply_row_operator_cpp(A_list, S, graph_laplacian, graph_lambda, ridge))
+  }
   out <- .muscal_apply_row_system(S, A_list)
   if (isTRUE(graph_lambda > 0) && !is.null(graph_laplacian)) {
-    out <- out + graph_lambda * as.matrix(graph_laplacian %*% S)
+    out <- out + graph_lambda * (graph_laplacian %*% S)
   }
   if (ridge > 0) {
     out <- out + ridge * S

@@ -23,6 +23,21 @@ BEGIN_RCPP
     return rcpp_result_gen;
 END_RCPP
 }
+// muscal_apply_row_operator_cpp
+SEXP muscal_apply_row_operator_cpp(List A_list, Eigen::Map<Eigen::MatrixXd> S, SEXP graph_laplacian, const double graph_lambda, const double ridge);
+RcppExport SEXP _muscal_muscal_apply_row_operator_cpp(SEXP A_listSEXP, SEXP SSEXP, SEXP graph_laplacianSEXP, SEXP graph_lambdaSEXP, SEXP ridgeSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< List >::type A_list(A_listSEXP);
+    Rcpp::traits::input_parameter< Eigen::Map<Eigen::MatrixXd> >::type S(SSEXP);
+    Rcpp::traits::input_parameter< SEXP >::type graph_laplacian(graph_laplacianSEXP);
+    Rcpp::traits::input_parameter< const double >::type graph_lambda(graph_lambdaSEXP);
+    Rcpp::traits::input_parameter< const double >::type ridge(ridgeSEXP);
+    rcpp_result_gen = Rcpp::wrap(muscal_apply_row_operator_cpp(A_list, S, graph_laplacian, graph_lambda, ridge));
+    return rcpp_result_gen;
+END_RCPP
+}
 // muscal_rowsum_counts_cpp
 List muscal_rowsum_counts_cpp(Eigen::Map<Eigen::MatrixXd> X, IntegerVector idx, const int N);
 RcppExport SEXP _muscal_muscal_rowsum_counts_cpp(SEXP XSEXP, SEXP idxSEXP, SEXP NSEXP) {
@@ -39,6 +54,7 @@ END_RCPP
 
 static const R_CallMethodDef CallEntries[] = {
     {"_muscal_muscal_apply_row_system_cpp", (DL_FUNC) &_muscal_muscal_apply_row_system_cpp, 2},
+    {"_muscal_muscal_apply_row_operator_cpp", (DL_FUNC) &_muscal_muscal_apply_row_operator_cpp, 5},
     {"_muscal_muscal_rowsum_counts_cpp", (DL_FUNC) &_muscal_muscal_rowsum_counts_cpp, 3},
     {NULL, NULL, 0}
 };

@@ -5,6 +5,10 @@ muscal_apply_row_system_cpp <- function(A_list, S) {
     .Call(`_muscal_muscal_apply_row_system_cpp`, A_list, S)
 }
 
+muscal_apply_row_operator_cpp <- function(A_list, S, graph_laplacian, graph_lambda, ridge) {
+    .Call(`_muscal_muscal_apply_row_operator_cpp`, A_list, S, graph_laplacian, graph_lambda, ridge)
+}
+
 muscal_rowsum_counts_cpp <- function(X, idx, N) {
     .Call(`_muscal_muscal_rowsum_counts_cpp`, X, idx, N)
 }
