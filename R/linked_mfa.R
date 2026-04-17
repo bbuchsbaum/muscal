@@ -604,42 +604,87 @@ linked_mfa <- function(Y,
   out
 }
 
+.muscal_apply_row_operator <- function(S,
+                                       A_list,
+                                       graph_laplacian = NULL,
+                                       graph_lambda = 0,
+                                       ridge = 0) {
+  out <- .muscal_apply_row_system(S, A_list)
+  if (isTRUE(graph_lambda > 0) && !is.null(graph_laplacian)) {
+    out <- out + graph_lambda * as.matrix(graph_laplacian %*% S)
+  }
+  if (ridge > 0) {
+    out <- out + ridge * S
+  }
+  out
+}
+
 .muscal_score_objective_from_system <- function(S,
                                                 A_list,
                                                 rhs,
                                                 graph_laplacian = NULL,
                                                 graph_lambda = 0,
                                                 ridge = 0) {
-  obj <- 0
-  for (i in seq_len(nrow(S))) {
-    obj <- obj + sum(S[i, ] * (A_list[[i]] %*% S[i, ])) - 2 * sum(rhs[i, ] * S[i, ])
-  }
-  if (isTRUE(graph_lambda > 0) && !is.null(graph_laplacian)) {
-    LS <- graph_laplacian %*% S
-    obj <- obj + graph_lambda * sum(LS * S)
-  }
-  if (ridge > 0) {
-    obj <- obj + ridge * sum(S^2)
-  }
-  obj
+  AS <- .muscal_apply_row_operator(
+    S = S,
+    A_list = A_list,
+    graph_laplacian = graph_laplacian,
+    graph_lambda = graph_lambda,
+    ridge = ridge
+  )
+  sum(S * AS) - 2 * sum(rhs * S)
 }
 
 .muscal_row_system_beta <- function(A_list,
                                     graph_laplacian = NULL,
                                     graph_lambda = 0,
                                     ridge = 0) {
-  beta <- 0
-  for (i in seq_along(A_list)) {
-    Ai <- as.matrix(A_list[[i]])
-    if (length(Ai) == 0) next
-    vals <- eigen(.muscal_sym(Ai), symmetric = TRUE, only.values = TRUE)$values
-    beta <- max(beta, max(vals, 0))
-  }
+  beta <- max(vapply(A_list, function(Ai) {
+    if (length(Ai) == 0) return(0)
+    max(rowSums(abs(Ai)))
+  }, numeric(1)))
   if (isTRUE(graph_lambda > 0) && !is.null(graph_laplacian)) {
-    vals <- eigen(.muscal_sym(as.matrix(graph_laplacian)), symmetric = TRUE, only.values = TRUE)$values
-    beta <- beta + graph_lambda * max(vals, 0)
+    beta <- beta + graph_lambda * max(Matrix::rowSums(abs(graph_laplacian)))
   }
   beta + ridge
+}
+
+.muscal_matrix_cg <- function(rhs,
+                              apply_A,
+                              X0 = NULL,
+                              tol = 1e-8,
+                              max_iter = 200) {
+  if (is.null(X0)) {
+    X <- matrix(0, nrow = nrow(rhs), ncol = ncol(rhs))
+    R <- rhs
+  } else {
+    X <- X0
+    R <- rhs - apply_A(X)
+  }
+  P <- R
+  rs_old <- sum(R * R)
+  if (!is.finite(rs_old) || rs_old <= tol^2) {
+    return(X)
+  }
+
+  rhs_norm <- sqrt(sum(rhs * rhs))
+  rhs_norm <- max(rhs_norm, 1e-12)
+
+  for (iter in seq_len(max_iter)) {
+    AP <- apply_A(P)
+    denom <- sum(P * AP)
+    if (!is.finite(denom) || abs(denom) < 1e-20) break
+    alpha <- rs_old / denom
+    X <- X + alpha * P
+    R <- R - alpha * AP
+    rs_new <- sum(R * R)
+    if (!is.finite(rs_new) || sqrt(rs_new) <= tol * rhs_norm) break
+    beta <- rs_new / rs_old
+    P <- R + beta * P
+    rs_old <- rs_new
+  }
+
+  X
 }
 
 .muscal_stiefel_mm <- function(S,
@@ -670,13 +715,13 @@ linked_mfa <- function(Y,
   for (iter in seq_len(max_iter)) {
     beta <- beta0
     accepted <- FALSE
-    AS <- .muscal_apply_row_system(S, A_list)
-    if (isTRUE(graph_lambda > 0) && !is.null(graph_laplacian)) {
-      AS <- AS + graph_lambda * as.matrix(graph_laplacian %*% S)
-    }
-    if (ridge > 0) {
-      AS <- AS + ridge * S
-    }
+    AS <- .muscal_apply_row_operator(
+      S = S,
+      A_list = A_list,
+      graph_laplacian = graph_laplacian,
+      graph_lambda = graph_lambda,
+      ridge = ridge
+    )
 
     while (!accepted) {
       G <- rhs + beta * S - AS

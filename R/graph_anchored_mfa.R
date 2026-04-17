@@ -1869,12 +1869,32 @@ predict.coupled_graph_anchored_mfa <- function(object,
     alpha_blocks = alpha_blocks
   )
 
-  A <- Matrix::bdiag(local$A_list) +
-    score_graph_lambda * Matrix::kronecker(score_graph_laplacian, Matrix::Diagonal(K)) +
-    ridge * Matrix::Diagonal(N * K)
-  rhs <- as.vector(t(local$rhs))
-  sol <- Matrix::solve(A, rhs)
-  t(matrix(as.numeric(sol), nrow = K, ncol = N))
+  apply_A <- function(S) {
+    .muscal_apply_row_operator(
+      S = S,
+      A_list = local$A_list,
+      graph_laplacian = score_graph_laplacian,
+      graph_lambda = score_graph_lambda,
+      ridge = ridge
+    )
+  }
+  X0 <- .lmfa_update_scores(
+    Y = Y,
+    B = B,
+    X_list = X_list,
+    V_list = V_list,
+    row_index = row_index,
+    alpha_y = alpha_y,
+    alpha_blocks = alpha_blocks,
+    ridge = ridge
+  )
+  .muscal_matrix_cg(
+    rhs = local$rhs,
+    apply_A = apply_A,
+    X0 = X0,
+    tol = 1e-8,
+    max_iter = max(50L, 5L * K)
+  )
 }
 
 .gamfa_score_gradient <- function(S,
@@ -1945,7 +1965,7 @@ predict.coupled_graph_anchored_mfa <- function(object,
       A_i <- A_i + a_k * cnt * VtV_list[[k]]
       b_i <- b_i + a_k * sums_by_i[[k]][i, ]
     }
-    A_list[[i]] <- Matrix::Matrix(A_i, sparse = FALSE)
+    A_list[[i]] <- A_i
     rhs[i, ] <- b_i
   }
 
@@ -2048,7 +2068,7 @@ predict.coupled_graph_anchored_mfa <- function(object,
 
     A_i <- alpha_y * BtB + coupling_lambda * coupling_count * Ik
     b_i <- alpha_y * YB[i, ] + coupling_lambda * coupling_sum
-    A_list[[i]] <- Matrix::Matrix(A_i, sparse = FALSE)
+    A_list[[i]] <- A_i
     rhs[i, ] <- b_i
   }
 
@@ -2100,12 +2120,31 @@ predict.coupled_graph_anchored_mfa <- function(object,
     coupling_lambda = coupling_lambda
   )
 
-  A <- Matrix::bdiag(local$A_list) +
-    score_graph_lambda * Matrix::kronecker(score_graph_laplacian, Matrix::Diagonal(K)) +
-    ridge * Matrix::Diagonal(N * K)
-  rhs <- as.vector(t(local$rhs))
-  sol <- Matrix::solve(A, rhs)
-  t(matrix(as.numeric(sol), nrow = K, ncol = N))
+  apply_A <- function(S) {
+    .muscal_apply_row_operator(
+      S = S,
+      A_list = local$A_list,
+      graph_laplacian = score_graph_laplacian,
+      graph_lambda = score_graph_lambda,
+      ridge = ridge
+    )
+  }
+  X0 <- .cgamfa_update_scores(
+    Y = Y,
+    B = B,
+    Z_list = Z_list,
+    row_index = row_index,
+    alpha_y = alpha_y,
+    coupling_lambda = coupling_lambda,
+    ridge = ridge
+  )
+  .muscal_matrix_cg(
+    rhs = local$rhs,
+    apply_A = apply_A,
+    X0 = X0,
+    tol = 1e-8,
+    max_iter = max(50L, 5L * K)
+  )
 }
 
 .cgamfa_score_gradient <- function(S,
