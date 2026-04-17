@@ -1944,14 +1944,11 @@ predict.coupled_graph_anchored_mfa <- function(object,
   YB <- Y %*% B
   VtV_list <- lapply(V_list, crossprod)
   XV_list <- lapply(seq_along(X_list), function(k) X_list[[k]] %*% V_list[[k]])
-  sums_by_i <- lapply(seq_along(X_list), function(k) {
-    idx <- row_index[[k]]
-    rs <- rowsum(XV_list[[k]], idx, reorder = FALSE)
-    out <- matrix(0, nrow = N, ncol = K)
-    out[as.integer(rownames(rs)), ] <- rs
-    out
+  agg_by_i <- lapply(seq_along(X_list), function(k) {
+    .muscal_rowsum_counts(XV_list[[k]], row_index[[k]], N)
   })
-  counts_by_i <- lapply(seq_along(X_list), function(k) tabulate(row_index[[k]], nbins = N))
+  sums_by_i <- lapply(agg_by_i, `[[`, "sums")
+  counts_by_i <- lapply(agg_by_i, `[[`, "counts")
 
   A_list <- vector("list", N)
   rhs <- matrix(0, nrow = N, ncol = K)
@@ -2045,13 +2042,11 @@ predict.coupled_graph_anchored_mfa <- function(object,
   K <- ncol(B)
   BtB <- crossprod(B)
   YB <- Y %*% B
-  counts_by_i <- lapply(seq_along(Z_list), function(k) tabulate(row_index[[k]], nbins = N))
-  sums_by_i <- lapply(seq_along(Z_list), function(k) {
-    rs <- rowsum(Z_list[[k]], row_index[[k]], reorder = FALSE)
-    out <- matrix(0, nrow = N, ncol = K)
-    out[as.integer(rownames(rs)), ] <- rs
-    out
+  agg_by_i <- lapply(seq_along(Z_list), function(k) {
+    .muscal_rowsum_counts(Z_list[[k]], row_index[[k]], N)
   })
+  counts_by_i <- lapply(agg_by_i, `[[`, "counts")
+  sums_by_i <- lapply(agg_by_i, `[[`, "sums")
 
   A_list <- vector("list", N)
   rhs <- matrix(0, nrow = N, ncol = K)

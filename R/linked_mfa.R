@@ -597,11 +597,27 @@ linked_mfa <- function(Y,
 }
 
 .muscal_apply_row_system <- function(S, A_list) {
+  if (exists("muscal_apply_row_system_cpp", mode = "function")) {
+    return(muscal_apply_row_system_cpp(A_list, S))
+  }
   out <- matrix(0, nrow = nrow(S), ncol = ncol(S))
   for (i in seq_len(nrow(S))) {
     out[i, ] <- as.numeric(A_list[[i]] %*% S[i, ])
   }
   out
+}
+
+.muscal_rowsum_counts <- function(X, idx, N) {
+  if (exists("muscal_rowsum_counts_cpp", mode = "function")) {
+    return(muscal_rowsum_counts_cpp(X, as.integer(idx), as.integer(N)))
+  }
+  rs <- rowsum(X, idx, reorder = FALSE)
+  out <- matrix(0, nrow = N, ncol = ncol(X))
+  out[as.integer(rownames(rs)), ] <- rs
+  list(
+    sums = out,
+    counts = tabulate(idx, nbins = N)
+  )
 }
 
 .muscal_apply_row_operator <- function(S,
@@ -1046,17 +1062,11 @@ linked_mfa <- function(Y,
   # Precompute per-block pieces for S update.
   VtV_list <- lapply(V_list, crossprod)           # each K x K
   XV_list <- lapply(seq_along(X_list), function(k) X_list[[k]] %*% V_list[[k]]) # n_k x K
-  sums_by_i <- lapply(seq_along(X_list), function(k) {
-    idx <- row_index[[k]]
-    # rowsum returns groups present; build full N x K with zeros.
-    rs <- rowsum(XV_list[[k]], idx, reorder = FALSE)
-    out <- matrix(0, nrow = N, ncol = K)
-    out[as.integer(rownames(rs)), ] <- rs
-    out
+  agg_by_i <- lapply(seq_along(X_list), function(k) {
+    .muscal_rowsum_counts(XV_list[[k]], row_index[[k]], N)
   })
-  counts_by_i <- lapply(seq_along(X_list), function(k) {
-    tabulate(row_index[[k]], nbins = N)
-  })
+  sums_by_i <- lapply(agg_by_i, `[[`, "sums")
+  counts_by_i <- lapply(agg_by_i, `[[`, "counts")
 
   S_new <- matrix(0, nrow = N, ncol = K)
   I_K <- diag(K)
@@ -1090,16 +1100,11 @@ linked_mfa <- function(Y,
   YB <- Y %*% B
   VtV_list <- lapply(V_list, crossprod)
   XV_list <- lapply(seq_along(X_list), function(k) X_list[[k]] %*% V_list[[k]])
-  sums_by_i <- lapply(seq_along(X_list), function(k) {
-    idx <- row_index[[k]]
-    rs <- rowsum(XV_list[[k]], idx, reorder = FALSE)
-    out <- matrix(0, nrow = N, ncol = K)
-    out[as.integer(rownames(rs)), ] <- rs
-    out
+  agg_by_i <- lapply(seq_along(X_list), function(k) {
+    .muscal_rowsum_counts(XV_list[[k]], row_index[[k]], N)
   })
-  counts_by_i <- lapply(seq_along(X_list), function(k) {
-    tabulate(row_index[[k]], nbins = N)
-  })
+  sums_by_i <- lapply(agg_by_i, `[[`, "sums")
+  counts_by_i <- lapply(agg_by_i, `[[`, "counts")
 
   A_list <- vector("list", N)
   rhs <- matrix(0, nrow = N, ncol = K)

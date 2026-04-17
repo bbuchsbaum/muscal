@@ -14,6 +14,7 @@ License: MIT + file LICENSE
 Encoding: UTF-8
 Imports:
     Matrix,
+    Rcpp,
     stats,
     graphics,
     grDevices,
@@ -36,6 +37,9 @@ Imports:
     RANN,
     tibble,
     ggplot2 (>= 3.4.0)
+LinkingTo:
+    Rcpp,
+    RcppEigen
 Suggests:
     testthat (>= 3.0.0),
     knitr,
