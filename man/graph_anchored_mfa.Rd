@@ -13,9 +13,16 @@ graph_anchored_mfa(
   ncomp = 2,
   normalization = c("MFA", "None", "custom"),
   alpha = NULL,
+  score_constraint = c("none", "orthonormal"),
   feature_graph = NULL,
   graph_lambda = 0,
   graph_form = c("laplacian", "adjacency", "normalized_laplacian"),
+  score_graph = NULL,
+  score_graph_lambda = 0,
+  score_graph_form = c("laplacian", "adjacency", "normalized_laplacian"),
+  score_graph_k = 10,
+  score_graph_weight_mode = c("heat", "binary"),
+  score_graph_sigma = NULL,
   max_iter = 50,
   tol = 1e-06,
   ridge = 1e-08,
@@ -51,12 +58,36 @@ first singular values; `"None"` uses uniform weights; `"custom"` uses
 `normalization = "custom"`, it must have length `1 + length(flattened_X)`,
 with the first weight corresponding to `Y`.}
 
+\item{score_constraint}{Identification strategy for the anchored score
+matrix. `"none"` uses the historical unconstrained update followed by QR
+normalization inside each ALS iteration. `"orthonormal"` enforces
+`S^\top S = I` with a constrained majorization/polar update.}
+
 \item{feature_graph}{Feature-graph specification; see Details.}
 
 \item{graph_lambda}{Non-negative scalar controlling graph-penalty strength.}
 
 \item{graph_form}{Interpretation of `feature_graph` when it is matrix-like, or
 the Laplacian construction used for edge-based inputs.}
+
+\item{score_graph}{Optional score-graph specification; see Details.}
+
+\item{score_graph_lambda}{Non-negative scalar controlling row/score-graph
+smoothing strength.}
+
+\item{score_graph_form}{Interpretation of `score_graph` when it is
+matrix-like, or the Laplacian construction used for edge-based inputs.}
+
+\item{score_graph_k}{Integer number of neighbors used when
+`score_graph = "knn"`.}
+
+\item{score_graph_weight_mode}{Weighting applied when `score_graph = "knn"`.
+`"heat"` uses a Gaussian similarity kernel on neighbor distances;
+`"binary"` assigns weight 1 to every retained neighbor edge.}
+
+\item{score_graph_sigma}{Optional positive bandwidth used when
+`score_graph = "knn"` and `score_graph_weight_mode = "heat"`. If `NULL`, a
+robust value is estimated from the k-th neighbor distances.}
 
 \item{max_iter}{Maximum ALS iterations.}
 
@@ -74,15 +105,17 @@ An object inheriting from `multivarious::multiblock_biprojector` with
   additional classes `graph_anchored_mfa`, `anchored_mfa`, and `linked_mfa`.
   The object contains anchored scores in `s`, auxiliary loadings in `V_list`,
   anchor loadings in `B`, block metadata in `block_info`, and graph metadata
-  in `graph_laplacian` and `graph_lambda`.
+  in `graph_laplacian`, `graph_lambda`, `score_graph_laplacian`, and
+  `score_graph_lambda`.
 }
 \description{
 `graph_anchored_mfa()` extends [anchored_mfa()] to settings where auxiliary
 blocks do not share aligned columns and borrowing across blocks is induced by
-a sparse feature graph. Rows of each auxiliary block are linked to a common
-anchor matrix `Y` through `row_index`, while a graph Laplacian penalty on the
-concatenated auxiliary loadings encourages similar features across blocks to
-have similar latent representations.
+sparse graphs over both auxiliary features and anchor rows. Rows of each
+auxiliary block are linked to a common anchor matrix `Y` through
+`row_index`, while graph Laplacian penalties can encourage both similar
+auxiliary features across blocks and similar anchor rows in `Y` to share
+latent structure.
 
 Missing domains are handled by omission: each observed subject-domain pair is
 treated as one auxiliary block. This supports subjects with only `D1`,
@@ -97,12 +130,23 @@ where `S` is `N × ncomp`, `B` is `q × ncomp`, and each `V_k` is
 `p_k × ncomp`.
 
 Let `V` denote the row-wise concatenation of the auxiliary loading matrices
-`V_k`, and let `L` be a feature-graph Laplacian over all auxiliary features.
-The estimator minimizes the anchored-MFA reconstruction loss plus the graph
-smoothness term
-\deqn{\lambda_G \mathrm{tr}(V^\top L V).}
+`V_k`, let `L_G` be a feature-graph Laplacian over all auxiliary features,
+and let `L_S` be a score-graph Laplacian over anchor rows of `Y`. The
+estimator minimizes the anchored-MFA reconstruction loss plus the graph
+smoothness terms
+\deqn{\lambda_G \mathrm{tr}(V^\top L_G V) + \lambda_S \mathrm{tr}(S^\top L_S S)}
+and ridge penalties used to identify and stabilize the fitted factors,
+\deqn{\mathrm{ridge} \left(\|S\|_F^2 + \|B\|_F^2 + \sum_k \|V_k\|_F^2\right).}
+The anchored score matrix can be fit either with the historical
+unconstrained/QR update (`score_constraint = "none"`) or with an explicit
+orthonormal constraint (`score_constraint = "orthonormal"`).
+The score-graph term is equivalent to
+\deqn{\frac{\lambda_S}{2} \sum_{i,j} w_{ij} \|S_{i\cdot} - S_{j\cdot}\|_2^2}
+for adjacency weights `w_{ij}`, so nearby rows in `Y` are encouraged to have
+nearby latent scores.
 
-When `graph_lambda = 0` (or `feature_graph = NULL`), the method reduces to
+When both `graph_lambda = 0` (or `feature_graph = NULL`) and
+`score_graph_lambda = 0` (or `score_graph = NULL`), the method reduces to
 [anchored_mfa()] up to numerical tolerance.
 
 ## Input organization
@@ -120,4 +164,55 @@ subject-domain pair. The resulting mapping is recorded in `block_info`.
 * a data frame with columns `block1`, `feature1`, `block2`, `feature2` and
   optional `weight`, or
 * a square sparse/dense matrix interpreted according to `graph_form`.
+
+## Score graph
+`score_graph` may be:
+* `NULL` (no score penalty),
+* `"knn"` to construct a symmetric k-nearest-neighbor graph on preprocessed
+  rows of `Y`,
+* a data frame with columns `row1`, `row2`, and optional `weight`, or
+* a square sparse/dense matrix interpreted according to `score_graph_form`.
+
+For more control over row-graph construction, an external graph builder such
+as the `adjoin` package can be used to create a weighted kNN adjacency or
+Laplacian from `Y`, then supplied here as `score_graph`.
+}
+\examples{
+set.seed(1)
+N <- 30
+Y <- matrix(rnorm(N * 3), N, 3)
+X1 <- matrix(rnorm(15 * 5), 15, 5)
+X2 <- matrix(rnorm(15 * 4), 15, 4)
+idx <- list(X1 = sample.int(N, 15), X2 = sample.int(N, 15))
+
+fit <- graph_anchored_mfa(
+  Y = Y,
+  X = list(X1 = X1, X2 = X2),
+  row_index = idx,
+  ncomp = 2,
+  score_graph = "knn",
+  score_graph_k = 5,
+  score_graph_weight_mode = "heat",
+  score_graph_lambda = 1
+)
+
+if (requireNamespace("adjoin", quietly = TRUE)) {
+  A <- adjoin::graph_weights(
+    Y,
+    neighbor_mode = "knn",
+    k = 5,
+    weight_mode = "heat"
+  )
+
+  fit_adjoin <- graph_anchored_mfa(
+    Y = Y,
+    X = list(X1 = X1, X2 = X2),
+    row_index = idx,
+    ncomp = 2,
+    score_graph = A,
+    score_graph_form = "adjacency",
+    score_graph_lambda = 1
+  )
+}
+
 }

@@ -133,6 +133,77 @@ library(muscal)
   )
 }
 
+.graph_anchor_score_graph_fixture <- function() {
+  set.seed(1203)
+
+  n_pairs <- 12
+  k <- 2
+  S_pair <- scale(matrix(rnorm(n_pairs * k), n_pairs, k), center = TRUE, scale = FALSE)
+  S_true <- S_pair[rep(seq_len(n_pairs), each = 2), , drop = FALSE]
+  N <- nrow(S_true)
+
+  B <- matrix(
+    c(1.1, -0.3,
+      0.7, 0.8,
+      -0.5, 1.0),
+    nrow = 3,
+    byrow = TRUE
+  )
+  V1 <- matrix(
+    c(0.9, 0.1,
+      -0.6, 0.8,
+      0.5, -0.7,
+      0.4, 0.6),
+    nrow = 4,
+    byrow = TRUE
+  )
+  V2 <- matrix(
+    c(0.8, -0.2,
+      -0.4, 0.9,
+      0.7, -0.5,
+      -0.3, 0.8),
+    nrow = 4,
+    byrow = TRUE
+  )
+
+  Y <- S_true %*% t(B) + matrix(rnorm(N * 3, sd = 0.60), N, 3)
+  X1_full <- S_true %*% t(V1) + matrix(rnorm(N * 4, sd = 0.03), N, 4)
+  X2_full <- S_true %*% t(V2) + matrix(rnorm(N * 4, sd = 0.03), N, 4)
+
+  idx1 <- seq(1, N, by = 2)
+  idx2 <- seq(2, N, by = 2)
+  X1 <- X1_full[idx1, , drop = FALSE]
+  X2 <- X2_full[idx2, , drop = FALSE]
+  colnames(X1) <- paste0("x1_", seq_len(ncol(X1)))
+  colnames(X2) <- paste0("x2_", seq_len(ncol(X2)))
+
+  edge_graph <- data.frame(
+    row1 = idx1,
+    row2 = idx2,
+    weight = 1,
+    stringsAsFactors = FALSE
+  )
+
+  adj <- Matrix::sparseMatrix(
+    i = c(idx1, idx2),
+    j = c(idx2, idx1),
+    x = 1,
+    dims = c(N, N)
+  )
+
+  list(
+    Y = Y,
+    X = list(X1 = X1, X2 = X2),
+    row_index = list(X1 = idx1, X2 = idx2),
+    X1_full = X1_full,
+    S_true = S_true,
+    pair_index = split(seq_len(N), rep(seq_len(n_pairs), each = 2)),
+    score_graph_edges = edge_graph,
+    score_graph_adj = adj,
+    ncomp = k
+  )
+}
+
 test_that("graph_anchored_mfa exactly recovers a noiseless low-rank oracle with a consistent graph", {
   sim <- .graph_anchor_exact_fixture()
 
@@ -216,6 +287,252 @@ test_that("graph_anchored_mfa borrows through the correct graph under sparse noi
   expect_lt(mse_correct, 0.2 * mse_wrong)
   expect_lt(recon_correct, recon_none)
   expect_lt(linked_gap_correct, 1e-3 * linked_gap_none)
+})
+
+test_that("score-graph penalty is off-switch equivalent to the baseline graph_anchored_mfa fit", {
+  sim <- .graph_anchor_score_graph_fixture()
+
+  fit_base <- graph_anchored_mfa(
+    Y = sim$Y,
+    X = sim$X,
+    row_index = sim$row_index,
+    ncomp = sim$ncomp,
+    preproc = multivarious::pass(),
+    normalization = "None",
+    graph_lambda = 0,
+    score_graph = sim$score_graph_edges,
+    score_graph_lambda = 0,
+    max_iter = 80,
+    tol = 1e-10,
+    ridge = 1e-10
+  )
+
+  fit_plain <- graph_anchored_mfa(
+    Y = sim$Y,
+    X = sim$X,
+    row_index = sim$row_index,
+    ncomp = sim$ncomp,
+    preproc = multivarious::pass(),
+    normalization = "None",
+    graph_lambda = 0,
+    max_iter = 80,
+    tol = 1e-10,
+    ridge = 1e-10
+  )
+
+  expect_lt(.score_subspace_rel(multivarious::scores(fit_base), multivarious::scores(fit_plain)), 1e-10)
+})
+
+test_that("score graph pulls similar anchor rows together and improves score recovery under split coverage", {
+  sim <- .graph_anchor_score_graph_fixture()
+
+  fit_none <- graph_anchored_mfa(
+    Y = sim$Y,
+    X = sim$X,
+    row_index = sim$row_index,
+    ncomp = sim$ncomp,
+    preproc = multivarious::pass(),
+    normalization = "None",
+    graph_lambda = 0,
+    max_iter = 100,
+    tol = 1e-8,
+    ridge = 1e-8
+  )
+
+  fit_score <- graph_anchored_mfa(
+    Y = sim$Y,
+    X = sim$X,
+    row_index = sim$row_index,
+    ncomp = sim$ncomp,
+    preproc = multivarious::pass(),
+    normalization = "None",
+    graph_lambda = 0,
+    score_graph = sim$score_graph_edges,
+    score_graph_lambda = 8,
+    max_iter = 100,
+    tol = 1e-8,
+    ridge = 1e-8
+  )
+
+  pair_gap <- function(S) {
+    mean(vapply(sim$pair_index, function(idx) sum((S[idx[1], ] - S[idx[2], ])^2), numeric(1)))
+  }
+
+  gap_none <- pair_gap(multivarious::scores(fit_none))
+  gap_score <- pair_gap(multivarious::scores(fit_score))
+  rel_none <- .score_subspace_rel(multivarious::scores(fit_none), sim$S_true)
+  rel_score <- .score_subspace_rel(multivarious::scores(fit_score), sim$S_true)
+
+  expect_lt(gap_score, 0.7 * gap_none)
+  expect_lt(rel_score, rel_none)
+})
+
+test_that("larger sparse score-graph weights induce stronger score shrinkage", {
+  sim <- .graph_anchor_score_graph_fixture()
+
+  weighted_adj <- Matrix::sparseMatrix(
+    i = c(1, 2, 3, 4),
+    j = c(2, 1, 4, 3),
+    x = c(10, 10, 1, 1),
+    dims = c(nrow(sim$Y), nrow(sim$Y))
+  )
+
+  fit_none <- graph_anchored_mfa(
+    Y = sim$Y,
+    X = sim$X,
+    row_index = sim$row_index,
+    ncomp = sim$ncomp,
+    preproc = multivarious::pass(),
+    normalization = "None",
+    score_graph = weighted_adj,
+    score_graph_form = "adjacency",
+    score_graph_lambda = 0,
+    max_iter = 100,
+    tol = 1e-8,
+    ridge = 1e-8
+  )
+
+  fit_weighted <- graph_anchored_mfa(
+    Y = sim$Y,
+    X = sim$X,
+    row_index = sim$row_index,
+    ncomp = sim$ncomp,
+    preproc = multivarious::pass(),
+    normalization = "None",
+    score_graph = weighted_adj,
+    score_graph_form = "adjacency",
+    score_graph_lambda = 10,
+    max_iter = 100,
+    tol = 1e-8,
+    ridge = 1e-8
+  )
+
+  gap <- function(S, i, j) sum((S[i, ] - S[j, ])^2)
+
+  high_ratio <- gap(fit_weighted$s, 1, 2) / gap(fit_none$s, 1, 2)
+  low_ratio <- gap(fit_weighted$s, 3, 4) / gap(fit_none$s, 3, 4)
+
+  expect_lt(high_ratio, low_ratio)
+  expect_lt(high_ratio, 0.1)
+})
+
+test_that("score-graph representations are equivalent across edge and adjacency inputs", {
+  sim <- .graph_anchor_score_graph_fixture()
+
+  fit_edges <- graph_anchored_mfa(
+    Y = sim$Y,
+    X = sim$X,
+    row_index = sim$row_index,
+    ncomp = sim$ncomp,
+    preproc = multivarious::pass(),
+    normalization = "None",
+    score_graph = sim$score_graph_edges,
+    score_graph_lambda = 8,
+    max_iter = 100,
+    tol = 1e-8,
+    ridge = 1e-8
+  )
+
+  fit_adj <- graph_anchored_mfa(
+    Y = sim$Y,
+    X = sim$X,
+    row_index = sim$row_index,
+    ncomp = sim$ncomp,
+    preproc = multivarious::pass(),
+    normalization = "None",
+    score_graph = sim$score_graph_adj,
+    score_graph_form = "adjacency",
+    score_graph_lambda = 8,
+    max_iter = 100,
+    tol = 1e-8,
+    ridge = 1e-8
+  )
+
+  expect_lt(.score_subspace_rel(multivarious::scores(fit_edges), multivarious::scores(fit_adj)), 1e-10)
+})
+
+test_that("score_graph='knn' builds a weighted sparse similarity graph and returns finite outputs", {
+  sim <- .graph_anchor_score_graph_fixture()
+
+  fit_knn <- graph_anchored_mfa(
+    Y = sim$Y,
+    X = sim$X,
+    row_index = sim$row_index,
+    ncomp = sim$ncomp,
+    preproc = multivarious::pass(),
+    normalization = "None",
+    score_graph = "knn",
+    score_graph_k = 1,
+    score_graph_weight_mode = "heat",
+    score_graph_sigma = 0.75,
+    score_graph_lambda = 8,
+    max_iter = 100,
+    tol = 1e-8,
+    ridge = 1e-8
+  )
+
+  pair_gap <- mean(vapply(sim$pair_index, function(idx) sum((fit_knn$s[idx[1], ] - fit_knn$s[idx[2], ])^2), numeric(1)))
+
+  expect_true(all(is.finite(multivarious::scores(fit_knn))))
+  expect_true(all(is.finite(fit_knn$B)))
+  expect_true(all(is.finite(fit_knn$score_graph_laplacian)))
+  expect_s4_class(fit_knn$score_graph_adjacency, "dgCMatrix")
+  expect_gt(length(unique(round(fit_knn$score_graph_adjacency@x, 8))), 1)
+  expect_lt(pair_gap, 0.1)
+})
+
+test_that("built-in weighted kNN score graph matches adjoin heat-kNN adjacency", {
+  skip_if_not_installed("adjoin")
+  sim <- .graph_anchor_score_graph_fixture()
+  sigma <- 0.75
+
+  fit_builtin <- graph_anchored_mfa(
+    Y = sim$Y,
+    X = sim$X,
+    row_index = sim$row_index,
+    ncomp = sim$ncomp,
+    preproc = multivarious::pass(),
+    normalization = "None",
+    score_graph = "knn",
+    score_graph_k = 3,
+    score_graph_weight_mode = "heat",
+    score_graph_sigma = sigma,
+    score_graph_lambda = 8,
+    max_iter = 100,
+    tol = 1e-8,
+    ridge = 1e-8
+  )
+
+  ng <- adjoin::graph_weights(
+    sim$Y,
+    neighbor_mode = "knn",
+    k = 3,
+    weight_mode = "heat",
+    sigma = sigma
+  )
+  A_adjoin <- adjoin::adjacency(ng)
+
+  fit_adjoin <- graph_anchored_mfa(
+    Y = sim$Y,
+    X = sim$X,
+    row_index = sim$row_index,
+    ncomp = sim$ncomp,
+    preproc = multivarious::pass(),
+    normalization = "None",
+    score_graph = A_adjoin,
+    score_graph_form = "adjacency",
+    score_graph_lambda = 8,
+    max_iter = 100,
+    tol = 1e-8,
+    ridge = 1e-8
+  )
+
+  A_builtin <- fit_builtin$score_graph_adjacency
+  adj_rel <- Matrix::norm(A_builtin - A_adjoin, "F") / (Matrix::norm(A_adjoin, "F") + 1e-12)
+
+  expect_s4_class(A_builtin, "dgCMatrix")
+  expect_lt(adj_rel, 1e-12)
+  expect_lt(.score_subspace_rel(multivarious::scores(fit_builtin), multivarious::scores(fit_adjoin)), 1e-12)
 })
 
 test_that("graph_anchored_mfa reduces to anchored_mfa when graph penalty is off", {
@@ -492,6 +809,76 @@ test_that("graph_anchored_mfa objective trace is non-increasing", {
   expect_true(all(diffs <= 1e-8))
 })
 
+test_that("graph_anchored_mfa supports orthonormal score constraint", {
+  set.seed(15)
+  Y <- matrix(rnorm(40 * 4), 40, 4)
+  X1 <- matrix(rnorm(18 * 6), 18, 6)
+  X2 <- matrix(rnorm(16 * 5), 16, 5)
+  idx <- list(X1 = sample.int(nrow(Y), nrow(X1), replace = TRUE),
+              X2 = sample.int(nrow(Y), nrow(X2), replace = TRUE))
+
+  fit <- graph_anchored_mfa(
+    Y = Y,
+    X = list(X1 = X1, X2 = X2),
+    row_index = idx,
+    ncomp = 2,
+    score_constraint = "orthonormal",
+    score_graph = "knn",
+    score_graph_lambda = 0.25,
+    max_iter = 15
+  )
+
+  expect_equal(crossprod(fit$s), diag(2), tolerance = 1e-5)
+  expect_true(all(is.finite(fit$objective_trace)))
+})
+
+test_that("graph_anchored_mfa objective trace matches the fitted penalized objective", {
+  sim <- .graph_anchor_score_graph_fixture()
+  score_graph <- sim$score_graph_edges
+  feature_graph <- data.frame(
+    block1 = "X1",
+    feature1 = colnames(sim$X$X1),
+    block2 = "X2",
+    feature2 = colnames(sim$X$X2),
+    weight = 1,
+    stringsAsFactors = FALSE
+  )
+
+  fit <- graph_anchored_mfa(
+    Y = sim$Y,
+    X = sim$X,
+    row_index = sim$row_index,
+    ncomp = sim$ncomp,
+    preproc = multivarious::pass(),
+    normalization = "None",
+    feature_graph = feature_graph,
+    graph_lambda = 3,
+    score_graph = score_graph,
+    score_graph_lambda = 5,
+    max_iter = 80,
+    tol = 1e-9,
+    ridge = 1e-8
+  )
+
+  obj_fit <- muscal:::.gamfa_objective(
+    Y = sim$Y,
+    S = multivarious::scores(fit),
+    B = fit$B,
+    X_list = sim$X,
+    V_list = fit$V_list,
+    row_index = fit$row_index,
+    alpha_y = fit$alpha_blocks[[1]],
+    alpha_blocks = unname(fit$alpha_blocks[-1]),
+    graph_laplacian = fit$graph_laplacian,
+    graph_lambda = fit$graph_lambda,
+    score_graph_laplacian = fit$score_graph_laplacian,
+    score_graph_lambda = fit$score_graph_lambda,
+    ridge = fit$ridge
+  )
+
+  expect_equal(unname(tail(fit$objective_trace, 1)), unname(obj_fit), tolerance = 1e-8)
+})
+
 test_that("graph_anchored_mfa returns finite outputs for p > n and duplicated-column blocks", {
   set.seed(18)
   N <- 30
@@ -523,6 +910,86 @@ test_that("graph_anchored_mfa returns finite outputs for p > n and duplicated-co
   new_rows <- X1[1:3, , drop = FALSE]
   expect_true(all(is.finite(project(fit, new_rows, block = "X1"))))
   expect_true(all(is.finite(predict(fit, new_rows, block = "X1"))))
+})
+
+test_that("graph_anchored_mfa matches nested row_index by names, not list position", {
+  set.seed(1801)
+  N <- 36
+  Y <- matrix(rnorm(N * 3), N, 3)
+
+  X_nested <- list(
+    S1 = list(
+      D1 = matrix(rnorm(12 * 4), 12, 4),
+      D2 = matrix(rnorm(10 * 3), 10, 3)
+    ),
+    S2 = list(
+      D1 = matrix(rnorm(11 * 4), 11, 4)
+    )
+  )
+  row_nested <- list(
+    S1 = list(
+      D1 = sort(sample.int(N, 12)),
+      D2 = sort(sample.int(N, 10))
+    ),
+    S2 = list(
+      D1 = sort(sample.int(N, 11))
+    )
+  )
+
+  fit_ref <- graph_anchored_mfa(
+    Y = Y,
+    X = X_nested,
+    row_index = row_nested,
+    ncomp = 2,
+    preproc = multivarious::pass(),
+    normalization = "None",
+    graph_lambda = 0,
+    max_iter = 60,
+    tol = 1e-10
+  )
+
+  row_perm <- row_nested[c("S2", "S1")]
+  row_perm$S1 <- row_perm$S1[c("D2", "D1")]
+
+  fit_perm <- graph_anchored_mfa(
+    Y = Y,
+    X = X_nested,
+    row_index = row_perm,
+    ncomp = 2,
+    preproc = multivarious::pass(),
+    normalization = "None",
+    graph_lambda = 0,
+    max_iter = 60,
+    tol = 1e-10
+  )
+
+  expect_lt(.score_subspace_rel(multivarious::scores(fit_ref), multivarious::scores(fit_perm)), 1e-10)
+  expect_equal(names(fit_perm$row_index), names(fit_ref$row_index))
+})
+
+test_that("feature_graph='colnames' links across blocks but not within-block duplicates", {
+  set.seed(1802)
+  Y <- matrix(rnorm(24 * 3), 24, 3)
+  X1 <- matrix(rnorm(24 * 3), 24, 3)
+  X2 <- matrix(rnorm(24 * 2), 24, 2)
+  colnames(X1) <- c("roi_a", "roi_a", "roi_b")
+  colnames(X2) <- c("roi_a", "roi_c")
+
+  fit <- graph_anchored_mfa(
+    Y = Y,
+    X = list(X1 = X1, X2 = X2),
+    row_index = list(X1 = seq_len(nrow(Y)), X2 = seq_len(nrow(Y))),
+    ncomp = 2,
+    preproc = multivarious::pass(),
+    normalization = "None",
+    feature_graph = "colnames",
+    graph_lambda = 1
+  )
+
+  A <- fit$graph_adjacency
+  expect_equal(as.numeric(A[1, 2]), 0)
+  expect_gt(as.numeric(A[1, 4]), 0)
+  expect_gt(as.numeric(A[2, 4]), 0)
 })
 
 test_that("graph_anchored_mfa validates malformed feature-graph inputs", {
@@ -561,6 +1028,54 @@ test_that("graph_anchored_mfa validates malformed feature-graph inputs", {
       ncomp = 2,
       feature_graph = bad_edges,
       graph_lambda = 1
+    )
+  )
+
+  bad_laplacian <- Matrix::Matrix(matrix(c(1, -2, -2, 1), 2, 2), sparse = TRUE)
+  expect_error(
+    graph_anchored_mfa(
+      Y = Y,
+      X = list(X1 = X1, X2 = X2),
+      row_index = list(X1 = seq_len(N), X2 = seq_len(N)),
+      ncomp = 2,
+      feature_graph = as.matrix(Matrix::bdiag(bad_laplacian, Matrix::Diagonal(ncol(X1) + ncol(X2) - 2))),
+      graph_form = "laplacian",
+      graph_lambda = 1
+    )
+  )
+})
+
+test_that("graph_anchored_mfa validates malformed score-graph inputs", {
+  set.seed(119)
+  N <- 20
+  Y <- matrix(rnorm(N * 3), N, 3)
+  X1 <- matrix(rnorm(10 * 4), 10, 4)
+  X2 <- matrix(rnorm(10 * 5), 10, 5)
+  idx <- list(X1 = seq_len(10), X2 = 11:20)
+
+  bad_graph <- Matrix::Diagonal(3)
+  bad_edges <- data.frame(row1 = 1, row2 = 2, weight = -1)
+
+  expect_error(
+    graph_anchored_mfa(
+      Y = Y,
+      X = list(X1 = X1, X2 = X2),
+      row_index = idx,
+      ncomp = 2,
+      score_graph = bad_graph,
+      score_graph_form = "adjacency",
+      score_graph_lambda = 1
+    )
+  )
+
+  expect_error(
+    graph_anchored_mfa(
+      Y = Y,
+      X = list(X1 = X1, X2 = X2),
+      row_index = idx,
+      ncomp = 2,
+      score_graph = bad_edges,
+      score_graph_lambda = 1
     )
   )
 })

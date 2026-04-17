@@ -13,6 +13,7 @@ anchored_mfa(
   ncomp = 2,
   normalization = c("MFA", "None", "custom"),
   alpha = NULL,
+  score_constraint = c("none", "orthonormal"),
   feature_groups = NULL,
   feature_lambda = 0,
   max_iter = 50,
@@ -30,6 +31,7 @@ linked_mfa(
   ncomp = 2,
   normalization = c("MFA", "None", "custom"),
   alpha = NULL,
+  score_constraint = c("none", "orthonormal"),
   feature_groups = NULL,
   feature_lambda = 0,
   max_iter = 50,
@@ -58,6 +60,12 @@ singular value per block; `"None"` uses uniform weights; `"custom"` uses `alpha`
 
 \item{alpha}{Optional numeric vector of per-block weights (length `1 + length(X)`),
 used when `normalization = "custom"`. The first weight corresponds to `Y`.}
+
+\item{score_constraint}{Identification strategy for the shared score matrix.
+`"none"` uses the historical unconstrained update followed by QR
+normalization inside each ALS iteration. `"orthonormal"` treats
+`S^\top S = I` as part of the model and updates `S` with a constrained
+majorization/polar step.}
 
 \item{feature_groups}{Feature prior specification. One of:
 * `NULL` (no feature prior),
@@ -100,6 +108,9 @@ The fitted model has the form:
 \deqn{Y \approx S B^\top}
 \deqn{X_k \approx S[\mathrm{idx}_k,] V_k^\top}
 where `S` is `N × ncomp`, `B` is `q × ncomp`, and each `V_k` is `p_k × ncomp`.
+The score matrix can be identified either with the historical
+unconstrained/QR update (`score_constraint = "none"`) or with an explicit
+orthonormal constraint (`score_constraint = "orthonormal"`).
 
 ## Feature similarity prior (v1)
 When `feature_lambda > 0` and `feature_groups` is supplied, Anchored MFA applies

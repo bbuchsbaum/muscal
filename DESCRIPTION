@@ -41,7 +41,8 @@ Suggests:
     knitr,
     rmarkdown,
     genpca,
-    future
+    future,
+    adjoin
 VignetteBuilder: knitr
 Depends:
     R (>= 3.5.0)

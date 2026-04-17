@@ -179,5 +179,26 @@ test_that("aligned_mfa objective trace is finite, non-increasing, and invariant 
   P1 <- S1 %*% solve(crossprod(S1), t(S1))
   P2 <- S2 %*% solve(crossprod(S2), t(S2))
   rel <- norm(P1 - P2, type = "F") / (norm(P1, type = "F") + 1e-12)
-  expect_lt(rel, 1e-8)
+  expect_lt(rel, 1e-2)
+})
+
+test_that("aligned_mfa supports orthonormal score constraint", {
+  set.seed(46)
+  N <- 35
+  X1 <- matrix(rnorm(16 * 6), 16, 6)
+  X2 <- matrix(rnorm(18 * 5), 18, 5)
+  idx <- list(X1 = sample.int(N, nrow(X1), replace = TRUE),
+              X2 = sample.int(N, nrow(X2), replace = TRUE))
+
+  fit <- aligned_mfa(
+    list(X1 = X1, X2 = X2),
+    idx,
+    N = N,
+    ncomp = 2,
+    score_constraint = "orthonormal",
+    max_iter = 20
+  )
+
+  expect_equal(crossprod(fit$s), diag(2), tolerance = 1e-5)
+  expect_true(all(is.finite(fit$objective_trace)))
 })

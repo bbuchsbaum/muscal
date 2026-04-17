@@ -36,6 +36,11 @@
 #'   singular value per block; `"None"` uses uniform weights; `"custom"` uses `alpha`.
 #' @param alpha Optional numeric vector of per-block weights (length `length(X)`),
 #'   used when `normalization = "custom"`.
+#' @param score_constraint Identification strategy for the shared score matrix.
+#'   `"none"` uses the historical unconstrained update followed by QR
+#'   normalization inside each ALS iteration. `"orthonormal"` treats
+#'   `S^\top S = I` as part of the model and updates `S` with a constrained
+#'   majorization/polar step.
 #' @param feature_groups Feature prior specification. One of:
 #'   * `NULL` (no feature prior),
 #'   * `"colnames"` to group features with identical column names across blocks,
@@ -73,6 +78,7 @@ aligned_mfa <- function(X,
                         ncomp = 2,
                         normalization = c("MFA", "None", "custom"),
                         alpha = NULL,
+                        score_constraint = c("none", "orthonormal"),
                         feature_groups = NULL,
                         feature_lambda = 0,
                         max_iter = 50,
@@ -83,6 +89,7 @@ aligned_mfa <- function(X,
   fit_call <- match.call(expand.dots = FALSE)
   fit_dots <- list(...)
   normalization <- match.arg(normalization)
+  score_constraint <- match.arg(score_constraint)
 
   chk::chk_list(X)
   chk::chk_true(length(X) >= 2)
@@ -109,7 +116,11 @@ aligned_mfa <- function(X,
   data_refit <- lapply(X, function(x) x)
 
   if (is.null(names(X))) names(X) <- paste0("X", seq_along(X))
-  if (is.null(names(row_index))) names(row_index) <- names(X)
+  if (is.null(names(row_index))) {
+    names(row_index) <- names(X)
+  } else {
+    row_index <- .lmfa_align_named_index_list(row_index, names(X), what = "row_index")
+  }
 
   # Validate row_index and infer N if needed
   infer_N <- is.null(N)
@@ -168,28 +179,31 @@ aligned_mfa <- function(X,
   feature_lambda_eff <- fg$feature_lambda
 
   # Determine effective K from feature dimensions (K can exceed per-block row counts with ridge)
-  min_p <- min(vapply(Xp, ncol, integer(1)))
-  K <- min(as.integer(ncomp), as.integer(N), min_p)
-  if (K < 1L) stop("ncomp must be at least 1 and <= min(N, min ncol(X)).", call. = FALSE)
+  K <- min(as.integer(ncomp), as.integer(N))
+  if (K < 1L) stop("ncomp must be at least 1 and <= N.", call. = FALSE)
 
-  # Initialization: seed S with mapped PCs from one informative block + small random jitter.
-  k0 <- which.max(vapply(Xp, function(M) min(nrow(M), ncol(M)), integer(1)))
-  kdim0 <- min(K, min(dim(Xp[[k0]])))
-  S_init <- matrix(rnorm(N * K), nrow = N, ncol = K)
-  if (kdim0 >= 1L) {
-    sv <- multivarious::svd_wrapper(Xp[[k0]], ncomp = kdim0, method = if (min(dim(Xp[[k0]])) < 3) "base" else "svds")
-    scores0 <- sv$u[, seq_len(kdim0), drop = FALSE] %*% diag(sv$sdev[seq_len(kdim0)], kdim0, kdim0)
-    idx0 <- row_index[[k0]]
-    rs <- rowsum(scores0, idx0, reorder = FALSE)
-    out <- matrix(0, nrow = N, ncol = kdim0)
-    out[as.integer(rownames(rs)), ] <- rs
-    cnt <- tabulate(idx0, nbins = N)
-    nz <- cnt > 0
-    out[nz, ] <- out[nz, , drop = FALSE] / cnt[nz]
-    S_init[, seq_len(kdim0)] <- S_init[, seq_len(kdim0), drop = FALSE] + out
+  if (identical(score_constraint, "orthonormal")) {
+    S <- .amfa_initialize_scores(Xp, row_index, alpha_blocks, N = N, K = K)
+  } else {
+    # Historical initialization: informative block seed plus QR normalization.
+    k0 <- which.max(vapply(Xp, function(M) min(nrow(M), ncol(M)), integer(1)))
+    kdim0 <- min(K, min(dim(Xp[[k0]])))
+    S_init <- matrix(rnorm(N * K), nrow = N, ncol = K)
+    if (kdim0 >= 1L) {
+      sv <- multivarious::svd_wrapper(Xp[[k0]], ncomp = kdim0, method = if (min(dim(Xp[[k0]])) < 3) "base" else "svds")
+      scores0 <- sv$u[, seq_len(kdim0), drop = FALSE] %*% diag(sv$sdev[seq_len(kdim0)], kdim0, kdim0)
+      idx0 <- row_index[[k0]]
+      rs <- rowsum(scores0, idx0, reorder = FALSE)
+      out <- matrix(0, nrow = N, ncol = kdim0)
+      out[as.integer(rownames(rs)), ] <- rs
+      cnt <- tabulate(idx0, nbins = N)
+      nz <- cnt > 0
+      out[nz, ] <- out[nz, , drop = FALSE] / cnt[nz]
+      S_init[, seq_len(kdim0)] <- S_init[, seq_len(kdim0), drop = FALSE] + out
+    }
+    ortho <- .lmfa_orthonormalize_scores(S_init)
+    S <- ortho$S
   }
-  ortho <- .lmfa_orthonormalize_scores(S_init)
-  S <- ortho$S
 
   # Initialize V_k by ridge regression of X_k on S[idx_k,]
   V_list <- lapply(seq_along(Xp), function(k) {
@@ -202,7 +216,7 @@ aligned_mfa <- function(X,
   prev_obj <- Inf
 
   for (iter in seq_len(max_iter)) {
-    centers <- .lmfa_group_centers(V_list, fg)
+    centers <- .lmfa_group_centers(V_list, fg, block_weights = alpha_blocks)
 
     # Update V_k (loadings) given current S
     for (k in seq_along(Xp)) {
@@ -219,25 +233,56 @@ aligned_mfa <- function(X,
       )
     }
 
-    centers <- .lmfa_group_centers(V_list, fg)
+    centers <- .lmfa_group_centers(V_list, fg, block_weights = alpha_blocks)
 
-    # Update S row-by-row (shared scores for the N reference rows)
-    S <- .amfa_update_scores(
-      X_list = Xp,
-      V_list = V_list,
-      row_index = row_index,
-      alpha_blocks = alpha_blocks,
-      ridge = ridge,
-      N = N
-    )
+    if (identical(score_constraint, "orthonormal")) {
+      local <- .amfa_score_system(
+        X_list = Xp,
+        V_list = V_list,
+        row_index = row_index,
+        alpha_blocks = alpha_blocks,
+        N = N
+      )
+      S_warm <- .amfa_update_scores(
+        X_list = Xp,
+        V_list = V_list,
+        row_index = row_index,
+        alpha_blocks = alpha_blocks,
+        ridge = ridge,
+        N = N
+      )
+      S_start <- .muscal_stiefel_retract(S)
+      S_warm <- .muscal_stiefel_retract(S_warm)
+      obj_start <- .muscal_score_objective_from_system(S_start, local$A_list, local$rhs, ridge = ridge)
+      obj_warm <- .muscal_score_objective_from_system(S_warm, local$A_list, local$rhs, ridge = ridge)
+      if (obj_warm <= obj_start) {
+        S_start <- S_warm
+      }
+      s_opt <- .muscal_stiefel_mm(
+        S = S_start,
+        A_list = local$A_list,
+        rhs = local$rhs,
+        ridge = ridge
+      )
+      S <- s_opt$S
+    } else {
+      S <- .amfa_update_scores(
+        X_list = Xp,
+        V_list = V_list,
+        row_index = row_index,
+        alpha_blocks = alpha_blocks,
+        ridge = ridge,
+        N = N
+      )
 
-    # Orthonormalize S and rotate loadings to preserve fitted values
-    ortho <- .lmfa_orthonormalize_scores(S)
-    S <- ortho$S
-    rot <- ortho$R
-    V_list <- lapply(V_list, function(V) V %*% t(rot))
+      ortho <- .lmfa_orthonormalize_scores(S)
+      S <- ortho$S
+      rot <- ortho$R
+      V_list <- lapply(V_list, function(V) V %*% t(rot))
+      centers <- .lmfa_group_centers(V_list, fg, block_weights = alpha_blocks)
+    }
 
-    centers <- .lmfa_group_centers(V_list, fg)
+    centers <- .lmfa_group_centers(V_list, fg, block_weights = alpha_blocks)
 
     obj <- .amfa_objective(
       X_list = Xp,
@@ -365,6 +410,7 @@ aligned_mfa <- function(X,
               ncomp = ncomp,
               normalization = normalization,
               alpha = alpha,
+              score_constraint = score_constraint,
               feature_groups = feature_groups,
               feature_lambda = feature_lambda,
               max_iter = max_iter,
@@ -386,6 +432,24 @@ aligned_mfa <- function(X,
 # ---------------------------------------------------------------------------
 # Internal helpers
 # ---------------------------------------------------------------------------
+
+.amfa_initialize_scores <- function(X_list, row_index, alpha_blocks, N, K) {
+  H <- matrix(0, nrow = N, ncol = N)
+  for (k in seq_along(X_list)) {
+    Xk <- X_list[[k]]
+    idx <- row_index[[k]]
+    Gk <- alpha_blocks[k] * (Xk %*% t(Xk))
+    rs1 <- rowsum(Gk, idx, reorder = FALSE)
+    rs2 <- rowsum(t(rs1), idx, reorder = FALSE)
+    g_rows <- as.integer(rownames(rs2))
+    g_cols <- as.integer(rownames(rs1))
+    H[g_rows, g_cols] <- H[g_rows, g_cols] + rs2
+  }
+  H <- (H + t(H)) / 2
+  eig <- eigen(H, symmetric = TRUE)
+  S_init <- eig$vectors[, seq_len(K), drop = FALSE]
+  .muscal_stiefel_retract(S_init)
+}
 
 .amfa_update_scores <- function(X_list,
                                V_list,
@@ -431,6 +495,72 @@ aligned_mfa <- function(X,
     }
   }
   S_new
+}
+
+.amfa_score_system <- function(X_list,
+                               V_list,
+                               row_index,
+                               alpha_blocks,
+                               N = NULL) {
+  if (is.null(N)) N <- max(unlist(row_index))
+  K <- ncol(V_list[[1]])
+
+  VtV_list <- lapply(V_list, crossprod)
+  XV_list <- lapply(seq_along(X_list), function(k) X_list[[k]] %*% V_list[[k]])
+
+  sums_by_i <- lapply(seq_along(X_list), function(k) {
+    idx <- row_index[[k]]
+    rs <- rowsum(XV_list[[k]], idx, reorder = FALSE)
+    out <- matrix(0, nrow = N, ncol = K)
+    out[as.integer(rownames(rs)), ] <- rs
+    out
+  })
+
+  counts_by_i <- lapply(seq_along(X_list), function(k) {
+    tabulate(row_index[[k]], nbins = N)
+  })
+
+  A_list <- vector("list", N)
+  rhs <- matrix(0, nrow = N, ncol = K)
+  for (i in seq_len(N)) {
+    A_i <- matrix(0, nrow = K, ncol = K)
+    b_i <- rep(0, K)
+    for (k in seq_along(X_list)) {
+      cnt <- counts_by_i[[k]][i]
+      if (cnt == 0L) next
+      a_k <- alpha_blocks[k]
+      A_i <- A_i + a_k * cnt * VtV_list[[k]]
+      b_i <- b_i + a_k * sums_by_i[[k]][i, ]
+    }
+    A_list[[i]] <- A_i
+    rhs[i, ] <- b_i
+  }
+
+  list(A_list = A_list, rhs = rhs)
+}
+
+.amfa_score_gradient <- function(S,
+                                 X_list,
+                                 V_list,
+                                 row_index,
+                                 alpha_blocks,
+                                 ridge = 0,
+                                 N = NULL) {
+  local <- .amfa_score_system(
+    X_list = X_list,
+    V_list = V_list,
+    row_index = row_index,
+    alpha_blocks = alpha_blocks,
+    N = N
+  )
+  grad <- matrix(0, nrow = nrow(S), ncol = ncol(S))
+  for (i in seq_len(nrow(S))) {
+    grad[i, ] <- 2 * (local$A_list[[i]] %*% S[i, ] - local$rhs[i, ])
+  }
+  if (ridge > 0) {
+    grad <- grad + 2 * ridge * S
+  }
+  grad
 }
 
 .amfa_objective <- function(X_list,

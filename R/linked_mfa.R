@@ -16,6 +16,9 @@
 #' \deqn{Y \approx S B^\top}
 #' \deqn{X_k \approx S[\mathrm{idx}_k,] V_k^\top}
 #' where `S` is `N × ncomp`, `B` is `q × ncomp`, and each `V_k` is `p_k × ncomp`.
+#' The score matrix can be identified either with the historical
+#' unconstrained/QR update (`score_constraint = "none"`) or with an explicit
+#' orthonormal constraint (`score_constraint = "orthonormal"`).
 #'
 #' ## Feature similarity prior (v1)
 #' When `feature_lambda > 0` and `feature_groups` is supplied, Anchored MFA applies
@@ -34,6 +37,11 @@
 #'   singular value per block; `"None"` uses uniform weights; `"custom"` uses `alpha`.
 #' @param alpha Optional numeric vector of per-block weights (length `1 + length(X)`),
 #'   used when `normalization = "custom"`. The first weight corresponds to `Y`.
+#' @param score_constraint Identification strategy for the shared score matrix.
+#'   `"none"` uses the historical unconstrained update followed by QR
+#'   normalization inside each ALS iteration. `"orthonormal"` treats
+#'   `S^\top S = I` as part of the model and updates `S` with a constrained
+#'   majorization/polar step.
 #' @param feature_groups Feature prior specification. One of:
 #'   * `NULL` (no feature prior),
 #'   * `"colnames"` to group X-features with identical column names across blocks,
@@ -74,6 +82,7 @@ anchored_mfa <- function(Y,
                          ncomp = 2,
                          normalization = c("MFA", "None", "custom"),
                          alpha = NULL,
+                         score_constraint = c("none", "orthonormal"),
                          feature_groups = NULL,
                          feature_lambda = 0,
                          max_iter = 50,
@@ -84,6 +93,7 @@ anchored_mfa <- function(Y,
   fit_call <- match.call(expand.dots = FALSE)
   fit_dots <- list(...)
   normalization <- match.arg(normalization)
+  score_constraint <- match.arg(score_constraint)
 
   # ---------------------------------------------------------------------------
   # 0. Basic checks / coercions
@@ -131,6 +141,8 @@ anchored_mfa <- function(Y,
   }
   if (is.null(names(row_index))) {
     names(row_index) <- names(X)
+  } else {
+    row_index <- .lmfa_align_named_index_list(row_index, names(X), what = "row_index")
   }
 
   data_refit <- list(
@@ -191,8 +203,7 @@ anchored_mfa <- function(Y,
   # ---------------------------------------------------------------------------
   # 4. Initialization from Y
   # ---------------------------------------------------------------------------
-  min_p <- min(c(ncol(Yp), vapply(Xp, ncol, integer(1))))
-  K <- min(as.integer(ncomp), nrow(Yp), min_p)
+  K <- min(as.integer(ncomp), nrow(Yp), ncol(Yp))
   if (K < 1L) stop("ncomp must be at least 1 and <= min(nrow(Y), ncol(Y)).", call. = FALSE)
 
   init <- .lmfa_init_from_Y(Yp, K, ridge = ridge)
@@ -202,7 +213,7 @@ anchored_mfa <- function(Y,
   # Initialize V_k by ridge regression of X_k on S[idx_k,]
   V_list <- lapply(seq_along(Xp), function(k) {
     Sk <- S[row_index[[k]], , drop = FALSE]
-    .lmfa_update_loadings(Sk, Xp[[k]], ridge = ridge)$V
+    .lmfa_update_loadings(Sk, Xp[[k]], alpha = alpha_blocks[k + 1L], ridge = ridge)$V
   })
   names(V_list) <- names(Xp)
 
@@ -214,10 +225,10 @@ anchored_mfa <- function(Y,
   # ---------------------------------------------------------------------------
   for (iter in seq_len(max_iter)) {
     # (a) Update B (Y loadings)
-    B <- .lmfa_update_loadings(S, Yp, ridge = ridge)$V
+    B <- .lmfa_update_loadings(S, Yp, alpha = alpha_blocks[1], ridge = ridge)$V
 
     # (b) Update feature group centers from current V (if enabled)
-    centers <- .lmfa_group_centers(V_list, fg)
+    centers <- .lmfa_group_centers(V_list, fg, block_weights = alpha_blocks[-1L])
 
     # (c) Update each V_k (X loadings), optionally with group-shrinkage prior
     for (k in seq_along(Xp)) {
@@ -235,30 +246,61 @@ anchored_mfa <- function(Y,
     }
 
     # (d) Recompute centers after V update for objective + next iteration
-    centers <- .lmfa_group_centers(V_list, fg)
+    centers <- .lmfa_group_centers(V_list, fg, block_weights = alpha_blocks[-1L])
 
-    # (e) Update S row-by-row (shared scores for Y rows)
-    S <- .lmfa_update_scores(
-      Y = Yp,
-      B = B,
-      X_list = Xp,
-      V_list = V_list,
-      row_index = row_index,
-      alpha_y = alpha_blocks[1],
-      alpha_blocks = alpha_blocks[-1],
-      ridge = ridge
-    )
+    if (identical(score_constraint, "orthonormal")) {
+      local <- .lmfa_score_system(
+        Y = Yp,
+        B = B,
+        X_list = Xp,
+        V_list = V_list,
+        row_index = row_index,
+        alpha_y = alpha_blocks[1],
+        alpha_blocks = alpha_blocks[-1]
+      )
+      S_warm <- .lmfa_update_scores(
+        Y = Yp,
+        B = B,
+        X_list = Xp,
+        V_list = V_list,
+        row_index = row_index,
+        alpha_y = alpha_blocks[1],
+        alpha_blocks = alpha_blocks[-1],
+        ridge = ridge
+      )
+      S_start <- .muscal_stiefel_retract(S)
+      S_warm <- .muscal_stiefel_retract(S_warm)
+      obj_start <- .muscal_score_objective_from_system(S_start, local$A_list, local$rhs, ridge = ridge)
+      obj_warm <- .muscal_score_objective_from_system(S_warm, local$A_list, local$rhs, ridge = ridge)
+      if (obj_warm <= obj_start) {
+        S_start <- S_warm
+      }
+      s_opt <- .muscal_stiefel_mm(
+        S = S_start,
+        A_list = local$A_list,
+        rhs = local$rhs,
+        ridge = ridge
+      )
+      S <- s_opt$S
+    } else {
+      S <- .lmfa_update_scores(
+        Y = Yp,
+        B = B,
+        X_list = Xp,
+        V_list = V_list,
+        row_index = row_index,
+        alpha_y = alpha_blocks[1],
+        alpha_blocks = alpha_blocks[-1],
+        ridge = ridge
+      )
 
-    # (f) Orthonormalize S and rotate all loadings to preserve fitted values
-    ortho <- .lmfa_orthonormalize_scores(S)
-    S <- ortho$S
-    rot <- ortho$R
-    B <- B %*% t(rot)
-    V_list <- lapply(V_list, function(V) V %*% t(rot))
-
-    # Rotation changes the feature-group penalty geometry; recompute centers in
-    # the rotated loading space to keep the objective trace comparable.
-    centers <- .lmfa_group_centers(V_list, fg)
+      ortho <- .lmfa_orthonormalize_scores(S)
+      S <- ortho$S
+      rot <- ortho$R
+      B <- B %*% t(rot)
+      V_list <- lapply(V_list, function(V) V %*% t(rot))
+      centers <- .lmfa_group_centers(V_list, fg, block_weights = alpha_blocks[-1L])
+    }
 
     # (g) Objective / convergence
     obj <- .lmfa_objective(
@@ -272,7 +314,8 @@ anchored_mfa <- function(Y,
       alpha_blocks = alpha_blocks[-1],
       fg = fg,
       centers = centers,
-      feature_lambda = feature_lambda_eff
+      feature_lambda = feature_lambda_eff,
+      ridge = ridge
     )
     objective_trace <- c(objective_trace, obj)
 
@@ -422,6 +465,7 @@ anchored_mfa <- function(Y,
               ncomp = ncomp,
               normalization = normalization,
               alpha = alpha,
+              score_constraint = score_constraint,
               feature_groups = feature_groups,
               feature_lambda = feature_lambda,
               max_iter = max_iter,
@@ -452,6 +496,7 @@ linked_mfa <- function(Y,
                        ncomp = 2,
                        normalization = c("MFA", "None", "custom"),
                        alpha = NULL,
+                       score_constraint = c("none", "orthonormal"),
                        feature_groups = NULL,
                        feature_lambda = 0,
                        max_iter = 50,
@@ -467,6 +512,7 @@ linked_mfa <- function(Y,
     ncomp = ncomp,
     normalization = normalization,
     alpha = alpha,
+    score_constraint = score_constraint,
     feature_groups = feature_groups,
     feature_lambda = feature_lambda,
     max_iter = max_iter,
@@ -497,11 +543,28 @@ linked_mfa <- function(Y,
   list(S = S, B = B)
 }
 
-.lmfa_update_loadings <- function(S, X, ridge = 1e-8) {
-  # Solve min ||X - S V^T||_F^2 + ridge ||V||_F^2 for V (p x k)
+.lmfa_align_named_index_list <- function(index_list, target_names, what = "row_index") {
+  if (is.null(names(index_list))) {
+    names(index_list) <- target_names
+    return(index_list)
+  }
+
+  if (!setequal(names(index_list), target_names)) {
+    stop(sprintf("%s names must match the corresponding block names exactly.", what), call. = FALSE)
+  }
+
+  index_list[target_names]
+}
+
+.lmfa_update_loadings <- function(S, X, alpha = 1, ridge = 1e-8) {
+  # Solve min alpha ||X - S V^T||_F^2 + ridge ||V||_F^2 for V (p x k)
   k <- ncol(S)
-  StS <- crossprod(S) + ridge * diag(k)
-  rhs <- crossprod(S, X) # k x p
+  a <- as.numeric(alpha)[1]
+  if (!is.finite(a) || a < 0) {
+    stop("alpha must be finite and non-negative.", call. = FALSE)
+  }
+  StS <- a * crossprod(S) + ridge * diag(k)
+  rhs <- a * crossprod(S, X) # k x p
   Vt <- solve(StS, rhs)  # k x p
   list(V = t(Vt))
 }
@@ -511,6 +574,182 @@ linked_mfa <- function(Y,
   Q <- qr.Q(qrS)
   R <- qr.R(qrS)
   list(S = Q, R = R)
+}
+
+.muscal_sym <- function(A) {
+  (A + t(A)) / 2
+}
+
+.muscal_stiefel_retract <- function(S) {
+  qr.Q(qr(S), complete = FALSE)[, seq_len(ncol(S)), drop = FALSE]
+}
+
+.muscal_stiefel_projected_gradient <- function(S, G) {
+  G - S %*% .muscal_sym(crossprod(S, G))
+}
+
+.muscal_stiefel_polar <- function(G) {
+  qrG <- qr(G)
+  Q <- qr.Q(qrG, complete = FALSE)[, seq_len(ncol(G)), drop = FALSE]
+  R <- qr.R(qrG)[seq_len(ncol(G)), , drop = FALSE]
+  sv <- svd(R)
+  Q %*% sv$u %*% t(sv$v)
+}
+
+.muscal_apply_row_system <- function(S, A_list) {
+  out <- matrix(0, nrow = nrow(S), ncol = ncol(S))
+  for (i in seq_len(nrow(S))) {
+    out[i, ] <- as.numeric(A_list[[i]] %*% S[i, ])
+  }
+  out
+}
+
+.muscal_score_objective_from_system <- function(S,
+                                                A_list,
+                                                rhs,
+                                                graph_laplacian = NULL,
+                                                graph_lambda = 0,
+                                                ridge = 0) {
+  obj <- 0
+  for (i in seq_len(nrow(S))) {
+    obj <- obj + sum(S[i, ] * (A_list[[i]] %*% S[i, ])) - 2 * sum(rhs[i, ] * S[i, ])
+  }
+  if (isTRUE(graph_lambda > 0) && !is.null(graph_laplacian)) {
+    LS <- graph_laplacian %*% S
+    obj <- obj + graph_lambda * sum(LS * S)
+  }
+  if (ridge > 0) {
+    obj <- obj + ridge * sum(S^2)
+  }
+  obj
+}
+
+.muscal_row_system_beta <- function(A_list,
+                                    graph_laplacian = NULL,
+                                    graph_lambda = 0,
+                                    ridge = 0) {
+  beta <- 0
+  for (i in seq_along(A_list)) {
+    Ai <- as.matrix(A_list[[i]])
+    if (length(Ai) == 0) next
+    vals <- eigen(.muscal_sym(Ai), symmetric = TRUE, only.values = TRUE)$values
+    beta <- max(beta, max(vals, 0))
+  }
+  if (isTRUE(graph_lambda > 0) && !is.null(graph_laplacian)) {
+    vals <- eigen(.muscal_sym(as.matrix(graph_laplacian)), symmetric = TRUE, only.values = TRUE)$values
+    beta <- beta + graph_lambda * max(vals, 0)
+  }
+  beta + ridge
+}
+
+.muscal_stiefel_mm <- function(S,
+                               A_list,
+                               rhs,
+                               graph_laplacian = NULL,
+                               graph_lambda = 0,
+                               ridge = 0,
+                               max_iter = 20,
+                               tol = 1e-8) {
+  S <- .muscal_stiefel_retract(S)
+  beta0 <- .muscal_row_system_beta(
+    A_list = A_list,
+    graph_laplacian = graph_laplacian,
+    graph_lambda = graph_lambda,
+    ridge = ridge
+  )
+  beta0 <- max(beta0, 1e-8)
+  obj <- .muscal_score_objective_from_system(
+    S = S,
+    A_list = A_list,
+    rhs = rhs,
+    graph_laplacian = graph_laplacian,
+    graph_lambda = graph_lambda,
+    ridge = ridge
+  )
+
+  for (iter in seq_len(max_iter)) {
+    beta <- beta0
+    accepted <- FALSE
+    AS <- .muscal_apply_row_system(S, A_list)
+    if (isTRUE(graph_lambda > 0) && !is.null(graph_laplacian)) {
+      AS <- AS + graph_lambda * as.matrix(graph_laplacian %*% S)
+    }
+    if (ridge > 0) {
+      AS <- AS + ridge * S
+    }
+
+    while (!accepted) {
+      G <- rhs + beta * S - AS
+      S_new <- .muscal_stiefel_polar(G)
+      obj_new <- .muscal_score_objective_from_system(
+        S = S_new,
+        A_list = A_list,
+        rhs = rhs,
+        graph_laplacian = graph_laplacian,
+        graph_lambda = graph_lambda,
+        ridge = ridge
+      )
+      if (is.finite(obj_new) && obj_new <= obj + 1e-10) {
+        accepted <- TRUE
+        break
+      }
+      beta <- beta * 2
+      if (beta > 1e12) break
+    }
+
+    if (!accepted) break
+    if (abs(obj - obj_new) / (abs(obj) + 1e-12) < tol) {
+      S <- S_new
+      obj <- obj_new
+      break
+    }
+    S <- S_new
+    obj <- obj_new
+  }
+
+  list(S = S, objective = obj)
+}
+
+.muscal_stiefel_optimize <- function(S,
+                                     objective_fn,
+                                     gradient_fn,
+                                     max_iter = 20,
+                                     tol = 1e-8,
+                                     step_init = 0.25,
+                                     step_shrink = 0.5,
+                                     armijo = 1e-4,
+                                     min_step = 1e-10) {
+  S <- .muscal_stiefel_retract(S)
+  obj <- objective_fn(S)
+  if (!is.finite(obj)) {
+    stop("Initial Stiefel objective is not finite.", call. = FALSE)
+  }
+
+  grad_norm <- NA_real_
+  for (iter in seq_len(max_iter)) {
+    G <- gradient_fn(S)
+    PG <- .muscal_stiefel_projected_gradient(S, G)
+    grad_norm <- sqrt(sum(PG^2))
+    if (!is.finite(grad_norm) || grad_norm < tol) break
+
+    step <- step_init
+    accepted <- FALSE
+    while (step >= min_step) {
+      S_try <- .muscal_stiefel_retract(S - step * PG)
+      obj_try <- objective_fn(S_try)
+      if (is.finite(obj_try) && obj_try <= obj - armijo * step * grad_norm^2) {
+        S <- S_try
+        obj <- obj_try
+        accepted <- TRUE
+        break
+      }
+      step <- step * step_shrink
+    }
+
+    if (!accepted) break
+  }
+
+  list(S = S, objective = obj, grad_norm = grad_norm)
 }
 
 .lmfa_parse_feature_groups <- function(feature_groups, X_list, feature_lambda) {
@@ -658,19 +897,24 @@ linked_mfa <- function(Y,
   )
 }
 
-.lmfa_group_centers <- function(V_list, fg) {
+.lmfa_group_centers <- function(V_list, fg, block_weights = NULL) {
   if (!isTRUE(fg$enabled) || length(fg$members) == 0) return(NULL)
   groups <- names(fg$members)
   if (is.null(groups)) groups <- seq_along(fg$members)
   kdim <- ncol(V_list[[1]])
+  if (is.null(block_weights)) {
+    block_weights <- rep(1, length(V_list))
+  }
   centers <- matrix(0, nrow = length(fg$members), ncol = kdim)
   denom <- numeric(length(fg$members))
   rownames(centers) <- groups
   for (gi in seq_along(fg$members)) {
     mem <- fg$members[[gi]]
     for (m in mem) {
+      bw <- block_weights[m$block]
+      if (!is.finite(bw) || bw <= 0) next
       v <- V_list[[m$block]][m$feature, , drop = TRUE]
-      w <- m$weight
+      w <- bw * m$weight
       centers[gi, ] <- centers[gi, ] + w * v
       denom[gi] <- denom[gi] + w
     }
@@ -693,7 +937,12 @@ linked_mfa <- function(Y,
   K <- ncol(Sk)
 
   a <- alpha_block
-  if (!is.finite(a) || a <= 0) a <- 1
+  if (!is.finite(a) || a < 0) {
+    stop("alpha_block must be finite and non-negative.", call. = FALSE)
+  }
+  if (a == 0) {
+    return(matrix(0, nrow = p, ncol = K))
+  }
 
   G0 <- a * crossprod(Sk) + ridge * diag(K)
   rhs_all <- a * crossprod(Sk, Xk) # K x p
@@ -782,6 +1031,78 @@ linked_mfa <- function(Y,
   S_new
 }
 
+.lmfa_score_system <- function(Y,
+                               B,
+                               X_list,
+                               V_list,
+                               row_index,
+                               alpha_y,
+                               alpha_blocks) {
+  N <- nrow(Y)
+  K <- ncol(B)
+
+  BtB <- crossprod(B)
+  YB <- Y %*% B
+  VtV_list <- lapply(V_list, crossprod)
+  XV_list <- lapply(seq_along(X_list), function(k) X_list[[k]] %*% V_list[[k]])
+  sums_by_i <- lapply(seq_along(X_list), function(k) {
+    idx <- row_index[[k]]
+    rs <- rowsum(XV_list[[k]], idx, reorder = FALSE)
+    out <- matrix(0, nrow = N, ncol = K)
+    out[as.integer(rownames(rs)), ] <- rs
+    out
+  })
+  counts_by_i <- lapply(seq_along(X_list), function(k) {
+    tabulate(row_index[[k]], nbins = N)
+  })
+
+  A_list <- vector("list", N)
+  rhs <- matrix(0, nrow = N, ncol = K)
+  for (i in seq_len(N)) {
+    A_i <- alpha_y * BtB
+    b_i <- alpha_y * YB[i, ]
+    for (k in seq_along(X_list)) {
+      cnt <- counts_by_i[[k]][i]
+      if (cnt == 0L) next
+      a_k <- alpha_blocks[k]
+      A_i <- A_i + a_k * cnt * VtV_list[[k]]
+      b_i <- b_i + a_k * sums_by_i[[k]][i, ]
+    }
+    A_list[[i]] <- A_i
+    rhs[i, ] <- b_i
+  }
+
+  list(A_list = A_list, rhs = rhs)
+}
+
+.lmfa_score_gradient <- function(S,
+                                 Y,
+                                 B,
+                                 X_list,
+                                 V_list,
+                                 row_index,
+                                 alpha_y,
+                                 alpha_blocks,
+                                 ridge = 0) {
+  local <- .lmfa_score_system(
+    Y = Y,
+    B = B,
+    X_list = X_list,
+    V_list = V_list,
+    row_index = row_index,
+    alpha_y = alpha_y,
+    alpha_blocks = alpha_blocks
+  )
+  grad <- matrix(0, nrow = nrow(S), ncol = ncol(S))
+  for (i in seq_len(nrow(S))) {
+    grad[i, ] <- 2 * (local$A_list[[i]] %*% S[i, ] - local$rhs[i, ])
+  }
+  if (ridge > 0) {
+    grad <- grad + 2 * ridge * S
+  }
+  grad
+}
+
 .lmfa_objective <- function(Y,
                            S,
                            B,
@@ -792,7 +1113,8 @@ linked_mfa <- function(Y,
                            alpha_blocks,
                            fg,
                            centers,
-                           feature_lambda) {
+                           feature_lambda,
+                           ridge = 0) {
   # Reconstruction errors
   err_y <- alpha_y * sum((Y - S %*% t(B))^2)
   err_x <- 0
@@ -819,5 +1141,7 @@ linked_mfa <- function(Y,
     pen <- feature_lambda * pen
   }
 
-  err_y + err_x + pen
+  ridge_pen <- ridge * (sum(S^2) + sum(B^2) + sum(vapply(V_list, function(V) sum(V^2), numeric(1))))
+
+  err_y + err_x + pen + ridge_pen
 }

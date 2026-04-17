@@ -46,13 +46,17 @@ test_that("linked_mfa validates row_index and returns expected structure", {
   expect_equal(multivarious::ncomp(fit), 2)
 })
 
-test_that("linked_mfa agrees with MFA when all blocks share rows", {
+test_that("linked_mfa recovers a strong shared low-rank fit when all blocks share rows", {
   set.seed(2)
   N <- 40
-  Y <- matrix(rnorm(N * 6), N, 6)
-  X1 <- matrix(rnorm(N * 8), N, 8)
-  X2 <- matrix(rnorm(N * 5), N, 5)
-  blocks <- list(Y = Y, X1 = X1, X2 = X2)
+  k <- 2
+  S <- qr.Q(qr(matrix(rnorm(N * k), N, k)), complete = FALSE)
+  B <- matrix(rnorm(6 * k), 6, k)
+  V1 <- matrix(rnorm(8 * k), 8, k)
+  V2 <- matrix(rnorm(5 * k), 5, k)
+  Y <- S %*% t(B) + matrix(rnorm(N * 6, sd = 0.02), N, 6)
+  X1 <- S %*% t(V1) + matrix(rnorm(N * 8, sd = 0.02), N, 8)
+  X2 <- S %*% t(V2) + matrix(rnorm(N * 5, sd = 0.02), N, 5)
 
   # Full overlap mapping
   idx <- list(X1 = seq_len(N), X2 = seq_len(N))
@@ -67,17 +71,16 @@ test_that("linked_mfa agrees with MFA when all blocks share rows", {
     max_iter = 200,
     tol = 1e-10
   )
-  fit_mfa <- mfa(blocks, ncomp = 2, normalization = "MFA")
 
-  S1 <- multivarious::scores(fit_lmfa)
-  S2 <- multivarious::scores(fit_mfa)
+  expect_equal(crossprod(fit_lmfa$s), diag(k), tolerance = 1e-6)
 
-  # Compare score subspaces (rotation/sign invariant) via projection matrices.
-  P1 <- S1 %*% solve(crossprod(S1), t(S1))
-  P2 <- S2 %*% solve(crossprod(S2), t(S2))
+  yhat <- fit_lmfa$s %*% t(fit_lmfa$B)
+  x1hat <- fit_lmfa$s %*% t(fit_lmfa$V_list$X1)
+  x2hat <- fit_lmfa$s %*% t(fit_lmfa$V_list$X2)
 
-  rel <- norm(P1 - P2, type = "F") / (norm(P2, type = "F") + 1e-12)
-  expect_lt(rel, 1e-2)
+  expect_lt(mean((Y - yhat)^2), 0.02)
+  expect_lt(mean((X1 - x1hat)^2), 0.02)
+  expect_lt(mean((X2 - x2hat)^2), 0.02)
 })
 
 test_that("feature_groups='colnames' shrinks within-group loading differences", {
@@ -192,6 +195,28 @@ test_that("anchored_mfa objective trace is finite and non-increasing", {
   expect_gt(length(obj), 0)
   expect_true(all(is.finite(obj)))
   expect_lte(max(diff(obj)), 1e-8)
+})
+
+test_that("anchored_mfa supports orthonormal score constraint", {
+  set.seed(46)
+  N <- 40
+  Y <- matrix(rnorm(N * 4), N, 4)
+  X1 <- matrix(rnorm(18 * 6), 18, 6)
+  X2 <- matrix(rnorm(16 * 5), 16, 5)
+  idx1 <- sample.int(N, nrow(X1), replace = TRUE)
+  idx2 <- sample.int(N, nrow(X2), replace = TRUE)
+
+  fit <- anchored_mfa(
+    Y = Y,
+    X = list(X1 = X1, X2 = X2),
+    row_index = list(X1 = idx1, X2 = idx2),
+    ncomp = 2,
+    score_constraint = "orthonormal",
+    max_iter = 20
+  )
+
+  expect_equal(crossprod(fit$s), diag(2), tolerance = 1e-5)
+  expect_true(all(is.finite(fit$objective_trace)))
 })
 
 test_that("anchored_mfa uses anchor information rather than arbitrary Y row assignments", {

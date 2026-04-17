@@ -12,6 +12,7 @@ aligned_mfa(
   ncomp = 2,
   normalization = c("MFA", "None", "custom"),
   alpha = NULL,
+  score_constraint = c("none", "orthonormal"),
   feature_groups = NULL,
   feature_lambda = 0,
   max_iter = 50,
@@ -42,6 +43,12 @@ singular value per block; `"None"` uses uniform weights; `"custom"` uses `alpha`
 
 \item{alpha}{Optional numeric vector of per-block weights (length `length(X)`),
 used when `normalization = "custom"`.}
+
+\item{score_constraint}{Identification strategy for the shared score matrix.
+`"none"` uses the historical unconstrained update followed by QR
+normalization inside each ALS iteration. `"orthonormal"` treats
+`S^\top S = I` as part of the model and updates `S` with a constrained
+majorization/polar step.}
 
 \item{feature_groups}{Feature prior specification. One of:
 * `NULL` (no feature prior),

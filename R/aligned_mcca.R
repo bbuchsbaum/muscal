@@ -83,7 +83,11 @@ aligned_mcca <- function(X,
 
   S_blocks <- length(X)
   if (is.null(names(X))) names(X) <- paste0("B", seq_len(S_blocks))
-  if (is.null(names(row_index))) names(row_index) <- names(X)
+  if (is.null(names(row_index))) {
+    names(row_index) <- names(X)
+  } else {
+    row_index <- .lmfa_align_named_index_list(row_index, names(X), what = "row_index")
+  }
 
   infer_N <- is.null(N)
   if (!infer_N) {
@@ -129,6 +133,9 @@ aligned_mcca <- function(X,
   chk::chk_true(length(block_weights) == S_blocks)
   chk::chk_true(all(is.finite(block_weights)))
   chk::chk_true(all(block_weights >= 0))
+  if (!any(block_weights > 0)) {
+    stop("At least one block weight must be strictly positive.", call. = FALSE)
+  }
 
   if (length(ridge) == 1) ridge <- rep(ridge, S_blocks)
   ridge <- as.numeric(ridge)
@@ -138,6 +145,9 @@ aligned_mcca <- function(X,
 
   idx_blocks <- seq_along(Xp)
   map_fun <- if (isTRUE(use_future)) {
+    if (!requireNamespace("furrr", quietly = TRUE)) {
+      stop("use_future = TRUE requires the 'furrr' package.", call. = FALSE)
+    }
     function(.x, .f) {
       furrr::future_map(.x, .f, .options = furrr::furrr_options(seed = TRUE))
     }
@@ -331,7 +341,11 @@ anchored_mcca <- function(Y,
     as.matrix(x)
   })
   if (is.null(names(X))) names(X) <- paste0("X", seq_along(X))
-  if (is.null(names(row_index))) names(row_index) <- names(X)
+  if (is.null(names(row_index))) {
+    names(row_index) <- names(X)
+  } else {
+    row_index <- .lmfa_align_named_index_list(row_index, names(X), what = "row_index")
+  }
 
   N <- nrow(Y)
   for (k in seq_along(X)) {
