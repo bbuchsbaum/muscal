@@ -266,6 +266,7 @@ anchored_mfa <- function(Y,
         row_index = row_index,
         alpha_y = alpha_blocks[1],
         alpha_blocks = alpha_blocks[-1],
+        local = local,
         ridge = ridge
       )
       S_start <- .muscal_stiefel_retract(S)
@@ -1055,34 +1056,27 @@ linked_mfa <- function(Y,
                                row_index,
                                alpha_y,
                                alpha_blocks,
+                               local = NULL,
                                ridge = 1e-8) {
-  N <- nrow(Y)
-  K <- ncol(B)
-
-  BtB <- crossprod(B)  # K x K
-  YB <- Y %*% B        # N x K
-
-  # Precompute per-block pieces for S update.
-  VtV_list <- lapply(V_list, crossprod)           # each K x K
-  XV_list <- lapply(seq_along(X_list), function(k) X_list[[k]] %*% V_list[[k]]) # n_k x K
-  agg_by_i <- lapply(seq_along(X_list), function(k) {
-    .muscal_rowsum_counts(XV_list[[k]], row_index[[k]], N)
-  })
-  sums_by_i <- lapply(agg_by_i, `[[`, "sums")
-  counts_by_i <- lapply(agg_by_i, `[[`, "counts")
+  if (is.null(local)) {
+    local <- .lmfa_score_system(
+      Y = Y,
+      B = B,
+      X_list = X_list,
+      V_list = V_list,
+      row_index = row_index,
+      alpha_y = alpha_y,
+      alpha_blocks = alpha_blocks
+    )
+  }
+  N <- nrow(local$rhs)
+  K <- ncol(local$rhs)
 
   S_new <- matrix(0, nrow = N, ncol = K)
   I_K <- diag(K)
   for (i in seq_len(N)) {
-    A <- alpha_y * BtB
-    b <- alpha_y * YB[i, ]
-    for (k in seq_along(X_list)) {
-      cnt <- counts_by_i[[k]][i]
-      if (cnt == 0L) next
-      a_k <- alpha_blocks[k]
-      A <- A + a_k * cnt * VtV_list[[k]]
-      b <- b + a_k * sums_by_i[[k]][i, ]
-    }
+    A <- local$A_list[[i]]
+    b <- local$rhs[i, ]
     A <- A + ridge * I_K
     S_new[i, ] <- solve(A, b)
   }

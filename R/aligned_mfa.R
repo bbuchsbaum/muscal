@@ -248,6 +248,7 @@ aligned_mfa <- function(X,
         V_list = V_list,
         row_index = row_index,
         alpha_blocks = alpha_blocks,
+        local = local,
         ridge = ridge,
         N = N
       )
@@ -455,38 +456,26 @@ aligned_mfa <- function(X,
                                V_list,
                                row_index,
                                alpha_blocks,
+                               local = NULL,
                                ridge = 1e-8,
                                N = NULL) {
-  if (is.null(N)) N <- max(unlist(row_index))
-  K <- ncol(V_list[[1]])
-
-  VtV_list <- lapply(V_list, crossprod) # each K x K
-  XV_list <- lapply(seq_along(X_list), function(k) X_list[[k]] %*% V_list[[k]]) # n_k x K
-
-  sums_by_i <- lapply(seq_along(X_list), function(k) {
-    idx <- row_index[[k]]
-    rs <- rowsum(XV_list[[k]], idx, reorder = FALSE)
-    out <- matrix(0, nrow = N, ncol = K)
-    out[as.integer(rownames(rs)), ] <- rs
-    out
-  })
-
-  counts_by_i <- lapply(seq_along(X_list), function(k) {
-    tabulate(row_index[[k]], nbins = N)
-  })
+  if (is.null(local)) {
+    local <- .amfa_score_system(
+      X_list = X_list,
+      V_list = V_list,
+      row_index = row_index,
+      alpha_blocks = alpha_blocks,
+      N = N
+    )
+  }
+  N <- nrow(local$rhs)
+  K <- ncol(local$rhs)
 
   S_new <- matrix(0, nrow = N, ncol = K)
   I_K <- diag(K)
   for (i in seq_len(N)) {
-    A <- matrix(0, nrow = K, ncol = K)
-    b <- rep(0, K)
-    for (k in seq_along(X_list)) {
-      cnt <- counts_by_i[[k]][i]
-      if (cnt == 0L) next
-      a_k <- alpha_blocks[k]
-      A <- A + a_k * cnt * VtV_list[[k]]
-      b <- b + a_k * sums_by_i[[k]][i, ]
-    }
+    A <- local$A_list[[i]]
+    b <- local$rhs[i, ]
     A <- A + ridge * I_K
     if (all(abs(b) < 1e-14)) {
       S_new[i, ] <- 0

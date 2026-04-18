@@ -1,6 +1,11 @@
 library(testthat)
 library(muscal)
 
+.projected_grad_norm <- function(S, G) {
+  PG <- G - S %*% ((crossprod(S, G) + t(crossprod(S, G))) / 2)
+  sqrt(sum(PG^2))
+}
+
 test_that("anchored_mfa is the primary interface (linked_mfa is an alias)", {
   set.seed(1)
   Y <- matrix(rnorm(30 * 4), 30, 4)
@@ -217,6 +222,90 @@ test_that("anchored_mfa supports orthonormal score constraint", {
 
   expect_equal(crossprod(fit$s), diag(2), tolerance = 1e-5)
   expect_true(all(is.finite(fit$objective_trace)))
+})
+
+test_that("orthonormal MM score step decreases the anchored subproblem objective", {
+  set.seed(47)
+  N <- 44
+  Y <- matrix(rnorm(N * 4), N, 4)
+  X1 <- matrix(rnorm(20 * 6), 20, 6)
+  X2 <- matrix(rnorm(18 * 5), 18, 5)
+  idx <- list(
+    X1 = sample.int(N, nrow(X1), replace = TRUE),
+    X2 = sample.int(N, nrow(X2), replace = TRUE)
+  )
+
+  init <- anchored_mfa(
+    Y = Y,
+    X = list(X1 = X1, X2 = X2),
+    row_index = idx,
+    ncomp = 2,
+    preproc = multivarious::pass(),
+    normalization = "None",
+    ridge = 1e-6,
+    max_iter = 3,
+    tol = 0
+  )
+
+  local <- muscal:::.lmfa_score_system(
+    Y = Y,
+    B = init$B,
+    X_list = list(X1 = X1, X2 = X2),
+    V_list = init$V_list,
+    row_index = init$row_index,
+    alpha_y = init$alpha_blocks[[1]],
+    alpha_blocks = unname(init$alpha_blocks[-1])
+  )
+  S0 <- qr.Q(qr(matrix(rnorm(N * 2), N, 2)), complete = FALSE)
+  obj0 <- muscal:::.muscal_score_objective_from_system(
+    S0,
+    local$A_list,
+    local$rhs,
+    ridge = init$ridge
+  )
+  grad0 <- muscal:::.lmfa_score_gradient(
+    S = S0,
+    Y = Y,
+    B = init$B,
+    X_list = list(X1 = X1, X2 = X2),
+    V_list = init$V_list,
+    row_index = init$row_index,
+    alpha_y = init$alpha_blocks[[1]],
+    alpha_blocks = unname(init$alpha_blocks[-1]),
+    ridge = init$ridge
+  )
+
+  opt <- muscal:::.muscal_stiefel_mm(
+    S = S0,
+    A_list = local$A_list,
+    rhs = local$rhs,
+    ridge = init$ridge,
+    max_iter = 50,
+    tol = 1e-10
+  )
+  obj1 <- muscal:::.muscal_score_objective_from_system(
+    opt$S,
+    local$A_list,
+    local$rhs,
+    ridge = init$ridge
+  )
+  grad1 <- muscal:::.lmfa_score_gradient(
+    S = opt$S,
+    Y = Y,
+    B = init$B,
+    X_list = list(X1 = X1, X2 = X2),
+    V_list = init$V_list,
+    row_index = init$row_index,
+    alpha_y = init$alpha_blocks[[1]],
+    alpha_blocks = unname(init$alpha_blocks[-1]),
+    ridge = init$ridge
+  )
+  pg0 <- .projected_grad_norm(S0, grad0)
+  pg1 <- .projected_grad_norm(opt$S, grad1)
+
+  expect_equal(crossprod(opt$S), diag(2), tolerance = 1e-6)
+  expect_lte(obj1, obj0 + 1e-8)
+  expect_lt(pg1, pg0)
 })
 
 test_that("anchored_mfa uses anchor information rather than arbitrary Y row assignments", {

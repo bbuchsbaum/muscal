@@ -1,6 +1,11 @@
 library(testthat)
 library(muscal)
 
+.projected_grad_norm <- function(S, G) {
+  PG <- G - S %*% ((crossprod(S, G) + t(crossprod(S, G))) / 2)
+  sqrt(sum(PG^2))
+}
+
 sim_cgamfa <- function(N = 60,
                        q = 5,
                        p = c(10, 10),
@@ -480,4 +485,43 @@ test_that("coupled_graph_anchored_mfa supports orthonormal score constraint", {
 
   expect_equal(crossprod(fit$s), diag(2), tolerance = 1e-5)
   expect_true(all(is.finite(fit$objective_trace)))
+})
+
+test_that("coupled_graph_anchored_mfa orthonormal path has a small projected gradient residual", {
+  set.seed(111)
+  dat <- sim_cgamfa(smooth_scores = TRUE)
+
+  fit <- coupled_graph_anchored_mfa(
+    Y = dat$Y,
+    X = dat$X,
+    row_index = dat$row_index,
+    ncomp = 2,
+    normalization = "None",
+    preproc = multivarious::pass(),
+    score_constraint = "orthonormal",
+    score_graph = chain_laplacian(nrow(dat$Y)),
+    score_graph_form = "laplacian",
+    score_graph_lambda = 0.5,
+    coupling_lambda = 1,
+    ridge = 1e-6,
+    max_iter = 40,
+    tol = 1e-8
+  )
+
+  grad <- muscal:::.cgamfa_score_gradient(
+    S = fit$s,
+    Y = dat$Y,
+    B = fit$B,
+    Z_list = fit$Z_list,
+    row_index = fit$row_index,
+    alpha_y = fit$alpha_blocks[[1]],
+    coupling_lambda = fit$coupling_lambda,
+    score_graph_laplacian = fit$score_graph_laplacian,
+    score_graph_lambda = fit$score_graph_lambda,
+    ridge = fit$ridge
+  )
+  pg_rel <- .projected_grad_norm(fit$s, grad) / (sqrt(sum(grad^2)) + 1e-12)
+
+  expect_lt(pg_rel, 2e-1)
+  expect_lte(max(diff(fit$objective_trace)), 1e-6)
 })

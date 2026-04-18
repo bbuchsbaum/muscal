@@ -1,6 +1,11 @@
 library(testthat)
 library(muscal)
 
+.projected_grad_norm <- function(S, G) {
+  PG <- G - S %*% ((crossprod(S, G) + t(crossprod(S, G))) / 2)
+  sqrt(sum(PG^2))
+}
+
 .score_subspace_rel <- function(S1, S2) {
   P1 <- S1 %*% solve(crossprod(S1), t(S1))
   P2 <- S2 %*% solve(crossprod(S2), t(S2))
@@ -830,6 +835,44 @@ test_that("graph_anchored_mfa supports orthonormal score constraint", {
 
   expect_equal(crossprod(fit$s), diag(2), tolerance = 1e-5)
   expect_true(all(is.finite(fit$objective_trace)))
+})
+
+test_that("graph_anchored_mfa orthonormal path has a small projected gradient residual", {
+  sim <- .graph_anchor_score_graph_fixture()
+
+  fit <- graph_anchored_mfa(
+    Y = sim$Y,
+    X = sim$X,
+    row_index = sim$row_index,
+    ncomp = sim$ncomp,
+    preproc = multivarious::pass(),
+    normalization = "None",
+    score_constraint = "orthonormal",
+    score_graph = sim$score_graph_adj,
+    score_graph_form = "adjacency",
+    score_graph_lambda = 2,
+    ridge = 1e-6,
+    max_iter = 40,
+    tol = 1e-8
+  )
+
+  grad <- muscal:::.gamfa_score_gradient(
+    S = fit$s,
+    Y = sim$Y,
+    B = fit$B,
+    X_list = sim$X,
+    V_list = fit$V_list,
+    row_index = fit$row_index,
+    alpha_y = fit$alpha_blocks[[1]],
+    alpha_blocks = unname(fit$alpha_blocks[-1]),
+    score_graph_laplacian = fit$score_graph_laplacian,
+    score_graph_lambda = fit$score_graph_lambda,
+    ridge = fit$ridge
+  )
+  pg_rel <- .projected_grad_norm(fit$s, grad) / (sqrt(sum(grad^2)) + 1e-12)
+
+  expect_lt(pg_rel, 5e-3)
+  expect_lte(max(diff(fit$objective_trace)), 1e-6)
 })
 
 test_that("graph_anchored_mfa objective trace matches the fitted penalized objective", {
