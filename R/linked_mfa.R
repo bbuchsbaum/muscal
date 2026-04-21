@@ -582,7 +582,14 @@ linked_mfa <- function(Y,
 }
 
 .muscal_stiefel_retract <- function(S) {
-  qr.Q(qr(S), complete = FALSE)[, seq_len(ncol(S)), drop = FALSE]
+  k <- ncol(S)
+  if (nrow(S) >= k) {
+    gram <- crossprod(S)
+    if (all(is.finite(gram)) && max(abs(gram - diag(k))) <= 1e-10) {
+      return(S)
+    }
+  }
+  qr.Q(qr(S), complete = FALSE)[, seq_len(k), drop = FALSE]
 }
 
 .muscal_stiefel_projected_gradient <- function(S, G) {
@@ -627,7 +634,14 @@ linked_mfa <- function(Y,
                                        graph_lambda = 0,
                                        ridge = 0) {
   if (exists("muscal_apply_row_operator_cpp", mode = "function")) {
-    return(muscal_apply_row_operator_cpp(A_list, S, graph_laplacian, graph_lambda, ridge))
+    graph_laplacian_cpp <- graph_laplacian
+    if (!is.null(graph_laplacian_cpp) &&
+        isS4(graph_laplacian_cpp) &&
+        inherits(graph_laplacian_cpp, "sparseMatrix") &&
+        !inherits(graph_laplacian_cpp, "dgCMatrix")) {
+      graph_laplacian_cpp <- as(as(graph_laplacian_cpp, "generalMatrix"), "CsparseMatrix")
+    }
+    return(muscal_apply_row_operator_cpp(A_list, S, graph_laplacian_cpp, graph_lambda, ridge))
   }
   out <- .muscal_apply_row_system(S, A_list)
   if (isTRUE(graph_lambda > 0) && !is.null(graph_laplacian)) {
