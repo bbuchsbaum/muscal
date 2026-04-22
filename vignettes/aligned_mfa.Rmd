@@ -160,18 +160,22 @@ fit_aligned_full <- aligned_mfa(
   max_iter = 200,
   tol = 1e-10
 )
-fit_mfa <- mfa(full_blocks, ncomp = 2, normalization = "None")
+if (requireNamespace("genpca", quietly = TRUE)) {
+  fit_mfa <- mfa(full_blocks, ncomp = 2, normalization = "None")
 
-P1 <- multivarious::scores(fit_aligned_full) %*%
-  solve(crossprod(multivarious::scores(fit_aligned_full)), t(multivarious::scores(fit_aligned_full)))
-P2 <- multivarious::scores(fit_mfa) %*%
-  solve(crossprod(multivarious::scores(fit_mfa)), t(multivarious::scores(fit_mfa)))
-rel <- norm(P1 - P2, type = "F") / (norm(P2, type = "F") + 1e-12)
+  P1 <- multivarious::scores(fit_aligned_full) %*%
+    solve(crossprod(multivarious::scores(fit_aligned_full)), t(multivarious::scores(fit_aligned_full)))
+  P2 <- multivarious::scores(fit_mfa) %*%
+    solve(crossprod(multivarious::scores(fit_mfa)), t(multivarious::scores(fit_mfa)))
+  rel <- norm(P1 - P2, type = "F") / (norm(P2, type = "F") + 1e-12)
 
-stopifnot(is.finite(rel))
-stopifnot(rel < 0.05)
+  stopifnot(is.finite(rel))
+  stopifnot(rel < 0.05)
 
-rel
+  rel
+} else {
+  "Package 'genpca' not installed; skipping direct MFA reduction check."
+}
 ```
 
 That reduction check is important: it confirms that you are getting a genuine
