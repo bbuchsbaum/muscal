@@ -12,6 +12,7 @@ Description: Provides core 'French school' multivariate analysis methods includi
     and processing potentially used by related statistical packages.
 License: MIT + file LICENSE
 Encoding: UTF-8
+SystemRequirements: C++11
 Imports:
     Matrix,
     Rcpp,
