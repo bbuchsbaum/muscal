@@ -173,9 +173,10 @@ muscal_fit_contract <- function(method,
   resolved <- .muscal_resolve_block_id(block, names(x$V_list))
   block_name <- resolved$name
   Xnew <- as.matrix(new_data)
+  block_preproc <- x$block_preproc[[block_name]]
 
-  if (isTRUE(preprocess)) {
-    Xnew <- multivarious::transform(x$block_preproc[[block_name]], Xnew)
+  if (isTRUE(preprocess) && !is.null(block_preproc)) {
+    Xnew <- multivarious::transform(block_preproc, Xnew)
   }
 
   Vk <- x$V_list[[block_name]]
@@ -196,9 +197,10 @@ muscal_fit_contract <- function(method,
                                                  preprocess = TRUE) {
   resolved <- .muscal_resolve_block_id(block, names(object$V_list))
   block_name <- resolved$name
+  block_preproc <- object$block_preproc[[block_name]]
   scores_new <- .muscal_project_row_linked_scores(object, new_data, block = block, preprocess = preprocess)
   Xhat_p <- scores_new %*% t(object$V_list[[block_name]])
-  multivarious::inverse_transform(object$block_preproc[[block_name]], Xhat_p)
+  if (is.null(block_preproc)) Xhat_p else multivarious::inverse_transform(block_preproc, Xhat_p)
 }
 
 .muscal_predict_anchor_response <- function(object,
@@ -207,7 +209,7 @@ muscal_fit_contract <- function(method,
                                             preprocess = TRUE) {
   scores_new <- .muscal_project_row_linked_scores(object, new_data, block = block, preprocess = preprocess)
   Yhat_p <- scores_new %*% t(object$B)
-  multivarious::inverse_transform(object$anchor_preproc, Yhat_p)
+  if (is.null(object$anchor_preproc)) Yhat_p else multivarious::inverse_transform(object$anchor_preproc, Yhat_p)
 }
 
 #' Predict from a Multiple Factor Analysis Fit

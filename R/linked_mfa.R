@@ -162,6 +162,7 @@ anchored_mfa <- function(Y,
   Yp <- prep_res$Xp[[1]]
   Xp <- prep_res$Xp[-1]
   proclist <- prep_res$proclist
+  fitted_proclist <- .muscal_materialize_block_preprocessors(blocks, proclist)
 
   # Ensure N refers to preprocessed Y rows (should match input)
   N <- nrow(Yp)
@@ -346,7 +347,7 @@ anchored_mfa <- function(Y,
   }
   names(block_indices) <- c("Y", names(Xp))
 
-  proc <- multivarious::concat_pre_processors(proclist, block_indices)
+  proc <- multivarious::concat_pre_processors(fitted_proclist, block_indices)
 
   v_concat <- do.call(rbind, c(list(B), V_list))
   sdev <- apply(S, 2, stats::sd)
@@ -438,8 +439,8 @@ anchored_mfa <- function(Y,
     partial_scores = partial_scores,
     cor_loadings = cor_loadings,
     block_fit = block_fit,
-    block_preproc = setNames(proclist[-1L], names(Xp)),
-    anchor_preproc = proclist[[1L]],
+    block_preproc = setNames(fitted_proclist[-1L], names(Xp)),
+    anchor_preproc = fitted_proclist[[1L]],
     ridge = ridge,
     classes = c("anchored_mfa", "linked_mfa")
   )

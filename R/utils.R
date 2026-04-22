@@ -102,6 +102,31 @@ prepare_block_preprocessors <- function(data_list, preproc_arg, check_consistent
   return(list(proclist = proclist, Xp = Xp, p_post = p_post))
 }
 
+#' Materialize Fitted Identity Preprocessors When None Were Requested
+#'
+#' @param data_list A list of raw data blocks.
+#' @param proclist A fitted preprocessor list, or `NULL`.
+#'
+#' @return A named list of fitted `pre_processor` objects, one per block.
+#' @keywords internal
+#' @noRd
+.muscal_materialize_block_preprocessors <- function(data_list, proclist) {
+  if (!is.null(proclist)) {
+    return(proclist)
+  }
+
+  block_names <- names(data_list)
+  if (is.null(block_names)) {
+    block_names <- paste0("Block_", seq_along(data_list))
+  }
+
+  fitted_pass <- lapply(data_list, function(x) {
+    multivarious::prep(multivarious::pass(), x)
+  })
+  names(fitted_pass) <- block_names
+  fitted_pass
+}
+
 #' Identify Significant Components via RMT and Inter-block Coherence Tests
 #'
 #' This function determines which components from a multi-block analysis (e.g.,

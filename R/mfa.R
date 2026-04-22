@@ -161,6 +161,7 @@ mfa.multiblock <- function(data, preproc=center(), ncomp=2,
   # Set check_consistent_ncol=FALSE as MFA handles potential concatenation later
   preproc_result <- prepare_block_preprocessors(data, preproc, check_consistent_ncol = FALSE)
   proclist <- preproc_result$proclist
+  fitted_proclist <- .muscal_materialize_block_preprocessors(data, proclist)
   strata <- preproc_result$Xp # Renamed from Xp for consistency with original MFA code
   
   ## calculate block normalization factors
@@ -179,7 +180,7 @@ mfa.multiblock <- function(data, preproc=center(), ncomp=2,
     ind <- ind + ncol(strata[[i]])
   }
   
-  proc <- multivarious::concat_pre_processors(proclist, block_indices)
+  proc <- multivarious::concat_pre_processors(fitted_proclist, block_indices)
 
     ## fit genpca
   if (!requireNamespace("genpca", quietly = TRUE)) {

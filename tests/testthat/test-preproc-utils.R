@@ -33,3 +33,12 @@ test_that("inconsistent column counts warn when no preprocessing", {
   )
 })
 
+test_that("NULL preprocessors can be materialized into fitted identity preprocessors", {
+  raw_blocks <- list(A = mat1, B = mat2)
+  res <- muscal:::prepare_block_preprocessors(raw_blocks, NULL)
+  fitted <- muscal:::.muscal_materialize_block_preprocessors(raw_blocks, res$proclist)
+
+  expect_length(fitted, 2)
+  expect_named(fitted, c("A", "B"))
+  expect_true(all(vapply(fitted, inherits, logical(1), "pre_processor")))
+})

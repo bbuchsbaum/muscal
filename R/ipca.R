@@ -122,6 +122,7 @@ ipca.multiblock <- function(data,
     if (inherits(x, "Matrix")) as.matrix(x) else x
   })
   proclist <- prep$proclist
+  fitted_proclist <- .muscal_materialize_block_preprocessors(data, proclist)
 
   p_vec <- vapply(Xp, ncol, integer(1))
   p_total <- sum(p_vec)
@@ -141,7 +142,7 @@ ipca.multiblock <- function(data,
   }
 
   block_indices <- .ipca_block_indices(Xp)
-  proc <- multivarious::concat_pre_processors(proclist, block_indices)
+  proc <- multivarious::concat_pre_processors(fitted_proclist, block_indices)
 
   fit <- if (identical(method_used, "gram")) {
     .ipca_fit_gram(

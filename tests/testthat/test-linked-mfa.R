@@ -156,6 +156,29 @@ test_that("anchored_mfa exposes a standard out-of-sample contract", {
   expect_error(predict(fit, new_rows, block = "missing"), "Unknown block")
 })
 
+test_that("anchored_mfa accepts preproc = NULL", {
+  set.seed(51)
+  Y <- matrix(rnorm(36 * 4), 36, 4)
+  X1 <- matrix(rnorm(14 * 6), 14, 6)
+  X2 <- matrix(rnorm(16 * 5), 16, 5)
+  idx1 <- sample.int(nrow(Y), nrow(X1), replace = FALSE)
+  idx2 <- sample.int(nrow(Y), nrow(X2), replace = FALSE)
+
+  fit <- anchored_mfa(
+    Y = Y,
+    X = list(X1 = X1, X2 = X2),
+    row_index = list(X1 = idx1, X2 = idx2),
+    preproc = NULL,
+    ncomp = 2
+  )
+
+  expect_s3_class(fit, "anchored_mfa")
+  expect_s3_class(fit$preproc, "pre_processor")
+  expect_named(fit$block_preproc, c("X1", "X2"))
+  expect_true(all(vapply(fit$block_preproc, inherits, logical(1), "pre_processor")))
+  expect_s3_class(fit$anchor_preproc, "pre_processor")
+})
+
 test_that("anchored_mfa refit contract can rebuild from stored training data", {
   set.seed(42)
   Y <- matrix(rnorm(36 * 3), 36, 3)

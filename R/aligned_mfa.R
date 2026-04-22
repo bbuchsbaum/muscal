@@ -151,6 +151,7 @@ aligned_mfa <- function(X,
   prep_res <- prepare_block_preprocessors(X, preproc, check_consistent_ncol = FALSE)
   Xp <- prep_res$Xp
   proclist <- prep_res$proclist
+  fitted_proclist <- .muscal_materialize_block_preprocessors(X, proclist)
 
   # Block weights (alpha)
   alpha_blocks <- if (normalization == "custom") {
@@ -318,7 +319,7 @@ aligned_mfa <- function(X,
     current <- current + ncol(Xp[[k]])
   }
   names(block_indices) <- names(Xp)
-  proc <- multivarious::concat_pre_processors(proclist, block_indices)
+  proc <- multivarious::concat_pre_processors(fitted_proclist, block_indices)
   v_concat <- do.call(rbind, V_list)
   sdev <- apply(S, 2, stats::sd)
 
@@ -380,7 +381,7 @@ aligned_mfa <- function(X,
     cor_loadings = cor_loadings,
     block_fit = block_fit,
     N = N,
-    block_preproc = setNames(proclist, names(Xp)),
+    block_preproc = setNames(fitted_proclist, names(Xp)),
     ridge = ridge,
     classes = "aligned_mfa"
   )

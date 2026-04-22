@@ -116,6 +116,7 @@ aligned_mcca <- function(X,
   prep_res <- prepare_block_preprocessors(X, preproc, check_consistent_ncol = FALSE)
   Xp <- prep_res$Xp
   proclist <- prep_res$proclist
+  fitted_proclist <- .muscal_materialize_block_preprocessors(X, proclist)
 
   # Block indices for concatenated feature space
   block_indices <- list()
@@ -125,7 +126,7 @@ aligned_mcca <- function(X,
     current <- current + ncol(Xp[[k]])
   }
   names(block_indices) <- names(Xp)
-  proc <- multivarious::concat_pre_processors(proclist, block_indices)
+  proc <- multivarious::concat_pre_processors(fitted_proclist, block_indices)
 
   # Weights and ridge vectors
   if (is.null(block_weights)) block_weights <- rep(1, S_blocks)

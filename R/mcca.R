@@ -161,6 +161,7 @@ mcca.multiblock <- function(data, preproc = multivarious::center(), ncomp = 2,
   prep <- prepare_block_preprocessors(data, preproc, check_consistent_ncol = FALSE)
   strata <- prep$Xp
   proclist <- prep$proclist
+  fitted_proclist <- .muscal_materialize_block_preprocessors(data, proclist)
 
   # Block indices for concatenated loadings space
   block_indices <- list()
@@ -171,7 +172,7 @@ mcca.multiblock <- function(data, preproc = multivarious::center(), ncomp = 2,
   }
   names(block_indices) <- names(data)
 
-  proc <- multivarious::concat_pre_processors(proclist, block_indices)
+  proc <- multivarious::concat_pre_processors(fitted_proclist, block_indices)
 
   # Ridge vector (scaled per block)
   if (length(ridge) == 1) ridge <- rep(ridge, S)
