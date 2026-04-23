@@ -19,6 +19,10 @@ projection, and preprocessing.
 - `penalized_mfa()` when you want MFA with loading-similarity penalties.
 - `anchored_mfa()` for linked blocks that map back to a reference table but do
   not share identical rows.
+- `response_aligned_mfa()` when blocks have paired multivariate responses but
+  do not share exact response rows.
+- `aligned_rrr()` as the pure shared reduced-rank regression baseline for the
+  same response-prediction setting.
 - `aligned_mfa()` and `aligned_mcca()` for aligned multiblock integration and
   correlation analysis.
 - `covstatis()` for lists of covariance or connectivity matrices.
@@ -82,6 +86,7 @@ articles below.
 - MCCA intro: [vignettes/mcca.Rmd](vignettes/mcca.Rmd)
 - Integrative PCA article: [docs/articles/ipca.md](docs/articles/ipca.md)
 - Anchored MFA article: [docs/articles/linked_mfa.md](docs/articles/linked_mfa.md)
+- Supervised common-space comparison: [vignettes/response_alignment.Rmd](vignettes/response_alignment.Rmd)
 - Aligned MFA intro: [vignettes/aligned_mfa.Rmd](vignettes/aligned_mfa.Rmd)
 - Aligned MCCA intro: [vignettes/aligned_mcca.Rmd](vignettes/aligned_mcca.Rmd)
 - COVSTATIS article: [docs/articles/covstatis.md](docs/articles/covstatis.md)

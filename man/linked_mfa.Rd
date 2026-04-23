@@ -88,9 +88,11 @@ majorization/polar step.}
 }
 \value{
 An object inheriting from `multivarious::multiblock_biprojector` with
-  additional classes `"anchored_mfa"` and `"linked_mfa"`. The object contains global scores in `s`,
-  concatenated loadings in `v`, and block mappings in `block_indices`. Additional
-  fields include `V_list`, `B`, `row_index`, `alpha_blocks`, and `objective_trace`.
+  additional classes `"anchored_mfa"` and `"linked_mfa"`. The object contains global
+  anchor scores in `s` (and alias `S`), concatenated loadings in `v`, and block
+  mappings in `block_indices`. Additional fields include `V_list`, `B`,
+  `row_index`, exact per-block mapped scores in `Z_list`, `score_index`,
+  `alpha_blocks`, and `objective_trace`.
 }
 \description{
 Anchored MFA generalizes Multiple Factor Analysis (MFA) to the case where a single

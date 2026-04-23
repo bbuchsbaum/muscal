@@ -56,9 +56,11 @@
 #' @param ... Unused (reserved for future extensions).
 #'
 #' @return An object inheriting from `multivarious::multiblock_biprojector` with
-#'   additional classes `"anchored_mfa"` and `"linked_mfa"`. The object contains global scores in `s`,
-#'   concatenated loadings in `v`, and block mappings in `block_indices`. Additional
-#'   fields include `V_list`, `B`, `row_index`, `alpha_blocks`, and `objective_trace`.
+#'   additional classes `"anchored_mfa"` and `"linked_mfa"`. The object contains global
+#'   anchor scores in `s` (and alias `S`), concatenated loadings in `v`, and block
+#'   mappings in `block_indices`. Additional fields include `V_list`, `B`,
+#'   `row_index`, exact per-block mapped scores in `Z_list`, `score_index`,
+#'   `alpha_blocks`, and `objective_trace`.
 #'
 #' @examples
 #' \donttest{
@@ -201,138 +203,25 @@ anchored_mfa <- function(Y,
   fg <- .lmfa_parse_feature_groups(feature_groups, Xp, feature_lambda)
   feature_lambda_eff <- fg$feature_lambda
 
-  # ---------------------------------------------------------------------------
-  # 4. Initialization from Y
-  # ---------------------------------------------------------------------------
-  K <- min(as.integer(ncomp), nrow(Yp), ncol(Yp))
-  if (K < 1L) stop("ncomp must be at least 1 and <= min(nrow(Y), ncol(Y)).", call. = FALSE)
-
-  init <- .lmfa_init_from_Y(Yp, K, ridge = ridge)
-  S <- init$S # N x K
-  B <- init$B # q x K
-
-  # Initialize V_k by ridge regression of X_k on S[idx_k,]
-  V_list <- lapply(seq_along(Xp), function(k) {
-    Sk <- S[row_index[[k]], , drop = FALSE]
-    .lmfa_update_loadings(Sk, Xp[[k]], alpha = alpha_blocks[k + 1L], ridge = ridge)$V
-  })
-  names(V_list) <- names(Xp)
-
-  objective_trace <- numeric(0)
-  prev_obj <- Inf
-
-  # ---------------------------------------------------------------------------
-  # 5. ALS loop
-  # ---------------------------------------------------------------------------
-  for (iter in seq_len(max_iter)) {
-    # (a) Update B (Y loadings)
-    B <- .lmfa_update_loadings(S, Yp, alpha = alpha_blocks[1], ridge = ridge)$V
-
-    # (b) Update feature group centers from current V (if enabled)
-    centers <- .lmfa_group_centers(V_list, fg, block_weights = alpha_blocks[-1L])
-
-    # (c) Update each V_k (X loadings), optionally with group-shrinkage prior
-    for (k in seq_along(Xp)) {
-      Sk <- S[row_index[[k]], , drop = FALSE]
-      V_list[[k]] <- .lmfa_update_V_block(
-        Sk = Sk,
-        Xk = Xp[[k]],
-        alpha_block = alpha_blocks[k + 1L],
-        fg_block = fg$by_block[[k]],
-        weights_block = fg$weights_by_block[[k]],
-        centers = centers,
-        feature_lambda = feature_lambda_eff,
-        ridge = ridge
-      )
-    }
-
-    # (d) Recompute centers after V update for objective + next iteration
-    centers <- .lmfa_group_centers(V_list, fg, block_weights = alpha_blocks[-1L])
-
-    if (identical(score_constraint, "orthonormal")) {
-      local <- .lmfa_score_system(
-        Y = Yp,
-        B = B,
-        X_list = Xp,
-        V_list = V_list,
-        row_index = row_index,
-        alpha_y = alpha_blocks[1],
-        alpha_blocks = alpha_blocks[-1]
-      )
-      S_warm <- .lmfa_update_scores(
-        Y = Yp,
-        B = B,
-        X_list = Xp,
-        V_list = V_list,
-        row_index = row_index,
-        alpha_y = alpha_blocks[1],
-        alpha_blocks = alpha_blocks[-1],
-        local = local,
-        ridge = ridge
-      )
-      S_start <- .muscal_stiefel_retract(S)
-      S_warm <- .muscal_stiefel_retract(S_warm)
-      obj_start <- .muscal_score_objective_from_system(S_start, local$A_list, local$rhs, ridge = ridge)
-      obj_warm <- .muscal_score_objective_from_system(S_warm, local$A_list, local$rhs, ridge = ridge)
-      if (obj_warm <= obj_start) {
-        S_start <- S_warm
-      }
-      s_opt <- .muscal_stiefel_mm(
-        S = S_start,
-        A_list = local$A_list,
-        rhs = local$rhs,
-        ridge = ridge
-      )
-      S <- s_opt$S
-    } else {
-      S <- .lmfa_update_scores(
-        Y = Yp,
-        B = B,
-        X_list = Xp,
-        V_list = V_list,
-        row_index = row_index,
-        alpha_y = alpha_blocks[1],
-        alpha_blocks = alpha_blocks[-1],
-        ridge = ridge
-      )
-
-      ortho <- .lmfa_orthonormalize_scores(S)
-      S <- ortho$S
-      rot <- ortho$R
-      B <- B %*% t(rot)
-      V_list <- lapply(V_list, function(V) V %*% t(rot))
-      centers <- .lmfa_group_centers(V_list, fg, block_weights = alpha_blocks[-1L])
-    }
-
-    # (g) Objective / convergence
-    obj <- .lmfa_objective(
-      Y = Yp,
-      S = S,
-      B = B,
-      X_list = Xp,
-      V_list = V_list,
-      row_index = row_index,
-      alpha_y = alpha_blocks[1],
-      alpha_blocks = alpha_blocks[-1],
-      fg = fg,
-      centers = centers,
-      feature_lambda = feature_lambda_eff,
-      ridge = ridge
-    )
-    objective_trace <- c(objective_trace, obj)
-
-    rel_change <- abs(obj - prev_obj) / (abs(prev_obj) + ridge)
-    if (isTRUE(verbose)) {
-      message(
-        sprintf(
-          "anchored_mfa iter %d: obj=%.6g, rel_change=%.3g",
-          iter, obj, rel_change
-        )
-      )
-    }
-    if (is.finite(prev_obj) && rel_change < tol) break
-    prev_obj <- obj
-  }
+  core <- .ramfa_fit_hard_anchor_core(
+    Y = Yp,
+    X_list = Xp,
+    row_index = row_index,
+    alpha_y = alpha_blocks[1],
+    alpha_blocks = alpha_blocks[-1L],
+    fg = fg,
+    feature_lambda = feature_lambda_eff,
+    ncomp = ncomp,
+    score_constraint = score_constraint,
+    max_iter = max_iter,
+    tol = tol,
+    ridge = ridge,
+    verbose = verbose
+  )
+  S <- core$S
+  B <- core$B
+  V_list <- core$V_list
+  objective_trace <- core$objective_trace
 
   # ---------------------------------------------------------------------------
   # 6. Build multivarious-compatible return object
@@ -351,6 +240,9 @@ anchored_mfa <- function(Y,
 
   v_concat <- do.call(rbind, c(list(B), V_list))
   sdev <- apply(S, 2, stats::sd)
+  Z_list <- lapply(seq_along(Xp), function(k) S[row_index[[k]], , drop = FALSE])
+  names(Z_list) <- names(Xp)
+  score_stack <- .ramfa_stack_scores(Z_list)
 
   # ---------------------------------------------------------------------------
   # 7. Derived quantities for plotting / diagnostics
@@ -429,7 +321,10 @@ anchored_mfa <- function(Y,
     block_indices = block_indices,
     # linked_mfa metadata
     B = B,
+    S = S,
     V_list = V_list,
+    Z_list = Z_list,
+    score_index = score_stack$score_index,
     row_index = row_index,
     alpha_blocks = alpha_blocks,
     normalization = normalization,
@@ -442,6 +337,7 @@ anchored_mfa <- function(Y,
     block_preproc = setNames(fitted_proclist[-1L], names(Xp)),
     anchor_preproc = fitted_proclist[[1L]],
     ridge = ridge,
+    score_representation = "anchor_scores",
     classes = c("anchored_mfa", "linked_mfa")
   )
 
@@ -529,6 +425,42 @@ linked_mfa <- function(Y,
 # Internal helpers
 # ---------------------------------------------------------------------------
 
+.ramfa_fit_hard_anchor_core <- function(Y,
+                                        X_list,
+                                        row_index,
+                                        alpha_y,
+                                        alpha_blocks,
+                                        fg,
+                                        feature_lambda,
+                                        ncomp,
+                                        score_constraint,
+                                        max_iter,
+                                        tol,
+                                        ridge,
+                                        verbose) {
+  .muscal_fit_common_space_engine(
+    engine = "hard_anchor",
+    X_list = X_list,
+    ncomp = ncomp,
+    alpha_blocks = alpha_blocks,
+    ridge = ridge,
+    max_iter = max_iter,
+    tol = tol,
+    verbose = verbose,
+    anchor_response = Y,
+    anchor_response_alpha = alpha_y,
+    anchor_response_weights = rep(1, nrow(Y)),
+    row_index = row_index,
+    fg = fg,
+    feature_lambda = feature_lambda,
+    graph = list(enabled = FALSE, L = NULL, A = NULL),
+    graph_lambda = 0,
+    score_graph_spec = list(enabled = FALSE, L = NULL, A = NULL),
+    score_graph_lambda = 0,
+    score_constraint = score_constraint
+  )
+}
+
 .lmfa_init_from_Y <- function(Y, ncomp, ridge = 1e-8) {
   # Use a deterministic initialization: SVD on Y
   sv <- multivarious::svd_wrapper(Y, ncomp = ncomp, method = if (min(dim(Y)) < 3) "base" else "svds")
@@ -582,6 +514,10 @@ linked_mfa <- function(Y,
   (A + t(A)) / 2
 }
 
+.muscal_has_native_symbol <- function(name) {
+  is.loaded(paste0("_muscal_", name))
+}
+
 .muscal_stiefel_retract <- function(S) {
   k <- ncol(S)
   if (nrow(S) >= k) {
@@ -606,7 +542,7 @@ linked_mfa <- function(Y,
 }
 
 .muscal_apply_row_system <- function(S, A_list) {
-  if (exists("muscal_apply_row_system_cpp", mode = "function")) {
+  if (.muscal_has_native_symbol("muscal_apply_row_system_cpp")) {
     return(muscal_apply_row_system_cpp(A_list, S))
   }
   out <- matrix(0, nrow = nrow(S), ncol = ncol(S))
@@ -617,7 +553,7 @@ linked_mfa <- function(Y,
 }
 
 .muscal_rowsum_counts <- function(X, idx, N) {
-  if (exists("muscal_rowsum_counts_cpp", mode = "function")) {
+  if (.muscal_has_native_symbol("muscal_rowsum_counts_cpp")) {
     return(muscal_rowsum_counts_cpp(X, as.integer(idx), as.integer(N)))
   }
   rs <- rowsum(X, idx, reorder = FALSE)
@@ -634,7 +570,7 @@ linked_mfa <- function(Y,
                                        graph_laplacian = NULL,
                                        graph_lambda = 0,
                                        ridge = 0) {
-  if (exists("muscal_apply_row_operator_cpp", mode = "function")) {
+  if (.muscal_has_native_symbol("muscal_apply_row_operator_cpp")) {
     graph_laplacian_cpp <- graph_laplacian
     if (!is.null(graph_laplacian_cpp) &&
         isS4(graph_laplacian_cpp) &&

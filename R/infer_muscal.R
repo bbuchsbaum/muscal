@@ -309,3 +309,137 @@ infer_muscal <- function(object,
   out$row_index <- lapply(data$row_index, sample)
   out
 }
+
+.muscal_expand_block_row_weights <- function(weights, lengths, block_names, what) {
+  if (is.null(weights)) {
+    return(NULL)
+  }
+
+  K <- length(lengths)
+  if (is.list(weights) &&
+      !inherits(weights, "pre_processor") &&
+      !inherits(weights, "prepper")) {
+    if (length(weights) != K) {
+      stop(sprintf("`%s` must have one element per block.", what), call. = FALSE)
+    }
+    if (is.null(names(weights))) {
+      names(weights) <- block_names
+    } else {
+      weights <- .lmfa_align_named_index_list(weights, block_names, what = what)
+    }
+    out <- lapply(seq_along(weights), function(k) {
+      w <- as.numeric(weights[[k]])
+      chk::chk_equal(length(w), lengths[[k]])
+      if (any(!is.finite(w)) || any(w < 0)) {
+        stop(sprintf("Each `%s[[k]]` must be finite and non-negative.", what), call. = FALSE)
+      }
+      w
+    })
+    names(out) <- block_names
+    return(out)
+  }
+
+  vals <- if (length(weights) == 1L) {
+    rep(as.numeric(weights), K)
+  } else {
+    as.numeric(weights)
+  }
+  chk::chk_equal(length(vals), K)
+  if (any(!is.finite(vals)) || any(vals < 0)) {
+    stop(sprintf("`%s` must be finite and non-negative.", what), call. = FALSE)
+  }
+
+  out <- lapply(seq_along(lengths), function(k) rep(vals[[k]], lengths[[k]]))
+  names(out) <- block_names
+  out
+}
+
+.muscal_bootstrap_response_aligned_data <- function(data) {
+  X <- data$X
+  Y <- data$Y
+  block_names <- names(X) %||% paste0("X", seq_along(X))
+  lengths_x <- vapply(X, nrow, integer(1))
+  lengths_y <- vapply(Y, nrow, integer(1))
+  response_weights <- .muscal_expand_block_row_weights(
+    weights = data$response_weights %||% lapply(Y, function(y) rep(1, nrow(y))),
+    lengths = lengths_y,
+    block_names = block_names,
+    what = "response_weights"
+  )
+  anchor_response <- data$anchor_response
+  anchor_response_weights <- data$anchor_response_weights
+  anchor_map <- data$anchor_map
+  anchor_weight <- .muscal_expand_block_row_weights(
+    weights = data$anchor_weight,
+    lengths = lengths_x,
+    block_names = block_names,
+    what = "anchor_weight"
+  )
+
+  X_boot <- vector("list", length(X))
+  Y_boot <- vector("list", length(Y))
+  W_boot <- vector("list", length(response_weights))
+  A_boot <- if (!is.null(anchor_map)) vector("list", length(anchor_map)) else NULL
+  M_boot <- if (!is.null(anchor_weight)) vector("list", length(anchor_weight)) else NULL
+  names(X_boot) <- names(X)
+  names(Y_boot) <- names(Y)
+  names(W_boot) <- names(response_weights)
+  if (!is.null(A_boot)) names(A_boot) <- names(anchor_map)
+  if (!is.null(M_boot)) names(M_boot) <- names(anchor_weight)
+
+  for (k in seq_along(X)) {
+    n <- nrow(X[[k]])
+    sampled <- sample.int(n, size = n, replace = TRUE)
+    X_boot[[k]] <- as.matrix(X[[k]])[sampled, , drop = FALSE]
+    Y_boot[[k]] <- as.matrix(Y[[k]])[sampled, , drop = FALSE]
+    W_boot[[k]] <- as.numeric(response_weights[[k]])[sampled]
+    if (!is.null(anchor_map)) {
+      Ak <- anchor_map[[k]]
+      A_boot[[k]] <- if (is.matrix(Ak)) Ak[sampled, , drop = FALSE] else as.integer(Ak)[sampled]
+    }
+    if (!is.null(anchor_weight)) {
+      M_boot[[k]] <- as.numeric(anchor_weight[[k]])[sampled]
+    }
+  }
+
+  list(
+    X = X_boot,
+    Y = Y_boot,
+    response_weights = W_boot,
+    anchor_response = anchor_response,
+    anchor_response_weights = anchor_response_weights,
+    anchor_map = A_boot,
+    anchor_weight = M_boot
+  )
+}
+
+.muscal_permute_response_aligned_data <- function(data) {
+  out <- data
+  Y <- data$Y
+  block_names <- names(Y) %||% paste0("X", seq_along(Y))
+  response_weights <- .muscal_expand_block_row_weights(
+    weights = data$response_weights,
+    lengths = vapply(Y, nrow, integer(1)),
+    block_names = block_names,
+    what = "response_weights"
+  )
+
+  Y_perm <- vector("list", length(Y))
+  W_perm <- if (!is.null(response_weights)) vector("list", length(Y)) else NULL
+  names(Y_perm) <- block_names
+  if (!is.null(W_perm)) names(W_perm) <- block_names
+
+  for (k in seq_along(Y)) {
+    perm <- sample.int(nrow(Y[[k]]))
+    Y_perm[[k]] <- Y[[k]][perm, , drop = FALSE]
+    if (!is.null(W_perm)) {
+      W_perm[[k]] <- response_weights[[k]][perm]
+    }
+  }
+
+  out$Y <- Y_perm
+  if (!is.null(W_perm)) {
+    out$response_weights <- W_perm
+  }
+  out
+}

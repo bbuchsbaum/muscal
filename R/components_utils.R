@@ -77,9 +77,23 @@ loading_reliability <- function(fit,
       stop("boot_loadings must be provided for bootstrap reliability.")
     }
     V_ref <- V_ref %||% .extract_V_list(fit)
-    # Flatten list-of-matrices bootstrap into summarize_boot-like inputs
-    boot_mean <- Reduce("+", boot_loadings) / length(boot_loadings)
-    arr <- abind::abind(boot_loadings, along = 3)
+    V_ref_mat <- .muscal_as_component_basis_matrix(V_ref, what = "V_ref")
+    boot_mats <- lapply(seq_along(boot_loadings), function(i) {
+      boot_i <- .muscal_as_component_basis_matrix(
+        boot_loadings[[i]],
+        ncomp = ncol(V_ref_mat),
+        what = sprintf("boot_loadings[[%d]]", i)
+      )
+      signs_i <- .muscal_component_signs_from_basis(
+        basis = boot_i,
+        rule = "max_abs",
+        reference = V_ref_mat
+      )
+      .muscal_apply_component_signs_to_matrix(boot_i, signs_i)
+    })
+
+    boot_mean <- Reduce("+", boot_mats) / length(boot_mats)
+    arr <- abind::abind(boot_mats, along = 3)
     sd_mat <- apply(arr, c(1, 2), stats::sd)
     lower <- apply(arr, c(1, 2), stats::quantile, probs = alpha / 2, type = 1)
     upper <- apply(arr, c(1, 2), stats::quantile, probs = 1 - alpha / 2, type = 1)

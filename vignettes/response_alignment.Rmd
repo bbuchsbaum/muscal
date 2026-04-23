@@ -1,0 +1,380 @@
+---
+title: Choosing a Supervised Common-Space Model
+output: rmarkdown::html_vignette
+vignette: >
+  %\VignetteIndexEntry{Choosing a Supervised Common-Space Model}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+params:
+  family: red
+  preset: homage
+css: albers.css
+resource_files:
+- albers.css
+- albers.js
+includes:
+  in_header: |-
+    <script src="albers.js"></script>
+    <script>document.addEventListener('DOMContentLoaded',function(){document.body.classList.add('palette-red');});</script>
+
+---
+
+```{r setup, include = FALSE}
+if (requireNamespace("ggplot2", quietly = TRUE) && requireNamespace("albersdown", quietly = TRUE) && exists("params")) ggplot2::theme_set(albersdown::theme_albers(params$family))
+knitr::opts_chunk$set(
+  collapse = TRUE,
+  comment = "#>",
+  message = FALSE,
+  warning = FALSE,
+  fig.width = 6,
+  fig.height = 4
+)
+```
+
+## Why this comparison matters
+
+Sometimes the response table really defines a small set of shared states across
+blocks. Sometimes every block has its own paired multivariate response with no
+exact row sharing. Sometimes you are in between: some rows map back to known
+anchor states, while others are novel.
+
+`muscal` now has three honest answers to those three situations:
+
+- `anchored_mfa()` when the response lives at the anchor-state level
+- `response_aligned_mfa()` when each block has paired multivariate `Y`, with or
+  without partial anchor structure
+- `aligned_rrr()` when you want the clean reduced-rank regression baseline
+
+This vignette shows the same prediction problem under each regime and focuses
+on the contract you actually need, not on forcing every case through repeated
+rows of `Y`.
+
+## Load the package
+
+```{r load-packages}
+library(muscal)
+library(multivarious)
+library(knitr)
+```
+
+```{r simulate-data, include = FALSE}
+.center_only <- function(x) scale(x, center = TRUE, scale = FALSE)
+
+.mean_mse <- function(pred, truth) {
+  mean(unlist(lapply(seq_along(pred), function(k) {
+    (pred[[k]] - truth[[k]])^2
+  })))
+}
+
+.predict_block_list <- function(fit, X_list, type = c("response", "scores"), ...) {
+  type <- match.arg(type)
+  lapply(names(X_list), function(block) {
+    predict(fit, X_list[[block]], block = block, type = type, ...)
+  }) |> stats::setNames(names(X_list))
+}
+
+.sim_exact_anchor <- function(seed = 101,
+                              n_anchor = 24,
+                              n_train = c(54, 50),
+                              n_test = c(18, 16),
+                              p = c(8, 7),
+                              q = 3,
+                              K = 2,
+                              noise_x = 0.07,
+                              noise_y = 0.04) {
+  set.seed(seed)
+  S_anchor <- .center_only(matrix(rnorm(n_anchor * K), n_anchor, K))
+  B <- matrix(rnorm(q * K), q, K)
+  V_list <- lapply(p, function(pk) matrix(rnorm(pk * K), pk, K))
+
+  Y_anchor <- .center_only(S_anchor %*% t(B) + matrix(rnorm(n_anchor * q, sd = noise_y), n_anchor, q))
+
+  make_split <- function(n_obs) {
+    idx <- lapply(n_obs, function(nk) sample.int(n_anchor, nk, replace = TRUE))
+    names(idx) <- c("assay1", "assay2")
+    X <- list(
+      assay1 = .center_only(S_anchor[idx$assay1, , drop = FALSE] %*% t(V_list[[1]]) +
+        matrix(rnorm(length(idx$assay1) * p[[1]], sd = noise_x), length(idx$assay1), p[[1]])),
+      assay2 = .center_only(S_anchor[idx$assay2, , drop = FALSE] %*% t(V_list[[2]]) +
+        matrix(rnorm(length(idx$assay2) * p[[2]], sd = noise_x), length(idx$assay2), p[[2]]))
+    )
+    truth <- list(
+      assay1 = Y_anchor[idx$assay1, , drop = FALSE],
+      assay2 = Y_anchor[idx$assay2, , drop = FALSE]
+    )
+    list(X = X, row_index = idx, Y_truth = truth)
+  }
+
+  list(
+    Y_anchor = Y_anchor,
+    train = make_split(n_train),
+    test = make_split(n_test)
+  )
+}
+
+.sim_blockwise_response <- function(seed = 202,
+                                    n_anchor = 22,
+                                    n_train = c(48, 44),
+                                    n_test = c(16, 14),
+                                    p = c(8, 7),
+                                    q = 3,
+                                    K = 2,
+                                    noise_x = 0.12,
+                                    noise_y = 0.05,
+                                    latent_jitter = 0.12,
+                                    missing_anchor_frac = 0.35) {
+  set.seed(seed)
+  S_anchor <- .center_only(matrix(rnorm(n_anchor * K), n_anchor, K))
+  B <- matrix(rnorm(q * K), q, K)
+  V_list <- lapply(p, function(pk) matrix(rnorm(pk * K), pk, K))
+  anchor_response <- .center_only(S_anchor %*% t(B) + matrix(rnorm(n_anchor * q, sd = noise_y), n_anchor, q))
+
+  make_split <- function(n_obs) {
+    idx <- lapply(n_obs, function(nk) sample.int(n_anchor, nk, replace = TRUE))
+    names(idx) <- c("assay1", "assay2")
+    Z <- list(
+      assay1 = S_anchor[idx$assay1, , drop = FALSE] +
+        matrix(rnorm(length(idx$assay1) * K, sd = latent_jitter), length(idx$assay1), K),
+      assay2 = S_anchor[idx$assay2, , drop = FALSE] +
+        matrix(rnorm(length(idx$assay2) * K, sd = latent_jitter), length(idx$assay2), K)
+    )
+    X <- list(
+      assay1 = .center_only(Z$assay1 %*% t(V_list[[1]]) +
+        matrix(rnorm(length(idx$assay1) * p[[1]], sd = noise_x), length(idx$assay1), p[[1]])),
+      assay2 = .center_only(Z$assay2 %*% t(V_list[[2]]) +
+        matrix(rnorm(length(idx$assay2) * p[[2]], sd = noise_x), length(idx$assay2), p[[2]]))
+    )
+    Y <- list(
+      assay1 = .center_only(Z$assay1 %*% t(B) +
+        matrix(rnorm(length(idx$assay1) * q, sd = noise_y), length(idx$assay1), q)),
+      assay2 = .center_only(Z$assay2 %*% t(B) +
+        matrix(rnorm(length(idx$assay2) * q, sd = noise_y), length(idx$assay2), q))
+    )
+    anchor_map <- lapply(idx, function(ii) {
+      out <- ii
+      miss <- sample.int(length(ii), size = ceiling(missing_anchor_frac * length(ii)))
+      out[miss] <- NA_integer_
+      out
+    })
+    list(X = X, Y = Y, anchor_map = anchor_map, full_anchor_map = idx)
+  }
+
+  list(
+    anchor_response = anchor_response,
+    train = make_split(n_train),
+    test = make_split(n_test)
+  )
+}
+
+exact_anchor <- .sim_exact_anchor()
+blockwise <- .sim_blockwise_response()
+```
+
+## Quick start: paired responses, no exact anchor assumption
+
+If every block has its own paired multivariate response, start with
+`response_aligned_mfa()`. If you want the cleaner supervised baseline with no
+predictor reconstruction term, fit `aligned_rrr()` alongside it.
+
+```{r quick-start-fits}
+fit_response <- response_aligned_mfa(
+  Y = blockwise$train$Y,
+  X = blockwise$train$X,
+  ncomp = 2,
+  preproc = multivarious::pass(),
+  response_preproc = multivarious::pass(),
+  normalization = "None",
+  ridge = 1e-8,
+  max_iter = 80,
+  tol = 1e-9
+)
+
+fit_rrr <- aligned_rrr(
+  Y = blockwise$train$Y,
+  X = blockwise$train$X,
+  ncomp = 2,
+  preproc = multivarious::pass(),
+  response_preproc = multivarious::pass(),
+  ridge = 1e-8,
+  max_iter = 80,
+  tol = 1e-9
+)
+```
+
+```{r quick-start-checks, include = FALSE}
+pred_response <- .predict_block_list(fit_response, blockwise$test$X, type = "response")
+pred_rrr <- .predict_block_list(fit_rrr, blockwise$test$X, type = "response")
+
+quick_summary <- data.frame(
+  model = c("response_aligned_mfa()", "aligned_rrr()"),
+  mean_test_mse = c(
+    .mean_mse(pred_response, blockwise$test$Y),
+    .mean_mse(pred_rrr, blockwise$test$Y)
+  )
+) |>
+  transform(mean_test_mse = round(mean_test_mse, 4))
+
+stopifnot(all(is.finite(quick_summary$mean_test_mse)))
+stopifnot(all(quick_summary$mean_test_mse > 0))
+stopifnot(fit_response$score_representation == "stacked_block_scores")
+stopifnot(fit_rrr$score_representation == "stacked_block_scores")
+```
+
+```{r quick-start-summary}
+kable(quick_summary, align = c("l", "r"))
+```
+
+Both models predict from block-specific `X` into a shared multivariate response
+space. The practical difference is structural: `response_aligned_mfa()` also
+models the predictor blocks through a shared latent space, while
+`aligned_rrr()` is the lean reduced-rank baseline.
+
+## Which data contract do you actually have?
+
+```{r regime-table}
+chooser <- data.frame(
+  Data_regime = c(
+    "Exact shared anchor states",
+    "Some anchored rows, some novel rows",
+    "No anchor states, paired blockwise responses"
+  ),
+  What_is_observed = c(
+    "One anchor-level Y table plus row maps from each X block",
+    "Blockwise Y_k plus optional anchor_map for the rows you can link",
+    "Only blockwise paired (X_k, Y_k)"
+  ),
+  Recommended_fit = c(
+    "anchored_mfa()",
+    "response_aligned_mfa()",
+    "response_aligned_mfa() plus aligned_rrr() baseline"
+  )
+)
+
+kable(chooser, align = "l")
+```
+
+The model choice should follow that contract directly. The point is not to
+force every problem into repeated rows of `Y`, but to keep the common-space
+assumption honest.
+
+## When the response really is an anchor table
+
+Use `anchored_mfa()` when the scientifically meaningful response lives at the
+anchor-state level and each predictor block only tells you which anchor rows it
+touches.
+
+```{r anchored-fit}
+fit_anchor <- anchored_mfa(
+  Y = exact_anchor$Y_anchor,
+  X = exact_anchor$train$X,
+  row_index = exact_anchor$train$row_index,
+  ncomp = 2,
+  preproc = multivarious::pass(),
+  normalization = "None",
+  ridge = 1e-8,
+  max_iter = 80,
+  tol = 1e-9
+)
+```
+
+```{r anchored-checks, include = FALSE}
+pred_anchor <- .predict_block_list(fit_anchor, exact_anchor$test$X, type = "response")
+anchor_summary <- data.frame(
+  model = "anchored_mfa()",
+  mean_test_mse = round(.mean_mse(pred_anchor, exact_anchor$test$Y_truth), 4),
+  n_anchor_states = nrow(exact_anchor$Y_anchor),
+  learned_score_rows = nrow(multivarious::scores(fit_anchor))
+)
+
+stopifnot(all(is.finite(anchor_summary$mean_test_mse)))
+stopifnot(anchor_summary$learned_score_rows == anchor_summary$n_anchor_states)
+```
+
+```{r anchored-summary}
+kable(anchor_summary, align = c("l", "r", "r", "r"))
+```
+
+That is the clean anchored contract: the shared score table lives over anchor
+states, not over block rows, and new `X` rows are projected back to that
+anchor-level response surface.
+
+## When some rows are anchored but others are novel
+
+This is the regime `response_aligned_mfa()` was generalized to handle. You keep
+the blockwise responses `Y_k`, pass anchor information only where it is real,
+and let the novel rows stay free.
+
+```{r hybrid-fit}
+fit_hybrid <- response_aligned_mfa(
+  Y = blockwise$train$Y,
+  X = blockwise$train$X,
+  ncomp = 2,
+  preproc = multivarious::pass(),
+  response_preproc = multivarious::pass(),
+  normalization = "None",
+  anchor_response = blockwise$anchor_response,
+  anchor_map = blockwise$train$anchor_map,
+  coupling_lambda = 2,
+  ridge = 1e-8,
+  max_iter = 80,
+  tol = 1e-9
+)
+```
+
+```{r hybrid-checks, include = FALSE}
+pred_hybrid_plain <- .predict_block_list(
+  fit_hybrid,
+  blockwise$test$X,
+  type = "response"
+)
+pred_hybrid_anchor <- lapply(names(blockwise$test$X), function(block) {
+  predict(
+    fit_hybrid,
+    blockwise$test$X[[block]],
+    block = block,
+    type = "response",
+    new_anchor_map = blockwise$test$full_anchor_map[[block]]
+  )
+}) |> stats::setNames(names(blockwise$test$X))
+
+hybrid_summary <- data.frame(
+  prediction_path = c("X only", "X + test-time anchor_map"),
+  mean_test_mse = c(
+    .mean_mse(pred_hybrid_plain, blockwise$test$Y),
+    .mean_mse(pred_hybrid_anchor, blockwise$test$Y)
+  )
+) |>
+  transform(mean_test_mse = round(mean_test_mse, 4))
+
+stopifnot(all(is.finite(hybrid_summary$mean_test_mse)))
+stopifnot(is.matrix(fit_hybrid$S))
+stopifnot(nrow(fit_hybrid$S) == nrow(blockwise$anchor_response))
+```
+
+```{r hybrid-summary}
+kable(hybrid_summary, align = c("l", "r"))
+```
+
+The important point is not just that the fit stores both `Z_list` and `S`. It
+is that prediction stays honest: default prediction uses only `X`, while known
+test-time anchor information can refine the score solve when you truly have it.
+
+## How should you choose?
+
+- Use `anchored_mfa()` when the shared response really is an anchor-state
+  object and your blocks connect to it through row maps.
+- Use `response_aligned_mfa()` when each block has its own paired multivariate
+  response and you want a shared latent geometry for the predictor blocks.
+- Add `anchor_map` and `anchor_response` to `response_aligned_mfa()` only when
+  those anchors are genuine; missing anchor rows should stay missing.
+- Fit `aligned_rrr()` alongside `response_aligned_mfa()` when prediction is the
+  main target and you want to know whether the extra predictor-reconstruction
+  structure is actually buying anything.
+
+## Where next?
+
+- `vignette("linked_mfa")` for the anchored row-mapping workflow in more depth
+- `vignette("aligned_mfa")` for the unsupervised same-latent-row analogue
+- `vignette("model_evaluation")` for bootstrap, permutation, and held-out
+  evaluation workflows across supported methods
+- `?response_aligned_mfa` and `?aligned_rrr` for the full argument contracts

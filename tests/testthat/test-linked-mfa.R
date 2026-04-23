@@ -49,6 +49,11 @@ test_that("linked_mfa validates row_index and returns expected structure", {
   expect_equal(names(fit$block_indices), c("Y", "X1", "X2"))
   expect_equal(nrow(multivarious::scores(fit)), nrow(Y))
   expect_equal(multivarious::ncomp(fit), 2)
+  expect_equal(fit$score_representation, "anchor_scores")
+  expect_equal(fit$S, multivarious::scores(fit))
+  expect_equal(names(fit$score_index), c("X1", "X2"))
+  expect_equal(fit$Z_list$X1, fit$S[idx1, , drop = FALSE])
+  expect_equal(fit$Z_list$X2, fit$S[idx2, , drop = FALSE])
 })
 
 test_that("linked_mfa recovers a strong shared low-rank fit when all blocks share rows", {

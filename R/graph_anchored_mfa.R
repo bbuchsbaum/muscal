@@ -297,179 +297,29 @@ graph_anchored_mfa <- function(Y,
     score_graph_sigma = score_graph_sigma
   )
 
-  init <- .lmfa_init_from_Y(Yp, K, ridge = ridge)
-  S <- init$S
-  B <- init$B
-
-  V_list <- lapply(seq_along(Xp), function(k) {
-    Sk <- S[row_index[[k]], , drop = FALSE]
-    .lmfa_update_loadings(Sk, Xp[[k]], alpha = alpha_blocks[k + 1L], ridge = ridge)$V
-  })
-  names(V_list) <- names(Xp)
-
-  objective_trace <- numeric(0)
-  prev_obj <- Inf
-
-  for (iter in seq_len(max_iter)) {
-    B <- .lmfa_update_loadings(S, Yp, alpha = alpha_blocks[1], ridge = ridge)$V
-
-    if (isTRUE(graph$enabled) && isTRUE(graph_lambda > 0)) {
-      S_list <- lapply(seq_along(Xp), function(k) S[row_index[[k]], , drop = FALSE])
-      V_list <- .gamfa_update_V_graph(
-        S_list = S_list,
-        X_list = Xp,
-        alpha_blocks = alpha_blocks[-1L],
-        graph_laplacian = graph$L,
-        graph_lambda = graph_lambda,
-        ridge = ridge
-      )
-      names(V_list) <- names(Xp)
-    } else {
-      for (k in seq_along(Xp)) {
-        Sk <- S[row_index[[k]], , drop = FALSE]
-        V_list[[k]] <- .lmfa_update_V_block(
-          Sk = Sk,
-          Xk = Xp[[k]],
-          alpha_block = alpha_blocks[k + 1L],
-          fg_block = rep.int(NA_character_, ncol(Xp[[k]])),
-          weights_block = rep.int(1, ncol(Xp[[k]])),
-          centers = NULL,
-          feature_lambda = 0,
-          ridge = ridge
-        )
-      }
-      names(V_list) <- names(Xp)
-    }
-
-    if (identical(score_constraint, "orthonormal")) {
-      local <- .gamfa_score_system(
-        Y = Yp,
-        B = B,
-        X_list = Xp,
-        V_list = V_list,
-        row_index = row_index,
-        alpha_y = alpha_blocks[1],
-        alpha_blocks = alpha_blocks[-1]
-      )
-      S_warm <- if (isTRUE(score_graph_spec$enabled) && isTRUE(score_graph_lambda > 0)) {
-        .gamfa_update_scores_graph(
-          Y = Yp,
-          B = B,
-          X_list = Xp,
-          V_list = V_list,
-          row_index = row_index,
-          alpha_y = alpha_blocks[1],
-          alpha_blocks = alpha_blocks[-1],
-          score_graph_laplacian = score_graph_spec$L,
-          score_graph_lambda = score_graph_lambda,
-          local = local,
-          ridge = ridge
-        )
-      } else {
-        .lmfa_update_scores(
-          Y = Yp,
-          B = B,
-          X_list = Xp,
-          V_list = V_list,
-          row_index = row_index,
-          alpha_y = alpha_blocks[1],
-          alpha_blocks = alpha_blocks[-1],
-          ridge = ridge
-        )
-      }
-      S_start <- .muscal_stiefel_retract(S)
-      S_warm <- .muscal_stiefel_retract(S_warm)
-      obj_start <- .muscal_score_objective_from_system(
-        S_start,
-        local$A_list,
-        local$rhs,
-        graph_laplacian = score_graph_spec$L,
-        graph_lambda = score_graph_lambda,
-        ridge = ridge
-      )
-      obj_warm <- .muscal_score_objective_from_system(
-        S_warm,
-        local$A_list,
-        local$rhs,
-        graph_laplacian = score_graph_spec$L,
-        graph_lambda = score_graph_lambda,
-        ridge = ridge
-      )
-      if (obj_warm <= obj_start) {
-        S_start <- S_warm
-      }
-      s_opt <- .muscal_stiefel_mm(
-        S = S_start,
-        A_list = local$A_list,
-        rhs = local$rhs,
-        graph_laplacian = score_graph_spec$L,
-        graph_lambda = score_graph_lambda,
-        ridge = ridge
-      )
-      S <- s_opt$S
-    } else {
-      S <- if (isTRUE(score_graph_spec$enabled) && isTRUE(score_graph_lambda > 0)) {
-        .gamfa_update_scores_graph(
-          Y = Yp,
-          B = B,
-          X_list = Xp,
-          V_list = V_list,
-          row_index = row_index,
-          alpha_y = alpha_blocks[1],
-          alpha_blocks = alpha_blocks[-1],
-          score_graph_laplacian = score_graph_spec$L,
-          score_graph_lambda = score_graph_lambda,
-          ridge = ridge
-        )
-      } else {
-        .lmfa_update_scores(
-          Y = Yp,
-          B = B,
-          X_list = Xp,
-          V_list = V_list,
-          row_index = row_index,
-          alpha_y = alpha_blocks[1],
-          alpha_blocks = alpha_blocks[-1],
-          ridge = ridge
-        )
-      }
-
-      ortho <- .lmfa_orthonormalize_scores(S)
-      S <- ortho$S
-      rot <- ortho$R
-      B <- B %*% t(rot)
-      V_list <- lapply(V_list, function(V) V %*% t(rot))
-    }
-
-    obj <- .gamfa_objective(
-      Y = Yp,
-      S = S,
-      B = B,
-      X_list = Xp,
-      V_list = V_list,
-      row_index = row_index,
-      alpha_y = alpha_blocks[1],
-      alpha_blocks = alpha_blocks[-1],
-      graph_laplacian = graph$L,
-      graph_lambda = graph_lambda,
-      score_graph_laplacian = score_graph_spec$L,
-      score_graph_lambda = score_graph_lambda,
-      ridge = ridge
-    )
-    objective_trace <- c(objective_trace, obj)
-
-    rel_change <- abs(obj - prev_obj) / (abs(prev_obj) + ridge)
-    if (isTRUE(verbose)) {
-      message(
-        sprintf(
-          "graph_anchored_mfa iter %d: obj=%.6g, rel_change=%.3g",
-          iter, obj, rel_change
-        )
-      )
-    }
-    if (is.finite(prev_obj) && rel_change < tol) break
-    prev_obj <- obj
-  }
+  core <- .gamfa_fit_anchor_engine(
+    Y = Yp,
+    X_list = Xp,
+    row_index = row_index,
+    ncomp = K,
+    alpha_y = alpha_blocks[1],
+    alpha_blocks = alpha_blocks[-1L],
+    graph = graph,
+    graph_lambda = graph_lambda,
+    score_graph_spec = score_graph_spec,
+    score_graph_lambda = score_graph_lambda,
+    score_constraint = score_constraint,
+    max_iter = max_iter,
+    tol = tol,
+    ridge = ridge,
+    verbose = verbose,
+    mode = "hard"
+  )
+  S <- core$S
+  B <- core$B
+  V_list <- core$V_list
+  Z_list <- core$Z_list
+  objective_trace <- core$objective_trace
 
   block_indices <- list()
   current <- 1L
@@ -550,6 +400,8 @@ graph_anchored_mfa <- function(Y,
     df
   }
 
+  score_stack <- .ramfa_stack_scores(Z_list)
+
   fit <- multivarious::multiblock_biprojector(
     v = v_concat,
     s = S,
@@ -557,7 +409,10 @@ graph_anchored_mfa <- function(Y,
     preproc = proc,
     block_indices = block_indices,
     B = B,
+    S = S,
     V_list = V_list,
+    Z_list = Z_list,
+    score_index = score_stack$score_index,
     row_index = row_index,
     alpha_blocks = alpha_blocks,
     normalization = normalization,
@@ -580,6 +435,7 @@ graph_anchored_mfa <- function(Y,
     block_preproc = setNames(fitted_proclist[-1L], names(Xp)),
     anchor_preproc = fitted_proclist[[1L]],
     ridge = ridge,
+    score_representation = "anchor_scores",
     classes = c("graph_anchored_mfa", "anchored_mfa", "linked_mfa")
   )
 
@@ -808,188 +664,30 @@ coupled_graph_anchored_mfa <- function(Y,
     score_graph_sigma = score_graph_sigma
   )
 
-  init <- .lmfa_init_from_Y(Yp, K, ridge = ridge)
-  S <- init$S
-  B <- init$B
-  Z_list <- lapply(seq_along(Xp), function(k) S[row_index[[k]], , drop = FALSE])
-  names(Z_list) <- names(Xp)
-
-  V_list <- lapply(seq_along(Xp), function(k) {
-    .lmfa_update_loadings(Z_list[[k]], Xp[[k]], alpha = alpha_blocks[k + 1L], ridge = ridge)$V
-  })
-  names(V_list) <- names(Xp)
-
-  objective_trace <- numeric(0)
-  prev_obj <- Inf
-
-  for (iter in seq_len(max_iter)) {
-    B <- .lmfa_update_loadings(S, Yp, alpha = alpha_blocks[1], ridge = ridge)$V
-
-    if (isTRUE(graph$enabled) && isTRUE(graph_lambda > 0)) {
-      V_list <- .gamfa_update_V_graph(
-        S_list = Z_list,
-        X_list = Xp,
-        alpha_blocks = alpha_blocks[-1L],
-        graph_laplacian = graph$L,
-        graph_lambda = graph_lambda,
-        ridge = ridge
-      )
-      names(V_list) <- names(Xp)
-    } else {
-      for (k in seq_along(Xp)) {
-        V_list[[k]] <- .lmfa_update_V_block(
-          Sk = Z_list[[k]],
-          Xk = Xp[[k]],
-          alpha_block = alpha_blocks[k + 1L],
-          fg_block = rep.int(NA_character_, ncol(Xp[[k]])),
-          weights_block = rep.int(1, ncol(Xp[[k]])),
-          centers = NULL,
-          feature_lambda = 0,
-          ridge = ridge
-        )
-      }
-      names(V_list) <- names(Xp)
-    }
-
-    Z_list <- .cgamfa_update_Z_list(
-      S = S,
-      X_list = Xp,
-      V_list = V_list,
-      row_index = row_index,
-      alpha_blocks = alpha_blocks[-1L],
-      coupling_lambda = coupling_lambda,
-      ridge = ridge
-    )
-
-    if (identical(score_constraint, "orthonormal")) {
-      local <- .cgamfa_score_system(
-        Y = Yp,
-        B = B,
-        Z_list = Z_list,
-        row_index = row_index,
-        alpha_y = alpha_blocks[1],
-        coupling_lambda = coupling_lambda
-      )
-      S_warm <- if (isTRUE(score_graph_spec$enabled) && isTRUE(score_graph_lambda > 0)) {
-        .cgamfa_update_scores_graph(
-          Y = Yp,
-          B = B,
-          Z_list = Z_list,
-          row_index = row_index,
-          alpha_y = alpha_blocks[1],
-          coupling_lambda = coupling_lambda,
-          score_graph_laplacian = score_graph_spec$L,
-          score_graph_lambda = score_graph_lambda,
-          local = local,
-          ridge = ridge
-        )
-      } else {
-        .cgamfa_update_scores(
-          Y = Yp,
-          B = B,
-          Z_list = Z_list,
-          row_index = row_index,
-          alpha_y = alpha_blocks[1],
-          coupling_lambda = coupling_lambda,
-          local = local,
-          ridge = ridge
-        )
-      }
-      S_start <- .muscal_stiefel_retract(S)
-      S_warm <- .muscal_stiefel_retract(S_warm)
-      obj_start <- .muscal_score_objective_from_system(
-        S_start,
-        local$A_list,
-        local$rhs,
-        graph_laplacian = score_graph_spec$L,
-        graph_lambda = score_graph_lambda,
-        ridge = ridge
-      )
-      obj_warm <- .muscal_score_objective_from_system(
-        S_warm,
-        local$A_list,
-        local$rhs,
-        graph_laplacian = score_graph_spec$L,
-        graph_lambda = score_graph_lambda,
-        ridge = ridge
-      )
-      if (obj_warm <= obj_start) {
-        S_start <- S_warm
-      }
-      s_opt <- .muscal_stiefel_mm(
-        S = S_start,
-        A_list = local$A_list,
-        rhs = local$rhs,
-        graph_laplacian = score_graph_spec$L,
-        graph_lambda = score_graph_lambda,
-        ridge = ridge
-      )
-      S <- s_opt$S
-    } else {
-      S <- if (isTRUE(score_graph_spec$enabled) && isTRUE(score_graph_lambda > 0)) {
-        .cgamfa_update_scores_graph(
-          Y = Yp,
-          B = B,
-          Z_list = Z_list,
-          row_index = row_index,
-          alpha_y = alpha_blocks[1],
-          coupling_lambda = coupling_lambda,
-          score_graph_laplacian = score_graph_spec$L,
-          score_graph_lambda = score_graph_lambda,
-          ridge = ridge
-        )
-      } else {
-        .cgamfa_update_scores(
-          Y = Yp,
-          B = B,
-          Z_list = Z_list,
-          row_index = row_index,
-          alpha_y = alpha_blocks[1],
-          coupling_lambda = coupling_lambda,
-          ridge = ridge
-        )
-      }
-
-      ortho <- .lmfa_orthonormalize_scores(S)
-      S <- ortho$S
-      rot <- ortho$R
-      rot_inv <- solve(rot)
-      B <- B %*% t(rot)
-      V_list <- lapply(V_list, function(V) V %*% t(rot))
-      Z_list <- lapply(Z_list, function(Z) Z %*% rot_inv)
-    }
-
-    obj <- .cgamfa_objective(
-      Y = Yp,
-      S = S,
-      B = B,
-      X_list = Xp,
-      Z_list = Z_list,
-      V_list = V_list,
-      row_index = row_index,
-      alpha_y = alpha_blocks[1],
-      alpha_blocks = alpha_blocks[-1L],
-      coupling_lambda = coupling_lambda,
-      graph_laplacian = graph$L,
-      graph_lambda = graph_lambda,
-      score_graph_laplacian = score_graph_spec$L,
-      score_graph_lambda = score_graph_lambda,
-      ridge = ridge
-    )
-    objective_trace <- c(objective_trace, obj)
-
-    rel_change <- abs(obj - prev_obj) / (abs(prev_obj) + ridge)
-    if (isTRUE(verbose)) {
-      message(
-        sprintf(
-          "coupled_graph_anchored_mfa iter %d: obj=%.6g, rel_change=%.3g",
-          iter, obj, rel_change
-        )
-      )
-    }
-    if (is.finite(prev_obj) && rel_change < tol) break
-    prev_obj <- obj
-  }
+  core <- .gamfa_fit_anchor_engine(
+    Y = Yp,
+    X_list = Xp,
+    row_index = row_index,
+    ncomp = K,
+    alpha_y = alpha_blocks[1],
+    alpha_blocks = alpha_blocks[-1L],
+    graph = graph,
+    graph_lambda = graph_lambda,
+    score_graph_spec = score_graph_spec,
+    score_graph_lambda = score_graph_lambda,
+    score_constraint = score_constraint,
+    max_iter = max_iter,
+    tol = tol,
+    ridge = ridge,
+    verbose = verbose,
+    mode = "coupled",
+    coupling_lambda = coupling_lambda
+  )
+  S <- core$S
+  B <- core$B
+  V_list <- core$V_list
+  Z_list <- core$Z_list
+  objective_trace <- core$objective_trace
 
   block_indices <- list()
   current <- 1L
@@ -1059,6 +757,8 @@ coupled_graph_anchored_mfa <- function(Y,
     df
   }
 
+  score_stack <- .ramfa_stack_scores(Z_list)
+
   fit <- multivarious::multiblock_biprojector(
     v = v_concat,
     s = S,
@@ -1066,8 +766,10 @@ coupled_graph_anchored_mfa <- function(Y,
     preproc = proc,
     block_indices = block_indices,
     B = B,
+    S = S,
     V_list = V_list,
     Z_list = Z_list,
+    score_index = score_stack$score_index,
     row_index = row_index,
     alpha_blocks = alpha_blocks,
     normalization = normalization,
@@ -1091,6 +793,7 @@ coupled_graph_anchored_mfa <- function(Y,
     block_preproc = setNames(fitted_proclist[-1L], names(Xp)),
     anchor_preproc = fitted_proclist[[1L]],
     ridge = ridge,
+    score_representation = "anchor_scores",
     classes = c("coupled_graph_anchored_mfa", "linked_mfa")
   )
 
@@ -1850,6 +1553,48 @@ predict.coupled_graph_anchored_mfa <- function(object,
   })
   names(out) <- names(X_list)
   out
+}
+
+.gamfa_fit_anchor_engine <- function(Y,
+                                     X_list,
+                                     row_index,
+                                     ncomp,
+                                     alpha_y,
+                                     alpha_blocks,
+                                     graph,
+                                     graph_lambda,
+                                     score_graph_spec,
+                                     score_graph_lambda,
+                                     score_constraint,
+                                     max_iter,
+                                     tol,
+                                     ridge,
+                                     verbose,
+                                     mode = c("hard", "coupled"),
+                                     coupling_lambda = 0) {
+  mode <- match.arg(mode)
+  .muscal_fit_common_space_engine(
+    engine = if (identical(mode, "hard")) "hard_anchor" else "coupled_anchor",
+    X_list = X_list,
+    ncomp = ncomp,
+    alpha_blocks = alpha_blocks,
+    ridge = ridge,
+    max_iter = max_iter,
+    tol = tol,
+    verbose = verbose,
+    anchor_response = Y,
+    anchor_response_alpha = alpha_y,
+    anchor_response_weights = rep(1, nrow(Y)),
+    row_index = row_index,
+    fg = .lmfa_parse_feature_groups(NULL, X_list, 0),
+    feature_lambda = 0,
+    graph = graph,
+    graph_lambda = graph_lambda,
+    score_graph_spec = score_graph_spec,
+    score_graph_lambda = score_graph_lambda,
+    score_constraint = score_constraint,
+    coupling_lambda = coupling_lambda
+  )
 }
 
 .gamfa_update_scores_graph <- function(Y,
