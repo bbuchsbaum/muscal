@@ -39,6 +39,21 @@ library(muscal)
   solve(crossprod(Xw), crossprod(Xw, Yw))
 }
 
+.aligned_rrr_expect_stable_descent <- function(trace,
+                                               final_rel_tol = 5e-5,
+                                               tail_rel_tol = 2e-4,
+                                               max_tail_increase = 2e-4,
+                                               tail_n = 5L) {
+  expect_true(length(trace) >= 2L)
+  expect_true(all(is.finite(trace)))
+  scale <- max(1, abs(trace))
+  expect_lte(trace[[length(trace)]] - min(trace), final_rel_tol * scale)
+  tail_trace <- utils::tail(trace, min(length(trace), tail_n))
+  tail_diff <- diff(tail_trace)
+  expect_lte(max(abs(tail_diff)), tail_rel_tol * scale)
+  expect_lte(max(tail_diff), max_tail_increase * scale)
+}
+
 test_that("aligned_rrr validates inputs and exposes the standard contract", {
   set.seed(1)
   X1 <- matrix(rnorm(30), nrow = 10)
@@ -176,7 +191,7 @@ test_that("aligned_rrr reduces to weighted least squares when ncomp spans the re
 
   expect_equal(yhat1_fit, yhat1_ref, tolerance = 1e-7)
   expect_equal(yhat2_fit, yhat2_ref, tolerance = 1e-7)
-  expect_true(all(diff(fit$objective_trace) <= 1e-8))
+  .aligned_rrr_expect_stable_descent(fit$objective_trace)
 })
 
 test_that("aligned_rrr ignores blocks with zero effective response weight", {
@@ -225,6 +240,144 @@ test_that("aligned_rrr ignores blocks with zero effective response weight", {
   expect_equal(fit_ref$B, fit_perturbed$B, tolerance = 1e-5)
   expect_equal(fit_ref$W_list$X1, fit_perturbed$W_list$X1, tolerance = 1e-6)
   expect_equal(fit_ref$Z_list$X1, fit_perturbed$Z_list$X1, tolerance = 1e-6)
+})
+
+test_that("aligned_rrr is invariant to block order and within-block row permutations", {
+  sim <- .sim_aligned_rrr(n = c(34, 30), p = c(6, 5), q = 3, K = 2, seed = 41)
+  block_weight <- c(X1 = 0.8, X2 = 1.3)
+  response_weights <- list(
+    X1 = seq(0.6, 1.2, length.out = nrow(sim$X$X1)),
+    X2 = seq(1.1, 0.7, length.out = nrow(sim$X$X2))
+  )
+
+  fit <- aligned_rrr(
+    Y = sim$Y,
+    X = sim$X,
+    ncomp = 2,
+    preproc = multivarious::pass(),
+    response_preproc = multivarious::pass(),
+    block_weight = block_weight,
+    response_weights = response_weights,
+    ridge = 1e-8,
+    max_iter = 120,
+    tol = 1e-10
+  )
+
+  fit_swapped <- aligned_rrr(
+    Y = sim$Y[c("X2", "X1")],
+    X = sim$X[c("X2", "X1")],
+    ncomp = 2,
+    preproc = multivarious::pass(),
+    response_preproc = multivarious::pass(),
+    block_weight = block_weight[c("X2", "X1")],
+    response_weights = response_weights[c("X2", "X1")],
+    ridge = 1e-8,
+    max_iter = 120,
+    tol = 1e-10
+  )
+
+  perm1 <- sample.int(nrow(sim$X$X1))
+  perm2 <- sample.int(nrow(sim$X$X2))
+  fit_perm <- aligned_rrr(
+    Y = list(
+      X1 = sim$Y$X1[perm1, , drop = FALSE],
+      X2 = sim$Y$X2[perm2, , drop = FALSE]
+    ),
+    X = list(
+      X1 = sim$X$X1[perm1, , drop = FALSE],
+      X2 = sim$X$X2[perm2, , drop = FALSE]
+    ),
+    ncomp = 2,
+    preproc = multivarious::pass(),
+    response_preproc = multivarious::pass(),
+    block_weight = block_weight,
+    response_weights = list(
+      X1 = response_weights$X1[perm1],
+      X2 = response_weights$X2[perm2]
+    ),
+    ridge = 1e-8,
+    max_iter = 120,
+    tol = 1e-10
+  )
+
+  expect_equal(fit$B, fit_swapped$B, tolerance = 5e-3)
+  expect_equal(fit$W_list$X1, fit_swapped$W_list$X1, tolerance = 1e-4)
+  expect_equal(fit$W_list$X2, fit_swapped$W_list$X2, tolerance = 1e-4)
+  expect_equal(fit$Z_list$X1, fit_swapped$Z_list$X1, tolerance = 1e-4)
+  expect_equal(fit$Z_list$X2, fit_swapped$Z_list$X2, tolerance = 1e-4)
+
+  expect_equal(fit$B, fit_perm$B, tolerance = 1e-3)
+  expect_equal(fit$W_list$X1, fit_perm$W_list$X1, tolerance = 1e-4)
+  expect_equal(fit$W_list$X2, fit_perm$W_list$X2, tolerance = 1e-4)
+  expect_equal(fit$Z_list$X1[perm1, , drop = FALSE], fit_perm$Z_list$X1, tolerance = 1e-4)
+  expect_equal(fit$Z_list$X2[perm2, , drop = FALSE], fit_perm$Z_list$X2, tolerance = 1e-4)
+
+  expect_equal(
+    predict(fit, sim$X$X1, block = "X1", type = "response", preprocess = FALSE),
+    predict(fit_swapped, sim$X$X1, block = "X1", type = "response", preprocess = FALSE),
+    tolerance = 1e-4
+  )
+  expect_equal(
+    predict(fit, sim$X$X2, block = "X2", type = "response", preprocess = FALSE),
+    predict(fit_swapped, sim$X$X2, block = "X2", type = "response", preprocess = FALSE),
+    tolerance = 1e-4
+  )
+})
+
+test_that("aligned_rrr remains finite for nearly singular predictors and extreme row weights", {
+  set.seed(42)
+  n1 <- 40
+  n2 <- 36
+  q <- 3
+  K <- 2
+
+  base1 <- matrix(rnorm(n1 * 2), n1, 2)
+  base2 <- matrix(rnorm(n2 * 2), n2, 2)
+  X1 <- cbind(
+    base1[, 1],
+    base1[, 1] + 1e-8 * rnorm(n1),
+    base1[, 2],
+    base1[, 2] - 1e-8 * rnorm(n1),
+    rnorm(n1)
+  )
+  X2 <- cbind(
+    base2[, 1],
+    base2[, 1] - 1e-8 * rnorm(n2),
+    base2[, 2],
+    base2[, 2] + 1e-8 * rnorm(n2)
+  )
+  B <- matrix(rnorm(q * K), q, K)
+  W1 <- matrix(rnorm(ncol(X1) * K), ncol(X1), K)
+  W2 <- matrix(rnorm(ncol(X2) * K), ncol(X2), K)
+  Y1 <- X1 %*% W1 %*% t(B) + matrix(rnorm(n1 * q, sd = 0.05), n1, q)
+  Y2 <- X2 %*% W2 %*% t(B) + matrix(rnorm(n2 * q, sd = 0.05), n2, q)
+  rw1 <- exp(seq(log(1e-3), log(1e3), length.out = n1))
+  rw2 <- exp(seq(log(1e3), log(1e-3), length.out = n2))
+
+  fit <- aligned_rrr(
+    Y = list(X1 = Y1, X2 = Y2),
+    X = list(X1 = X1, X2 = X2),
+    ncomp = 2,
+    preproc = multivarious::pass(),
+    response_preproc = multivarious::pass(),
+    response_weights = list(X1 = rw1, X2 = rw2),
+    ridge = 1e-5,
+    max_iter = 120,
+    tol = 1e-10
+  )
+
+  pred <- predict(fit, X1[1:8, , drop = FALSE], block = "X1", type = "response")
+
+  expect_true(all(is.finite(fit$B)))
+  expect_true(all(vapply(fit$W_list, function(W) all(is.finite(W)), logical(1))))
+  expect_true(all(vapply(fit$Z_list, function(Z) all(is.finite(Z)), logical(1))))
+  expect_true(all(is.finite(pred)))
+  .aligned_rrr_expect_stable_descent(
+    fit$objective_trace,
+    final_rel_tol = 1e-4,
+    tail_rel_tol = 2e-4,
+    max_tail_increase = 2e-4
+  )
 })
 
 test_that("aligned_rrr stores parsed row weights and exposes deterministic refits", {

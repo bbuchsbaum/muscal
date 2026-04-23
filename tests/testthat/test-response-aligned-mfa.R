@@ -28,6 +28,73 @@ library(muscal)
   list(X = X, Y = Y, V_list = V_list, B = B, Z_list = Z_list)
 }
 
+.ramfa_expect_stable_descent <- function(trace,
+                                         min_rel_drop = 1e-5,
+                                         tail_rel_tol = 1e-6,
+                                         max_tail_increase = 1e-5,
+                                         tail_n = 5L) {
+  expect_true(length(trace) >= 2L)
+  expect_true(all(is.finite(trace)))
+  scale <- max(1, abs(trace[[1]]), abs(trace[[length(trace)]]))
+  expect_lt(trace[[length(trace)]], trace[[1]] - min_rel_drop * scale)
+  tail_trace <- utils::tail(trace, min(length(trace), tail_n))
+  tail_diff <- diff(tail_trace)
+  expect_lte(max(abs(tail_diff)), tail_rel_tol * scale)
+  expect_lte(max(tail_diff), max_tail_increase * scale)
+}
+
+.manual_ramfa_project <- function(object,
+                                  new_data,
+                                  block,
+                                  new_response = NULL,
+                                  response_weight = NULL,
+                                  new_anchor_map = NULL,
+                                  anchor_weight = NULL) {
+  Vk <- object$V_list[[block]]
+  Xnew <- as.matrix(new_data)
+  alpha_block <- as.numeric(object$alpha_blocks[[block]])
+  VtV <- crossprod(Vk)
+  XV <- Xnew %*% Vk
+  K <- ncol(Vk)
+  I_K <- diag(K)
+
+  use_response <- !is.null(new_response)
+  if (use_response) {
+    response_weight <- muscal:::.ramfa_resolve_prediction_weight(response_weight, nrow(Xnew))
+    response_alpha <- as.numeric(object$response_alpha[[block]])
+    BtB <- crossprod(object$B)
+    YB <- as.matrix(new_response) %*% object$B
+  }
+
+  use_anchor <- !is.null(new_anchor_map)
+  if (use_anchor) {
+    anchor_info <- muscal:::.ramfa_parse_prediction_anchor_map(
+      new_anchor_map = new_anchor_map,
+      n = nrow(Xnew),
+      n_anchor = nrow(object$S),
+      anchor_weight = anchor_weight
+    )
+    anchor_target <- anchor_info$A_new %*% object$S
+  }
+
+  out <- matrix(0, nrow = nrow(Xnew), ncol = K)
+  for (i in seq_len(nrow(Xnew))) {
+    A <- alpha_block * VtV + object$ridge * I_K
+    b <- alpha_block * XV[i, ]
+    if (use_response) {
+      A <- A + response_alpha * response_weight[[i]] * BtB
+      b <- b + response_alpha * response_weight[[i]] * YB[i, ]
+    }
+    if (use_anchor) {
+      cw <- as.numeric(object$coupling_lambda[[block]]) * anchor_info$weight[[i]]
+      A <- A + cw * I_K
+      b <- b + cw * anchor_target[i, ]
+    }
+    out[i, ] <- solve(A, b)
+  }
+  out
+}
+
 test_that("response_aligned_mfa validates inputs and exposes the standard contract", {
   set.seed(1)
   X1 <- matrix(rnorm(30), nrow = 10)
@@ -113,6 +180,7 @@ test_that("response_aligned_mfa recovers a shared response-informed latent space
   expect_lt(mse_y, 0.05)
   expect_lt(mse_x, 0.05)
   expect_true(all(is.finite(fit$objective_trace)))
+  .ramfa_expect_stable_descent(fit$objective_trace)
 })
 
 test_that("response_aligned_mfa drops anchor machinery when coupling is zero", {
@@ -284,6 +352,261 @@ test_that("response_aligned_mfa predict() supports X-only and response-refined p
   mse_refined <- mean((resp_refined - Y_new)^2)
   expect_lte(mse_refined, mse_x + 1e-8)
   expect_error(project(fit, X_new, block = "missing"), "Unknown block")
+})
+
+test_that("response_aligned_mfa is invariant to block order when arguments are permuted consistently", {
+  sim <- .sim_response_aligned_mfa(n = c(34, 30), p = c(6, 5), q = 3, K = 2, seed = 43)
+  idx1 <- sample.int(11, nrow(sim$X$X1), replace = TRUE)
+  idx2 <- sample.int(11, nrow(sim$X$X2), replace = TRUE)
+  response_weights <- list(
+    X1 = seq(0.7, 1.3, length.out = nrow(sim$X$X1)),
+    X2 = seq(1.1, 0.8, length.out = nrow(sim$X$X2))
+  )
+
+  fit <- response_aligned_mfa(
+    Y = sim$Y,
+    X = sim$X,
+    ncomp = 2,
+    preproc = multivarious::pass(),
+    response_preproc = multivarious::pass(),
+    normalization = "None",
+    response_weights = response_weights,
+    anchor_map = list(X1 = idx1, X2 = idx2),
+    coupling_lambda = c(X1 = 4, X2 = 3),
+    ridge = 1e-8,
+    max_iter = 120,
+    tol = 1e-10
+  )
+
+  fit_swapped <- response_aligned_mfa(
+    Y = sim$Y[c("X2", "X1")],
+    X = sim$X[c("X2", "X1")],
+    ncomp = 2,
+    preproc = multivarious::pass(),
+    response_preproc = multivarious::pass(),
+    normalization = "None",
+    response_weights = response_weights[c("X2", "X1")],
+    anchor_map = list(X2 = idx2, X1 = idx1),
+    coupling_lambda = c(X2 = 3, X1 = 4),
+    ridge = 1e-8,
+    max_iter = 120,
+    tol = 1e-10
+  )
+
+  expect_equal(fit$B, fit_swapped$B, tolerance = 1e-8)
+  expect_equal(fit$S, fit_swapped$S, tolerance = 1e-8)
+  expect_equal(fit$V_list$X1, fit_swapped$V_list$X1, tolerance = 1e-8)
+  expect_equal(fit$V_list$X2, fit_swapped$V_list$X2, tolerance = 1e-8)
+  expect_equal(fit$Z_list$X1, fit_swapped$Z_list$X1, tolerance = 1e-8)
+  expect_equal(fit$Z_list$X2, fit_swapped$Z_list$X2, tolerance = 1e-8)
+  expect_equal(fit$anchor_map$X1, fit_swapped$anchor_map$X1, tolerance = 1e-12)
+  expect_equal(fit$anchor_map$X2, fit_swapped$anchor_map$X2, tolerance = 1e-12)
+})
+
+test_that("response_aligned_mfa ignores blocks with zero predictor and response weight", {
+  sim <- .sim_response_aligned_mfa(n = c(32, 28), p = c(6, 5), q = 3, K = 2, seed = 44)
+
+  expect_no_warning({
+    fit_ref <- response_aligned_mfa(
+      Y = sim$Y,
+      X = sim$X,
+      ncomp = 2,
+      preproc = multivarious::pass(),
+      response_preproc = multivarious::pass(),
+      normalization = "custom",
+      alpha = c(X1 = 1, X2 = 0),
+      response_alpha = c(X1 = 1, X2 = 0),
+      ridge = 1e-8,
+      max_iter = 120,
+      tol = 1e-10
+    )
+  })
+
+  expect_no_warning({
+    fit_perturbed <- response_aligned_mfa(
+      Y = list(
+        X1 = sim$Y$X1,
+        X2 = matrix(rnorm(length(sim$Y$X2), sd = 100), nrow(sim$Y$X2), ncol(sim$Y$X2))
+      ),
+      X = list(
+        X1 = sim$X$X1,
+        X2 = matrix(rnorm(length(sim$X$X2), sd = 100), nrow(sim$X$X2), ncol(sim$X$X2))
+      ),
+      ncomp = 2,
+      preproc = multivarious::pass(),
+      response_preproc = multivarious::pass(),
+      normalization = "custom",
+      alpha = c(X1 = 1, X2 = 0),
+      response_alpha = c(X1 = 1, X2 = 0),
+      ridge = 1e-8,
+      max_iter = 120,
+      tol = 1e-10
+    )
+  })
+
+  expect_equal(fit_ref$B, fit_perturbed$B, tolerance = 1e-4)
+  expect_equal(fit_ref$V_list$X1, fit_perturbed$V_list$X1, tolerance = 1e-4)
+  expect_equal(fit_ref$Z_list$X1, fit_perturbed$Z_list$X1, tolerance = 1e-5)
+  expect_equal(
+    predict(fit_ref, sim$X$X1, block = "X1", type = "response", preprocess = FALSE),
+    predict(fit_perturbed, sim$X$X1, block = "X1", type = "response", preprocess = FALSE),
+    tolerance = 1e-4
+  )
+  expect_lt(max(abs(fit_ref$V_list$X2)), 1e-10)
+  expect_lt(max(abs(fit_ref$Z_list$X2)), 1e-10)
+  expect_lt(max(abs(fit_perturbed$V_list$X2)), 1e-10)
+  expect_lt(max(abs(fit_perturbed$Z_list$X2)), 1e-10)
+})
+
+test_that("response_aligned_mfa project() matches the explicit test-time score solve", {
+  sim <- .sim_response_aligned_mfa(n = c(36, 32), p = c(6, 5), q = 3, K = 2, seed = 45)
+  idx1 <- sample.int(10, nrow(sim$X$X1), replace = TRUE)
+  idx2 <- sample.int(10, nrow(sim$X$X2), replace = TRUE)
+
+  fit <- response_aligned_mfa(
+    Y = sim$Y,
+    X = sim$X,
+    ncomp = 2,
+    preproc = multivarious::pass(),
+    response_preproc = multivarious::pass(),
+    normalization = "None",
+    response_alpha = c(X1 = 1.2, X2 = 0.8),
+    anchor_map = list(X1 = idx1, X2 = idx2),
+    coupling_lambda = c(X1 = 4, X2 = 3),
+    ridge = 1e-8,
+    max_iter = 120,
+    tol = 1e-10
+  )
+
+  Z_new <- scale(matrix(rnorm(10 * 2), 10, 2), center = TRUE, scale = FALSE)
+  X_new <- Z_new %*% t(sim$V_list$X1) + matrix(rnorm(10 * nrow(sim$V_list$X1), sd = 0.05), 10, nrow(sim$V_list$X1))
+  Y_new <- Z_new %*% t(sim$B) + matrix(rnorm(10 * nrow(sim$B), sd = 0.05), 10, nrow(sim$B))
+  response_weight <- seq(0.7, 1.3, length.out = nrow(X_new))
+  new_anchor_map <- sample.int(nrow(fit$S), nrow(X_new), replace = TRUE)
+  anchor_weight <- seq(1.2, 0.6, length.out = nrow(X_new))
+
+  score_x <- project(fit, X_new, block = "X1", preprocess = FALSE)
+  score_y <- project(
+    fit,
+    X_new,
+    block = "X1",
+    new_response = Y_new,
+    response_weight = response_weight,
+    conditional = TRUE,
+    preprocess = FALSE
+  )
+  score_anchor <- project(
+    fit,
+    X_new,
+    block = "X1",
+    new_anchor_map = new_anchor_map,
+    anchor_weight = anchor_weight,
+    preprocess = FALSE
+  )
+  score_both <- project(
+    fit,
+    X_new,
+    block = "X1",
+    new_response = Y_new,
+    response_weight = response_weight,
+    new_anchor_map = new_anchor_map,
+    anchor_weight = anchor_weight,
+    conditional = TRUE,
+    preprocess = FALSE
+  )
+
+  expect_equal(score_x, .manual_ramfa_project(fit, X_new, block = "X1"), tolerance = 1e-10)
+  expect_equal(
+    score_y,
+    .manual_ramfa_project(
+      fit,
+      X_new,
+      block = "X1",
+      new_response = Y_new,
+      response_weight = response_weight
+    ),
+    tolerance = 1e-10
+  )
+  expect_equal(
+    score_anchor,
+    .manual_ramfa_project(
+      fit,
+      X_new,
+      block = "X1",
+      new_anchor_map = new_anchor_map,
+      anchor_weight = anchor_weight
+    ),
+    tolerance = 1e-10
+  )
+  expect_equal(
+    score_both,
+    .manual_ramfa_project(
+      fit,
+      X_new,
+      block = "X1",
+      new_response = Y_new,
+      response_weight = response_weight,
+      new_anchor_map = new_anchor_map,
+      anchor_weight = anchor_weight
+    ),
+    tolerance = 1e-10
+  )
+})
+
+test_that("response_aligned_mfa remains finite for collinear predictors and extreme row weights", {
+  set.seed(46)
+  n1 <- 34
+  n2 <- 30
+  K <- 2
+  q <- 3
+
+  Z1 <- scale(matrix(rnorm(n1 * K), n1, K), center = TRUE, scale = FALSE)
+  Z2 <- scale(matrix(rnorm(n2 * K), n2, K), center = TRUE, scale = FALSE)
+  B <- matrix(rnorm(q * K), q, K)
+  X1 <- cbind(
+    Z1[, 1],
+    Z1[, 1] + 1e-8 * rnorm(n1),
+    Z1[, 2],
+    Z1[, 2] - 1e-8 * rnorm(n1),
+    rnorm(n1)
+  )
+  X2 <- cbind(
+    Z2[, 1],
+    Z2[, 1] - 1e-8 * rnorm(n2),
+    Z2[, 2],
+    Z2[, 2] + 1e-8 * rnorm(n2)
+  )
+  Y1 <- Z1 %*% t(B) + matrix(rnorm(n1 * q, sd = 0.05), n1, q)
+  Y2 <- Z2 %*% t(B) + matrix(rnorm(n2 * q, sd = 0.05), n2, q)
+  rw1 <- exp(seq(log(1e-3), log(1e3), length.out = n1))
+  rw2 <- exp(seq(log(1e3), log(1e-3), length.out = n2))
+
+  fit <- response_aligned_mfa(
+    Y = list(X1 = Y1, X2 = Y2),
+    X = list(X1 = X1, X2 = X2),
+    ncomp = 2,
+    preproc = multivarious::pass(),
+    response_preproc = multivarious::pass(),
+    normalization = "custom",
+    alpha = c(X1 = 1.0, X2 = 0.9),
+    response_weights = list(X1 = rw1, X2 = rw2),
+    ridge = 1e-5,
+    max_iter = 120,
+    tol = 1e-10
+  )
+
+  pred <- predict(fit, X1[1:8, , drop = FALSE], block = "X1", type = "response", preprocess = FALSE)
+
+  expect_true(all(is.finite(fit$B)))
+  expect_true(all(vapply(fit$V_list, function(V) all(is.finite(V)), logical(1))))
+  expect_true(all(vapply(fit$Z_list, function(Z) all(is.finite(Z)), logical(1))))
+  expect_true(all(is.finite(pred)))
+  .ramfa_expect_stable_descent(
+    fit$objective_trace,
+    min_rel_drop = 1e-6,
+    tail_rel_tol = 5e-5,
+    max_tail_increase = 5e-5
+  )
 })
 
 test_that("response_aligned_mfa refit metadata can rebuild the fit", {

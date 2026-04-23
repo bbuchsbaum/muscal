@@ -178,7 +178,12 @@ aligned_rrr <- function(Y,
     stop("At least one block must contribute positive response weight.", call. = FALSE)
   }
 
-  B <- .arrr_initialize_response_basis(Yp, K = ncomp)
+  B <- .arrr_initialize_response_basis(
+    Yp,
+    K = ncomp,
+    block_weight = block_weight,
+    response_weights = response_weights
+  )
   W_list <- lapply(Xp, function(Xk) matrix(0, ncol(Xk), ncomp))
   Z_list <- lapply(Xp, function(Xk) matrix(0, nrow(Xk), ncomp))
   names(W_list) <- names(Xp)
@@ -265,7 +270,10 @@ aligned_rrr <- function(Y,
   sdev <- apply(s_stack, 2, stats::sd)
 
   cor_x_list <- lapply(seq_along(Xp), function(k) {
-    Ck <- tryCatch(stats::cor(Xp[[k]], Z_list[[k]]), error = function(e) NULL)
+    Ck <- tryCatch(
+      suppressWarnings(stats::cor(Xp[[k]], Z_list[[k]])),
+      error = function(e) NULL
+    )
     if (!is.null(Ck)) Ck[!is.finite(Ck)] <- 0
     Ck
   })
@@ -357,8 +365,15 @@ aligned_rrr <- function(Y,
   )
 }
 
-.arrr_initialize_response_basis <- function(Y_list, K) {
-  .ramfa_initialize_response_loadings(Y_list, K = K)
+.arrr_initialize_response_basis <- function(Y_list,
+                                            K,
+                                            block_weight = NULL,
+                                            response_weights = NULL) {
+  block_strength <- NULL
+  if (!is.null(block_weight) && !is.null(response_weights)) {
+    block_strength <- as.numeric(block_weight) * vapply(response_weights, mean, numeric(1))
+  }
+  .ramfa_initialize_response_loadings(Y_list, K = K, block_strength = block_strength)
 }
 
 .arrr_update_block_weights <- function(Xk,

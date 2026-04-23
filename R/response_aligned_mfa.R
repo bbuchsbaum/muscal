@@ -425,7 +425,10 @@ response_aligned_mfa <- function(Y,
   sdev <- apply(s_stack, 2, stats::sd)
 
   cor_x_list <- lapply(seq_along(Xp), function(k) {
-    Ck <- tryCatch(stats::cor(Xp[[k]], Z_list[[k]]), error = function(e) NULL)
+    Ck <- tryCatch(
+      suppressWarnings(stats::cor(Xp[[k]], Z_list[[k]])),
+      error = function(e) NULL
+    )
     if (!is.null(Ck)) Ck[!is.finite(Ck)] <- 0
     Ck
   })
@@ -821,31 +824,54 @@ response_aligned_mfa <- function(Y,
   out
 }
 
-.ramfa_initialize_response_loadings <- function(Y_list, K) {
+.ramfa_init_svd_method <- function(mat, exact_dim_threshold = 8L) {
+  if (min(dim(mat)) <= exact_dim_threshold) "base" else "svds"
+}
+
+.ramfa_initialize_response_loadings <- function(Y_list,
+                                                K,
+                                                block_strength = NULL) {
   q <- ncol(Y_list[[1]])
-  Y_pool <- do.call(rbind, Y_list)
+  if (is.null(block_strength)) {
+    block_strength <- rep(1, length(Y_list))
+  }
+  block_strength <- as.numeric(block_strength)
+  keep <- which(is.finite(block_strength) & block_strength > 0)
+  if (length(keep) == 0L) {
+    stop("At least one positive-strength response source is required for initialization.", call. = FALSE)
+  }
+  Y_pool <- do.call(rbind, lapply(keep, function(i) {
+    sqrt(block_strength[[i]]) * Y_list[[i]]
+  }))
   B <- matrix(0, nrow = q, ncol = K)
   k_resp <- min(K, nrow(Y_pool), ncol(Y_pool))
   if (k_resp >= 1L) {
     sv <- multivarious::svd_wrapper(
       Y_pool,
       ncomp = k_resp,
-      method = if (min(dim(Y_pool)) < 3L) "base" else "svds"
+      method = .ramfa_init_svd_method(Y_pool)
     )
     B[, seq_len(k_resp)] <- sv$v[, seq_len(k_resp), drop = FALSE]
-  }
-  if (k_resp < K) {
-    B[, seq.int(k_resp + 1L, K)] <- matrix(stats::rnorm(q * (K - k_resp), sd = 0.1), nrow = q)
   }
   B
 }
 
-.ramfa_initialize_score_matrix <- function(response_mat,
+.ramfa_initialize_score_matrix <- function(response_mat = NULL,
                                            predictor_mat = NULL,
                                            B,
-                                           K) {
-  Z <- matrix(0, nrow = nrow(response_mat), ncol = K)
-  use_resp <- min(K, ncol(B))
+                                           K,
+                                           n = NULL) {
+  if (is.null(n)) {
+    n <- if (!is.null(response_mat)) {
+      nrow(response_mat)
+    } else if (!is.null(predictor_mat)) {
+      nrow(predictor_mat)
+    } else {
+      stop("At least one of `response_mat`, `predictor_mat`, or `n` must be supplied.", call. = FALSE)
+    }
+  }
+  Z <- matrix(0, nrow = n, ncol = K)
+  use_resp <- if (is.null(response_mat)) 0L else min(K, ncol(B))
   if (use_resp >= 1L) {
     Z[, seq_len(use_resp)] <- response_mat %*% B[, seq_len(use_resp), drop = FALSE]
   }
@@ -856,27 +882,45 @@ response_aligned_mfa <- function(Y,
       sv <- multivarious::svd_wrapper(
         predictor_mat,
         ncomp = take,
-        method = if (min(dim(predictor_mat)) < 3L) "base" else "svds"
+        method = .ramfa_init_svd_method(predictor_mat)
       )
       Z[, seq.int(use_resp + 1L, length.out = take)] <-
         sv$u[, seq_len(take), drop = FALSE] %*%
         diag(sv$sdev[seq_len(take)], take, take)
     }
-    if (take < extra) {
-      cols <- seq.int(use_resp + take + 1L, K)
-      Z[, cols] <- matrix(stats::rnorm(nrow(Z) * length(cols), sd = 0.1), nrow = nrow(Z))
-    }
   }
   Z
 }
 
-.ramfa_initialize_scores <- function(X_list, Y_list, B, K) {
+.ramfa_initialize_scores <- function(X_list,
+                                     Y_list,
+                                     B,
+                                     K,
+                                     alpha_blocks = NULL,
+                                     response_alpha = NULL,
+                                     response_weights = NULL) {
+  if (is.null(alpha_blocks)) {
+    alpha_blocks <- rep(1, length(X_list))
+  }
+  if (is.null(response_alpha)) {
+    response_alpha <- rep(1, length(Y_list))
+  }
+  if (is.null(response_weights)) {
+    response_weights <- lapply(Y_list, function(Yk) rep(1, nrow(Yk)))
+  }
   Z_list <- lapply(seq_along(Y_list), function(k) {
+    use_response <- as.numeric(response_alpha[[k]]) > 0 &&
+      sum(as.numeric(response_weights[[k]])) > 0
+    use_predictor <- as.numeric(alpha_blocks[[k]]) > 0
+    if (!use_response && !use_predictor) {
+      return(matrix(0, nrow = nrow(X_list[[k]]), ncol = K))
+    }
     .ramfa_initialize_score_matrix(
-      response_mat = Y_list[[k]],
-      predictor_mat = X_list[[k]],
+      response_mat = if (use_response) Y_list[[k]] else NULL,
+      predictor_mat = if (use_predictor) X_list[[k]] else NULL,
       B = B,
-      K = K
+      K = K,
+      n = nrow(X_list[[k]])
     )
   })
   names(Z_list) <- names(X_list)
@@ -1059,12 +1103,37 @@ response_aligned_mfa <- function(Y,
 
   if (identical(engine, "response")) {
     K <- as.integer(ncomp)
-    init_response_list <- Y_list
-    if (!is.null(anchor_response)) {
-      init_response_list <- c(init_response_list, list(.anchor = anchor_response))
+    init_response_list <- list()
+    init_response_strength <- numeric(0)
+    for (k in seq_along(Y_list)) {
+      strength_k <- as.numeric(response_alpha[[k]]) * mean(as.numeric(response_weights[[k]]))
+      if (!is.finite(strength_k) || strength_k <= 0) next
+      init_response_list[[length(init_response_list) + 1L]] <- Y_list[[k]]
+      init_response_strength[[length(init_response_strength) + 1L]] <- strength_k
     }
-    B <- .ramfa_initialize_response_loadings(init_response_list, K = K)
-    Z_list <- .ramfa_initialize_scores(X_list = X_list, Y_list = Y_list, B = B, K = K)
+    if (!is.null(anchor_response) && as.numeric(anchor_response_alpha) > 0 && sum(anchor_response_weights) > 0) {
+      init_response_list[[length(init_response_list) + 1L]] <- anchor_response
+      init_response_strength[[length(init_response_strength) + 1L]] <-
+        as.numeric(anchor_response_alpha) * mean(as.numeric(anchor_response_weights))
+    }
+    if (length(init_response_list) == 0L) {
+      init_response_list <- Y_list
+      init_response_strength <- rep(1, length(Y_list))
+    }
+    B <- .ramfa_initialize_response_loadings(
+      init_response_list,
+      K = K,
+      block_strength = init_response_strength
+    )
+    Z_list <- .ramfa_initialize_scores(
+      X_list = X_list,
+      Y_list = Y_list,
+      B = B,
+      K = K,
+      alpha_blocks = alpha_blocks,
+      response_alpha = response_alpha,
+      response_weights = response_weights
+    )
     S <- if (!is.null(anchor_map)) {
       S0 <- .ramfa_initialize_anchor_scores(
         Z_list = Z_list,
