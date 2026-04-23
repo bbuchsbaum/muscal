@@ -38,7 +38,8 @@ blocks. Sometimes every block has its own paired multivariate response with no
 exact row sharing. Sometimes you are in between: some rows map back to known
 anchor states, while others are novel.
 
-`muscal` now has three honest answers to those three situations:
+This vignette is about the cases where one side is the privileged response
+surface. Within that scope, `muscal` has three honest answers:
 
 - `anchored_mfa()` when the response lives at the anchor-state level
 - `response_aligned_mfa()` when each block has paired multivariate `Y`, with or
@@ -48,6 +49,10 @@ anchor states, while others are novel.
 This vignette shows the same prediction problem under each regime and focuses
 on the contract you actually need, not on forcing every case through repeated
 rows of `Y`.
+
+If neither side is privileged and you want symmetric prediction or completion
+between paired `X` and `Y` block families, use `aligned_interbattery()` instead;
+see `vignette("aligned_interbattery")`.
 
 ## Load the package
 
@@ -375,6 +380,8 @@ test-time anchor information can refine the score solve when you truly have it.
 
 - `vignette("linked_mfa")` for the anchored row-mapping workflow in more depth
 - `vignette("aligned_mfa")` for the unsupervised same-latent-row analogue
+- `vignette("aligned_interbattery")` when you want symmetric `X`/`Y`
+  prediction rather than a privileged response surface
 - `vignette("model_evaluation")` for bootstrap, permutation, and held-out
   evaluation workflows across supported methods
 - `?response_aligned_mfa` and `?aligned_rrr` for the full argument contracts

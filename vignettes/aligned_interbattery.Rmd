@@ -1,0 +1,248 @@
+---
+title: Bidirectional Response Alignment with aligned_interbattery()
+output: rmarkdown::html_vignette
+vignette: >
+  %\VignetteIndexEntry{Bidirectional Response Alignment with aligned_interbattery()}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+params:
+  family: red
+  preset: homage
+css: albers.css
+resource_files:
+- albers.css
+- albers.js
+includes:
+  in_header: |-
+    <script src="albers.js"></script>
+    <script>document.addEventListener('DOMContentLoaded',function(){document.body.classList.add('palette-red');});</script>
+
+---
+
+```{r setup, include = FALSE}
+if (requireNamespace("ggplot2", quietly = TRUE) && requireNamespace("albersdown", quietly = TRUE) && exists("params")) ggplot2::theme_set(albersdown::theme_albers(params$family))
+knitr::opts_chunk$set(
+  collapse = TRUE,
+  comment = "#>",
+  message = FALSE,
+  warning = FALSE,
+  fig.width = 6,
+  fig.height = 4
+)
+```
+
+## Why use `aligned_interbattery()`?
+
+Use `aligned_interbattery()` when you have two paired block families for the
+same subjects and neither side is the privileged response surface. You want a
+shared common space, but you also want to predict from `X` to `Y`, from `Y` to
+`X`, or complete a partially observed bundle using both sides together.
+
+The key contract is symmetric: each subject gets common scores plus one score
+system for the `X` side and one for the `Y` side. That makes this a better fit
+than forcing one side to play the role of "predictors" and the other to play
+the role of "responses."
+
+## What does a quick fit look like?
+
+```{r load-packages}
+library(muscal)
+library(knitr)
+```
+
+```{r simulate-data, include = FALSE}
+.mean_sq_error <- function(pred, truth) {
+  mean((pred - truth)^2)
+}
+
+.sim_aib_subject <- function(N, P1, P2, Q1, noise = 0.04, include_d2 = TRUE) {
+  K <- ncol(P1)
+  T <- qr.Q(qr(matrix(rnorm(N * K), N, K)))
+  U <- T + matrix(rnorm(N * K, sd = noise), N, K)
+  V <- T + matrix(rnorm(N * K, sd = noise), N, K)
+
+  X <- list(
+    D1 = U %*% t(P1) + matrix(rnorm(N * nrow(P1), sd = noise), N, nrow(P1))
+  )
+  if (isTRUE(include_d2)) {
+    X$D2 <- U %*% t(P2) + matrix(rnorm(N * nrow(P2), sd = noise), N, nrow(P2))
+  }
+
+  Y <- list(
+    E1 = V %*% t(Q1) + matrix(rnorm(N * nrow(Q1), sd = noise), N, nrow(Q1))
+  )
+
+  list(X = X, Y = Y)
+}
+
+.sim_aib_data <- function(subject_sizes = c(S1 = 14, S2 = 13, S3 = 12),
+                          noise = 0.04,
+                          seed = 11) {
+  set.seed(seed)
+  K <- 2L
+  P1 <- matrix(rnorm(5 * K), 5, K)
+  P2 <- matrix(rnorm(4 * K), 4, K)
+  Q1 <- matrix(rnorm(3 * K), 3, K)
+
+  X <- list()
+  Y <- list()
+  for (subj in names(subject_sizes)) {
+    sim_subj <- .sim_aib_subject(
+      N = as.integer(subject_sizes[[subj]]),
+      P1 = P1,
+      P2 = P2,
+      Q1 = Q1,
+      noise = noise
+    )
+    X[[subj]] <- sim_subj$X
+    Y[[subj]] <- sim_subj$Y
+  }
+
+  list(
+    X = X,
+    Y = Y,
+    params = list(P1 = P1, P2 = P2, Q1 = Q1, K = K)
+  )
+}
+
+train <- .sim_aib_data()
+new_subject <- .sim_aib_subject(
+  N = 9,
+  P1 = train$params$P1,
+  P2 = train$params$P2,
+  Q1 = train$params$Q1,
+  noise = 0.04
+)
+partial_both <- list(
+  x = list(D1 = new_subject$X$D1),
+  y = list(E1 = new_subject$Y$E1)
+)
+```
+
+```{r fit-aligned-interbattery}
+fit <- aligned_interbattery(
+  X = train$X,
+  Y = train$Y,
+  ncomp = 2,
+  max_iter = 10
+)
+```
+
+```{r quick-checks, include = FALSE}
+pred_y <- predict(
+  fit,
+  new_subject$X,
+  from = "x",
+  type = "prediction",
+  target_block = "E1"
+)
+pred_x <- predict(
+  fit,
+  new_subject$Y$E1,
+  block = "E1",
+  from = "y",
+  type = "prediction",
+  target_block = "D1"
+)
+pred_d2 <- predict(
+  fit,
+  partial_both,
+  from = "both",
+  type = "prediction",
+  target_block = "x:D2"
+)
+proj_both <- project(
+  fit,
+  partial_both,
+  from = "both",
+  side = "both"
+)
+
+quick_summary <- data.frame(
+  path = c(
+    "x:D1 + x:D2 -> y:E1",
+    "y:E1 -> x:D1",
+    "x:D1 + y:E1 -> x:D2"
+  ),
+  mean_test_mse = round(c(
+    .mean_sq_error(pred_y, new_subject$Y$E1),
+    .mean_sq_error(pred_x, new_subject$X$D1),
+    .mean_sq_error(pred_d2, new_subject$X$D2)
+  ), 4)
+)
+
+stopifnot(all(is.finite(quick_summary$mean_test_mse)))
+stopifnot(all(dim(proj_both$common) == c(9, 2)))
+stopifnot(all(dim(proj_both$x) == c(9, 2)))
+stopifnot(all(dim(proj_both$y) == c(9, 2)))
+stopifnot(identical(fit$task, "bidirectional_prediction"))
+```
+
+```{r quick-summary}
+kable(quick_summary, align = c("l", "r"))
+```
+
+The important point is not which direction wins on this toy simulation. It is
+that one fitted object supports all three contracts: `X -> Y`, `Y -> X`, and
+joint completion from partially observed bundles.
+
+## What do the inputs look like?
+
+You can supply nested `subject -> domain` lists on both sides. Blocks with the
+same domain name and column schema share loadings across subjects, which is the
+main way the model learns a common geometry rather than fitting each subject
+independently.
+
+```{r input-shape}
+c(
+  n_subjects = length(train$X),
+  x_domains_per_subject = length(train$X$S1),
+  y_domains_per_subject = length(train$Y$S1)
+)
+```
+
+Here each subject has two `X`-side domains (`D1`, `D2`) and one `Y`-side domain
+(`E1`). In a real study those domains might be assays, feature families, or
+paired modalities collected on the same rows.
+
+## How do you project from one side or both?
+
+If you observe both sides for the same new rows, `project()` can return the
+common scores together with the side-specific score systems.
+
+```{r project-both}
+common_scores <- project(
+  fit,
+  partial_both,
+  from = "both",
+  side = "common"
+)
+
+dim(common_scores)
+```
+
+If you only want to reconstruct the blocks you actually observed, use
+`type = "reconstruction"`.
+
+```{r reconstruct-observed}
+reconstructed <- predict(
+  fit,
+  partial_both,
+  from = "both",
+  type = "reconstruction"
+)
+
+names(reconstructed)
+```
+
+That separation matters. Reconstruction is for the observed side bundle.
+Prediction is for completing the opposite side or an unobserved block given the
+common space you inferred from what you have.
+
+## Where next?
+
+- `vignette("response_alignment")` when one side really is the privileged
+  response surface
+- `?aligned_interbattery` for the fitting contract and supported input layouts
+- `?project.aligned_interbattery` and `?predict.aligned_interbattery` for the
+  out-of-sample projection and completion rules
