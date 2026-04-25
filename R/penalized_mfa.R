@@ -32,53 +32,9 @@ adam_update_block <- function(V, G, M, V2, step_count,
   list(V = V_new, M = M, V2 = V2)
 }
 
-#' Prepare preprocessors and data for Penalized MFA
-#'
-#' @param data list of data blocks
-#' @param preproc a preprocessor object or list of them
-#' @param check_consistent_ncol whether to check for consistent number of columns post-preprocessing.
-#' @return a list containing the preprocessed data `Xp`, the fitted preprocessors `proclist`,
-#'         and the post-preprocessing dimension `p_post`.
-#' @keywords internal
-#' @noRd
-prepare_block_preprocessors <- function(data, preproc, check_consistent_ncol = TRUE) {
-  proclist <- if (is.null(preproc)) {
-    # If no preproc, create a pass-through preprocessor for each block
-    lapply(seq_along(data), function(i) multivarious::fit(multivarious::pass(), data[[i]]))
-  } else if (inherits(preproc, "pre_processor") || inherits(preproc, "prepper")) {
-    # If single preproc, create a fresh copy for each block
-    lapply(seq_along(data), function(i) multivarious::fit(multivarious::fresh(preproc), data[[i]]))
-  } else if (is.list(preproc)) {
-    # If list of preprocs, prepare each one on its corresponding block
-    chk::chk_equal(length(preproc), length(data))
-    lapply(seq_along(data), function(i) {
-      p <- preproc[[i]]
-      if (!inherits(p, "pre_processor") && !inherits(p, "prepper")) {
-        stop("Each element of 'preproc' list must be a pre_processor or prepper.")
-      }
-      multivarious::fit(multivarious::fresh(p), data[[i]])
-    })
-  } else {
-    stop("`preproc` must be NULL, a pre_processor/prepper object, or a list of them.")
-  }
-
-  # Apply preprocessing
-  Xp <- lapply(seq_along(data), function(i) multivarious::transform(proclist[[i]], data[[i]]))
-  
-  # Check for consistent dimensions after preprocessing
-  dims_post <- sapply(Xp, dim)
-  p_post <- dims_post[2, 1]
-  
-  if (check_consistent_ncol && !all(dims_post[2, ] == p_post)) {
-    stop("All blocks must have the same number of columns after preprocessing.")
-  }
-  
-  list(Xp = Xp, proclist = proclist, p_post = p_post)
-}
-
 #' @importFrom chk chk_numeric chk_list chk_integer chk_gte chk_lte chk_flag
 #' @importFrom purrr map
-#' @importFrom multivarious fresh prep init_transform center concat_pre_processors pass
+#' @importFrom multivarious fresh fit center concat_pre_processors pass
 #' @importFrom dplyr pull select
 #' @importFrom rlang enquo
 #' @importFrom cli cli_alert_info cli_alert_success cli_alert_danger
@@ -372,7 +328,7 @@ penalized_mfa.list <- function(data,
   
   prep_res <- prepare_block_preprocessors(data, preproc, check_consistent_ncol = FALSE)
   Xp <- prep_res$Xp
-  proclist <- prep_res$proclist
+  proclist <- .muscal_materialize_block_preprocessors(data, prep_res$proclist)
   p_dims <- sapply(Xp, ncol)
   ncomp <- min(ncomp, min(p_dims))
   if (ncomp < 1) stop("ncomp must be at least 1 after preprocessing.")

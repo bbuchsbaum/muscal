@@ -20,6 +20,7 @@ anchored_mfa(
   tol = 1e-06,
   ridge = 1e-08,
   verbose = FALSE,
+  use_future = FALSE,
   ...
 )
 
@@ -38,6 +39,7 @@ linked_mfa(
   tol = 1e-06,
   ridge = 1e-08,
   verbose = FALSE,
+  use_future = FALSE,
   ...
 )
 }
@@ -83,6 +85,13 @@ majorization/polar step.}
 \item{ridge}{Non-negative ridge stabilization added to normal equations.}
 
 \item{verbose}{Logical; if `TRUE`, prints iteration progress.}
+
+\item{use_future}{Logical; if `TRUE`, block-wise computations that do not
+depend on one another (initial block-local preprocessing helpers and the
+final partial-scores assembly) are performed via `furrr::future_map()` when
+available. The main alternating-least-squares loop is intrinsically
+sequential and is unaffected. Accepted here primarily for interface parity
+with [anchored_mcca()].}
 
 \item{...}{Unused (reserved for future extensions).}
 }

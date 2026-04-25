@@ -25,6 +25,7 @@ Imports:
     assertthat,
     chk,
     crayon,
+    irlba,
     RSpectra,
     rlang,
     dplyr,

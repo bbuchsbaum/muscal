@@ -220,7 +220,7 @@ bada.multidesign <- function(data, y, subject, preproc=multivarious::center(), n
   
     Xresid <- do.call(rbind, residual_strata %>% purrr::map( ~ .x$x))
   
-    pca_resid <- pca(Xresid, ncomp=resdim, method="irlba")
+    pca_resid <- pca(Xresid, ncomp=resdim, method=.muscal_svd_method(Xresid, ncomp = resdim))
     Xpca_resid <- scores(pca_resid)
   
     Sw <- within_class_scatter(Xpca_resid, interaction(subjects, labels))

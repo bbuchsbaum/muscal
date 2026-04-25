@@ -50,6 +50,11 @@
 #' @param tol Relative tolerance on the objective for convergence.
 #' @param ridge Non-negative ridge stabilization added to normal equations.
 #' @param verbose Logical; if `TRUE`, prints iteration progress.
+#' @param use_future Logical; if `TRUE`, block-wise computations that do not
+#'   depend on one another may be performed via `furrr::future_map()` when
+#'   available. The main alternating-least-squares loop is intrinsically
+#'   sequential and is unaffected. Accepted here primarily for interface parity
+#'   with [aligned_mcca()] and [anchored_mfa()].
 #' @param ... Unused (reserved for future extensions).
 #'
 #' @return An object inheriting from `multivarious::multiblock_biprojector` with
@@ -85,11 +90,16 @@ aligned_mfa <- function(X,
                         tol = 1e-6,
                         ridge = 1e-8,
                         verbose = FALSE,
+                        use_future = FALSE,
                         ...) {
   fit_call <- match.call(expand.dots = FALSE)
   fit_dots <- list(...)
   normalization <- match.arg(normalization)
   score_constraint <- match.arg(score_constraint)
+  chk::chk_flag(use_future)
+  if (isTRUE(use_future) && !requireNamespace("furrr", quietly = TRUE)) {
+    stop("use_future = TRUE requires the 'furrr' package.", call. = FALSE)
+  }
 
   chk::chk_list(X)
   chk::chk_true(length(X) >= 2)
@@ -164,8 +174,7 @@ aligned_mfa <- function(X,
     rep(1, length(X))
   } else {
     first_sv <- function(mat) {
-      mdim <- min(dim(mat))
-      method <- if (mdim < 3) "base" else "svds"
+      method <- .muscal_svd_method(mat, ncomp = 1)
       tryCatch(
         multivarious::svd_wrapper(mat, ncomp = 1, method = method)$sdev[1],
         error = function(e) multivarious::svd_wrapper(mat, ncomp = 1, method = "base")$sdev[1]
@@ -191,7 +200,7 @@ aligned_mfa <- function(X,
     kdim0 <- min(K, min(dim(Xp[[k0]])))
     S_init <- matrix(rnorm(N * K), nrow = N, ncol = K)
     if (kdim0 >= 1L) {
-      sv <- multivarious::svd_wrapper(Xp[[k0]], ncomp = kdim0, method = if (min(dim(Xp[[k0]])) < 3) "base" else "svds")
+      sv <- multivarious::svd_wrapper(Xp[[k0]], ncomp = kdim0, method = .muscal_svd_method(Xp[[k0]], ncomp = kdim0))
       scores0 <- sv$u[, seq_len(kdim0), drop = FALSE] %*% diag(sv$sdev[seq_len(kdim0)], kdim0, kdim0)
       idx0 <- row_index[[k0]]
       rs <- rowsum(scores0, idx0, reorder = FALSE)
@@ -418,7 +427,8 @@ aligned_mfa <- function(X,
               max_iter = max_iter,
               tol = tol,
               ridge = ridge,
-              verbose = FALSE
+              verbose = FALSE,
+              use_future = use_future
             ),
             fit_dots
           )

@@ -35,10 +35,31 @@ test_that("inconsistent column counts warn when no preprocessing", {
 
 test_that("NULL preprocessors can be materialized into fitted identity preprocessors", {
   raw_blocks <- list(A = mat1, B = mat2)
-  res <- muscal:::prepare_block_preprocessors(raw_blocks, NULL)
+  res <- muscal:::prepare_block_preprocessors(raw_blocks, NULL, check_consistent_ncol = FALSE)
   fitted <- muscal:::.muscal_materialize_block_preprocessors(raw_blocks, res$proclist)
 
   expect_length(fitted, 2)
   expect_named(fitted, c("A", "B"))
   expect_true(all(vapply(fitted, inherits, logical(1), "pre_processor")))
+})
+
+test_that("fitted pre_processor inputs are accepted and refreshed per block", {
+  fitted_center <- multivarious::fit(multivarious::center(), mat1)
+
+  expect_warning({
+    res <- muscal:::prepare_block_preprocessors(list(mat1, mat2), fitted_center)
+  }, "Preprocessing resulted in blocks with different numbers of columns")
+
+  expect_length(res$proclist, 2)
+  expect_true(all(vapply(res$proclist, inherits, logical(1), "pre_processor")))
+  expect_true(all(vapply(res$proclist, function(x) isTRUE(attr(x, "fitted")), logical(1))))
+})
+
+test_that("materialized NULL preprocessors are fitted pass-through processors", {
+  raw_blocks <- list(A = mat1, B = mat2)
+  fitted <- muscal:::.muscal_materialize_block_preprocessors(raw_blocks, NULL)
+
+  expect_true(all(vapply(fitted, function(x) isTRUE(attr(x, "fitted")), logical(1))))
+  expect_equal(multivarious::transform(fitted$A, mat1), mat1)
+  expect_equal(multivarious::transform(fitted$B, mat2), mat2)
 })

@@ -10,16 +10,22 @@ anchored_mcca(
   row_index,
   preproc = multivarious::center(),
   ncomp = 2,
+  normalization = c("MFA", "balanced", "None", "custom"),
+  alpha = NULL,
   ridge = 1e-06,
-  block_weights = NULL,
+  max_iter = 50,
+  tol = 1e-06,
+  verbose = FALSE,
   use_future = FALSE,
+  block_weights = NULL,
   ...
 )
 }
 \arguments{
-\item{Y}{Numeric matrix/data.frame (`N × q`) serving as the reference block.}
+\item{Y}{Numeric matrix/data.frame (`N × q`) serving as the anchor block.}
 
-\item{X}{A list of numeric matrices/data.frames. Each element `X[[k]]` is `n_k × p_k`.}
+\item{X}{A list of numeric matrices/data.frames. Each element `X[[k]]` is
+`n_k × p_k`.}
 
 \item{row_index}{A list of integer vectors. `row_index[[k]]` has length `n_k`
 and maps rows of `X[[k]]` to rows of `Y` (values in `1..N`).}
@@ -30,31 +36,120 @@ applied to `c(list(Y), X)` in that order.}
 
 \item{ncomp}{Integer; number of canonical components to compute.}
 
-\item{ridge}{Non-negative numeric scalar (or vector of length equal to the
-number of blocks) controlling ridge stabilization. The effective ridge used
-per block is scaled by the block's overall energy so the default works
-across variable scalings.}
+\item{normalization}{Block weighting scheme. One of `"MFA"` (default, scale-
+normalised via `1/sigma_1^2`), `"balanced"` (per-component geometric
+contribution balancing to prevent single-block domination), `"None"`
+(uniform weights), or `"custom"` (use `alpha`).}
 
-\item{block_weights}{Optional numeric vector of non-negative weights. If unnamed
-and of length `length(X)`, it is interpreted as weights for `X` blocks and `Y`
-is given weight 1. If of length `1 + length(X)`, the first weight corresponds to `Y`.}
+\item{alpha}{Optional numeric vector of non-negative weights. If unnamed and of
+length `length(X)` it is interpreted as weights for the X blocks with `Y`
+receiving weight `1`; if of length `1 + length(X)` the first entry applies
+to `Y`. Required when `normalization = "custom"`; used as the IRLS prior
+when `normalization = "balanced"`.}
 
-\item{use_future}{Logical; if `TRUE`, block-wise computations are performed via
-`furrr::future_map()` when available.}
+\item{ridge}{Non-negative numeric scalar (or vector of length `1 + length(X)`)
+controlling ridge stabilisation. The effective ridge used per block is
+scaled by the block's overall energy so the default works across variable
+scalings.}
 
-\item{...}{Additional arguments forwarded to [aligned_mcca()] (currently unused).}
+\item{max_iter}{Maximum number of IRLS iterations for `normalization = "balanced"`.
+Ignored for other modes.}
+
+\item{tol}{Relative tolerance on the projected-gradient norm and objective
+change used to declare convergence for `normalization = "balanced"`.}
+
+\item{verbose}{Logical; if `TRUE`, prints IRLS iteration progress.}
+
+\item{use_future}{Logical; if `TRUE`, block-wise projector fitting is performed
+via `furrr::future_map()` when available.}
+
+\item{block_weights}{Deprecated alias for `alpha`. When supplied, implicitly
+sets `normalization = "custom"` unless `normalization` is already explicit.}
+
+\item{...}{Unused (reserved for future extensions).}
 }
 \value{
-An object of class `"anchored_mcca"` (and `"aligned_mcca"`).
+An object of class `"anchored_mcca"` (and `"aligned_mcca"`,
+  `"multiblock_biprojector"`). Relevant fields include `s` (anchor-space
+  scores, `N × ncomp`), `v` (concatenated canonical directions), `sdev`,
+  `block_indices`, `alpha_blocks`, `block_weights` (alias), `normalization`,
+  `canonical_weights`, `partial_scores`, `cor_loadings`, `block_contribs`
+  (`ncomp × B` matrix of raw `g_j^T M_b g_j` contributions),
+  `weighted_block_contribs`, `block_contrib_fraction`, and (for
+  `"balanced"` only) `balance_trace`, `balance_converged`, `balance_iters`.
 }
 \description{
-Convenience wrapper around [aligned_mcca()] for the common case with a fully
-observed reference block `Y` (e.g., stimulus features) and one or more linked
-blocks `X_k` (e.g., brain data). Rows of each `X_k` are linked to rows of `Y`
-via `row_index[[k]]`.
+Anchored MCCA estimates a shared canonical score matrix `S` in the row space
+of a privileged anchor block `Y` (`N × q`), while requiring one or more linked
+blocks `X_k` (with row-to-anchor maps `row_index[[k]]`) to agree with `S`.
 
-Compared to the legacy name "linked", "anchored" makes explicit that the
-shared scores live in the row space of `Y` (with `N = nrow(Y)`).
+Compared with [aligned_mcca()] (which treats all blocks symmetrically) and
+[anchored_mfa()] (reconstruction-driven, optimises summed explained variance),
+Anchored MCCA is correlation-driven and anchor-privileged: it looks for
+components that every block can *predict*, not just explain in isolation.
+}
+\details{
+## Interface parity with [anchored_mfa()]
+The signature mirrors [anchored_mfa()] (`Y, X, row_index, preproc, ncomp,`
+`normalization, alpha, ridge, max_iter, tol, verbose, use_future`) so that
+the two anchored methods can be swapped with minimal code changes. Arguments
+that are specific to the reconstruction-ALS machinery of anchored_mfa
+(`score_constraint`, `feature_groups`, `feature_lambda`) are intentionally
+absent here; MCCA uses closed-form eigendecomposition rather than ALS.
+
+## Block-weighting schemes
+The block-weight vector `alpha_blocks` (one weight per block, first entry = `Y`)
+is formed according to `normalization`:
+* `"MFA"` (default) — `alpha_b = 1 / (sigma_1(X_b)^2)`, where `sigma_1` is the
+  first singular value of the preprocessed block. This is the CCA analogue of
+  the MFA normalization in [anchored_mfa()] and prevents a block from
+  dominating purely by scale.
+* `"balanced"` — optimizes each component with a geometric-mean/log
+  contribution objective, `sum_b beta_b log(g_j^T M_b g_j)`, under
+  orthogonality to earlier components. This discourages block-specific
+  directions because every positive-target block must contribute to the same
+  component.
+* `"None"` — uniform weights `alpha_b = 1`.
+* `"custom"` — use `alpha` as supplied.
+
+## Model
+Let \eqn{P_b = X_b (X_b^\top X_b + \kappa_b I)^-1 X_b^\top} be the
+ridge-stabilised hat matrix of block `b`, lifted to the anchor row space via
+`row_index[[b]]` to produce `M_b` (`N × N`). Anchored MCCA computes the top
+eigenpairs of
+\deqn{H = \sum_b alpha_b M_b}
+with `alpha_b` chosen by `normalization`. Y enters as the first block with
+identity row-index, so its contribution is exact and the shared scores live
+in its row space.
+
+For `normalization = "balanced"`, the method instead solves the per-component
+block-balanced objective above and reports both raw contributions
+`block_contribs` and criterion-weighted contributions
+`weighted_block_contribs`.
+
+## What balanced mode constrains
+Balanced mode does **not** constrain the sum of squares or Euclidean norms of
+the canonical weight vectors. The balance criterion is applied in the anchor
+row space through each block's lifted ridge projector. For a unit score
+direction `g_j`, block `b` contributes
+\deqn{c_{bj} = g_j^\top M_b g_j.}
+The balanced objective penalizes directions where any positive-target block
+has near-zero \eqn{c_{bj}}, so the selected component must be supportable by all
+participating blocks. Canonical weights are then computed afterward as the
+ridge back-projection needed for each block to express that already-chosen
+score direction. Their norms remain scale- and ridge-dependent diagnostics,
+not constraints.
+
+## High-dimensional stability (p > n)
+The implementation works in observation space and uses ridge-stabilised
+solves on `n_b × n_b` systems, so `p_b >> n_b` blocks are handled without
+special casing. The kernel matrix `K_b = X_b X_b^T` has rank at most `n_b`;
+ridge stabilisation (`kappa_b = ridge_b * mean(diag(K_b))`, with an
+automatic ridge floor if `ridge = 0` yields a singular system) keeps the
+Cholesky well-posed. All four `normalization` modes inherit this
+stability — `"MFA"` only needs the first singular value per block (via
+`multivarious::svd_wrapper()` which picks `base` or `irlba` automatically),
+and `"balanced"` reuses the same cached projectors across IRLS iterations.
 }
 \examples{
 \donttest{
@@ -66,7 +161,8 @@ X2 <- matrix(rnorm(15 * 8), 15, 8)
 idx1 <- sample.int(N, nrow(X1), replace = TRUE)
 idx2 <- sample.int(N, nrow(X2), replace = TRUE)
 
-fit <- anchored_mcca(Y, list(X1 = X1, X2 = X2), list(X1 = idx1, X2 = idx2), ncomp = 2)
+fit <- anchored_mcca(Y, list(X1 = X1, X2 = X2), list(X1 = idx1, X2 = idx2),
+                     ncomp = 2, normalization = "balanced")
 stopifnot(nrow(multivarious::scores(fit)) == N)
 }
 }

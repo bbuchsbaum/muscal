@@ -104,12 +104,344 @@ mcca.list <- function(data, preproc = multivarious::center(), ncomp = 2,
 
   list(
     P = block_weight * P,
+    P_raw = P,
     chol = R,
     kappa = kappa,
     ridge_mult = ridge_mult,
     scale_k = scale_k,
     block_weight = block_weight
   )
+}
+
+# Lift a block-local n_k x n_k matrix into N x N reference-row space via
+# row-index grouping. Used by aligned_mcca / anchored_mcca.
+.mcca_lift_to_N <- function(M_local, idx, N) {
+  rs1 <- rowsum(M_local, idx, reorder = FALSE)
+  rs2 <- rowsum(t(rs1), idx, reorder = FALSE)
+  out <- matrix(0, N, N)
+  g_rows <- as.integer(rownames(rs2))
+  g_cols <- as.integer(rownames(rs1))
+  out[g_rows, g_cols] <- rs2
+  out
+}
+
+# Top-ncomp symmetric eigendecomposition with RSpectra fallback to base eigen.
+.mcca_top_eigen <- function(H, ncomp, N) {
+  ncomp_eff <- min(as.integer(ncomp), N)
+  eig <- NULL
+  if (ncomp_eff < N) {
+    eig <- tryCatch(
+      RSpectra::eigs_sym(H, k = ncomp_eff, which = "LA"),
+      error = function(e) NULL
+    )
+  }
+  if (is.null(eig)) {
+    full <- eigen(H, symmetric = TRUE)
+    eig <- list(
+      values = full$values[seq_len(ncomp_eff)],
+      vectors = full$vectors[, seq_len(ncomp_eff), drop = FALSE]
+    )
+  }
+  ord <- order(eig$values, decreasing = TRUE)
+  list(values = eig$values[ord], vectors = eig$vectors[, ord, drop = FALSE])
+}
+
+# Per-component balanced-MCCA solver: projected gradient ascent with Armijo
+# line search on the geometric-mean objective, with orthogonal deflation
+# across components.
+#
+# Objective (per component):
+#   phi(g) = Σ_b β_b * log(g^T M_b g)        subject to ||g||^2 = 1,
+#                                             g ⊥ g_1..g_{k-1}
+# Gradient:
+#   ∇phi(g) = Σ_b β_b · 2 M_b g / (g^T M_b g)
+#           = 2 H_w g,                         w_b = β_b / (g^T M_b g)
+# Stationarity says w_b · (g^T M_b g) = β_b (per-block contribution ∝ β).
+# Uniform β → equal contributions across blocks (no single block dominates).
+#
+# Unlike a pure IRLS fixed-point iteration — which tends to limit-cycle when
+# different weight regimes prefer different eigenvectors — gradient ascent
+# with Armijo line search guarantees monotone improvement in phi and
+# converges to a local maximum.
+#
+# Returns per-component eigenpairs, per-component weights, a summary weight
+# vector (geometric mean across components), and iteration diagnostics.
+.mcca_irls_balance <- function(M_list,
+                               ncomp,
+                               target = NULL,
+                               w_init = NULL,
+                               max_iter = 50L,
+                               tol = 1e-6,
+                               damping = 0.5,       # kept for signature stability; unused by GA
+                               step_init = 0.5,
+                               step_shrink = 0.5,
+                               armijo_c = 1e-4,
+                               max_line_search = 25L,
+                               verbose = FALSE) {
+  B <- length(M_list)
+  N <- nrow(M_list[[1]])
+
+  if (is.null(target)) target <- rep(1, B)
+  target <- as.numeric(target)
+  chk::chk_true(length(target) == B)
+  chk::chk_true(all(is.finite(target)))
+  chk::chk_true(all(target >= 0))
+  if (!any(target > 0)) stop("Balanced target must have at least one positive entry.", call. = FALSE)
+  target <- target / mean(target)
+
+  if (is.null(w_init)) w_init <- rep(1, B)
+  w_init <- as.numeric(w_init)
+  chk::chk_true(length(w_init) == B)
+  if (any(!is.finite(w_init)) || any(w_init < 0)) stop("Balanced w_init must be finite and non-negative.", call. = FALSE)
+  if (!any(w_init > 0)) stop("Balanced w_init must have at least one positive entry.", call. = FALSE)
+  w_init <- w_init / mean(w_init)
+
+  ncomp_eff <- min(as.integer(ncomp), N)
+
+  # Objective phi(g) and its Euclidean gradient.
+  contribs <- function(g) {
+    vapply(M_list, function(Mb) as.numeric(crossprod(g, Mb %*% g)), numeric(1))
+  }
+  objective <- function(g) {
+    c_b <- contribs(g)
+    if (any(c_b <= 0) || any(!is.finite(c_b))) return(-Inf)
+    sum(target * log(c_b))
+  }
+  gradient <- function(g, c_b = NULL) {
+    if (is.null(c_b)) c_b <- contribs(g)
+    c_safe <- pmax(c_b, 1e-12)
+    coeff <- target / c_safe
+    grad <- rep(0, N)
+    for (b in seq_len(B)) grad <- grad + coeff[b] * (2 * as.numeric(M_list[[b]] %*% g))
+    grad
+  }
+
+  G <- matrix(0, N, ncomp_eff)
+  lambda <- numeric(ncomp_eff)
+  weights_per_comp <- matrix(0, nrow = ncomp_eff, ncol = B)
+  colnames(weights_per_comp) <- names(M_list)
+  converged_per_comp <- logical(ncomp_eff)
+  iters_per_comp <- integer(ncomp_eff)
+  trace <- vector("list", ncomp_eff)
+
+  Q <- matrix(0, N, 0)  # orthonormal basis of previously found components
+
+  # Project vector v onto the tangent space of the sphere at g, intersected
+  # with the orthogonal complement of Q (so deflation is built in).
+  project_tangent <- function(g, v) {
+    if (ncol(Q) > 0) v <- v - Q %*% (crossprod(Q, v))
+    v - as.numeric(crossprod(g, v)) * g
+  }
+
+  # Retract from tangent space back onto the unit sphere ∩ Q⊥.
+  retract <- function(g_new) {
+    if (ncol(Q) > 0) g_new <- g_new - Q %*% (crossprod(Q, g_new))
+    nrm <- sqrt(sum(g_new^2))
+    if (nrm < 1e-12) stop("Retraction to unit sphere failed (zero-norm iterate).", call. = FALSE)
+    g_new / nrm
+  }
+
+  for (k in seq_len(ncomp_eff)) {
+    # Warm start: leading eigenvector of H_{w_init} restricted to span(Q)^⊥.
+    H_init <- matrix(0, N, N)
+    for (b in seq_len(B)) H_init <- H_init + w_init[b] * M_list[[b]]
+    H_init <- (H_init + t(H_init)) / 2
+    if (ncol(Q) > 0) {
+      AQ <- H_init %*% Q
+      QtAQ <- crossprod(Q, AQ)
+      H_init <- H_init - tcrossprod(Q, AQ) - tcrossprod(AQ, Q) + Q %*% QtAQ %*% t(Q)
+      H_init <- (H_init + t(H_init)) / 2
+    }
+    g <- .mcca_top_eigen(H_init, 1L, N)$vectors[, 1L, drop = TRUE]
+    g <- retract(g)
+
+    obj <- objective(g)
+    if (!is.finite(obj)) {
+      # Degenerate init; fall back to a random orthogonal unit vector in Q⊥.
+      g <- retract(rnorm(N))
+      obj <- objective(g)
+    }
+
+    step <- as.numeric(step_init)
+    comp_trace <- vector("list", 0)
+    conv_k <- FALSE
+    grad_norm_init <- NA_real_
+
+    for (iter in seq_len(max_iter)) {
+      c_b <- contribs(g)
+      grad <- gradient(g, c_b = c_b)
+      pgrad <- project_tangent(g, grad)
+      grad_norm <- sqrt(sum(pgrad^2))
+      if (iter == 1L) grad_norm_init <- grad_norm
+
+      imbalance <- {
+        c_pos <- c_b[c_b > 0]
+        if (length(c_pos) > 1) max(c_pos) / min(c_pos) else 1
+      }
+
+      comp_trace[[iter]] <- list(
+        comp = k, iter = iter, g = g, c_b = c_b,
+        objective = obj, grad_norm = grad_norm, imbalance = imbalance, step = step
+      )
+
+      if (isTRUE(verbose)) {
+        message(sprintf(
+          "anchored_mcca balanced comp %d iter %d: phi = %.4g, grad_norm = %.3g, imbalance = %.3g",
+          k, iter, obj, grad_norm, imbalance
+        ))
+      }
+
+      # Relative gradient-norm stopping rule — more stable than absolute tol
+      # for an objective whose scale depends on the block contributions.
+      if (!is.finite(grad_norm)) {
+        break
+      }
+      rel_grad <- grad_norm / max(grad_norm_init, 1e-12)
+      if (grad_norm < tol || rel_grad < tol) {
+        conv_k <- TRUE
+        break
+      }
+
+      # Armijo backtracking line search: find step with
+      #   phi(retract(g + step·pgrad)) >= phi(g) + armijo_c · step · ||pgrad||^2
+      accepted <- FALSE
+      step_try <- step
+      obj_prev <- obj
+      for (ls in seq_len(max_line_search)) {
+        g_trial <- retract(g + step_try * pgrad)
+        obj_trial <- objective(g_trial)
+        if (is.finite(obj_trial) &&
+            obj_trial >= obj + armijo_c * step_try * grad_norm^2) {
+          g <- g_trial
+          obj <- obj_trial
+          step <- min(step_try / step_shrink, 1.0)  # tentative increase for next iter
+          accepted <- TRUE
+          break
+        }
+        step_try <- step_try * step_shrink
+      }
+
+      if (!accepted) {
+        # Cannot find an improving step — treat as a local max.
+        conv_k <- TRUE
+        break
+      }
+
+      # Also accept convergence when relative objective change is tiny.
+      if (is.finite(obj_prev) && abs(obj - obj_prev) <= tol * max(1, abs(obj_prev))) {
+        conv_k <- TRUE
+        break
+      }
+    }
+
+    c_final <- contribs(g)
+    c_final[!is.finite(c_final) | c_final < 0] <- 0
+    c_safe <- pmax(c_final, 1e-12)
+
+    w_star <- target / c_safe
+    w_star <- w_star / mean(w_star)
+
+    # λ_k = g^T H_{w*} g = Σ_b w*_b · (g^T M_b g) = Σ_b target_b = B (const at fixed point
+    # when target mean is 1). Report the raw Rayleigh quotient on the anchor H
+    # (uniform-weight sum of contributions) as a more interpretable eigenvalue.
+    lam <- sum(c_final)
+
+    G[, k] <- g
+    lambda[k] <- lam
+    weights_per_comp[k, ] <- w_star
+    converged_per_comp[k] <- conv_k
+    iters_per_comp[k] <- length(comp_trace)
+    trace[[k]] <- comp_trace
+
+    Q <- qr.Q(qr(cbind(Q, g)))
+  }
+
+  # Summary weights: geometric mean across components (per block).
+  weights_summary <- exp(colMeans(log(pmax(weights_per_comp, 1e-12))))
+  weights_summary <- weights_summary / mean(weights_summary)
+
+  list(
+    G = G,
+    lambda = lambda,
+    weights = weights_summary,
+    weights_per_comp = weights_per_comp,
+    trace = trace,
+    converged = all(converged_per_comp),
+    converged_per_comp = converged_per_comp,
+    iters = sum(iters_per_comp),
+    iters_per_comp = iters_per_comp
+  )
+}
+
+# MFA-style per-block weight: 1 / (first singular value)^2 of the preprocessed block.
+.mcca_mfa_weights <- function(Xp, ridge_floor = 1e-8) {
+  first_sv <- function(mat) {
+    method <- .muscal_svd_method(mat, ncomp = 1)
+    tryCatch(
+      multivarious::svd_wrapper(mat, ncomp = 1, method = method)$sdev[1],
+      error = function(e) multivarious::svd_wrapper(mat, ncomp = 1, method = "base")$sdev[1]
+    )
+  }
+  sapply(Xp, function(M) {
+    sv <- first_sv(M)
+    1 / (sv^2 + ridge_floor)
+  })
+}
+
+.mcca_map_fun <- function(use_future) {
+  if (isTRUE(use_future)) {
+    if (!requireNamespace("furrr", quietly = TRUE)) {
+      stop("use_future = TRUE requires the 'furrr' package.", call. = FALSE)
+    }
+    function(.x, .f) {
+      furrr::future_map(.x, .f, .options = furrr::furrr_options(seed = TRUE))
+    }
+  } else {
+    function(.x, .f) lapply(.x, .f)
+  }
+}
+
+.mcca_make_anchored_mcca_refit_fn <- function(preproc,
+                                              ncomp,
+                                              normalization,
+                                              alpha,
+                                              ridge,
+                                              max_iter,
+                                              tol,
+                                              use_future,
+                                              fit_dots) {
+  force(preproc)
+  force(ncomp)
+  force(normalization)
+  force(alpha)
+  force(ridge)
+  force(max_iter)
+  force(tol)
+  force(use_future)
+  force(fit_dots)
+
+  function(data) {
+    do.call(
+      anchored_mcca,
+      c(
+        list(
+          Y = data$Y,
+          X = data$X,
+          row_index = data$row_index,
+          preproc = preproc,
+          ncomp = ncomp,
+          normalization = normalization,
+          alpha = alpha,
+          ridge = ridge,
+          max_iter = max_iter,
+          tol = tol,
+          verbose = FALSE,
+          use_future = use_future
+        ),
+        fit_dots
+      )
+    )
+  }
 }
 
 #' @md

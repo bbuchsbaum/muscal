@@ -240,7 +240,8 @@ test_that("aligned_mcca rejects all-zero block weights", {
       N = sim$N,
       ncomp = 2,
       ridge = 1e-4,
-      block_weights = c(0, 0)
+      normalization = "custom",
+      alpha = c(0, 0)
     ),
     regexp = "strictly positive|non-zero|positive",
     ignore.case = TRUE

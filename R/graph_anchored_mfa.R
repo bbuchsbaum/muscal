@@ -184,6 +184,7 @@ graph_anchored_mfa <- function(Y,
                                tol = 1e-6,
                                ridge = 1e-8,
                                verbose = FALSE,
+                               use_future = FALSE,
                                ...) {
   fit_call <- match.call(expand.dots = FALSE)
   fit_dots <- list(...)
@@ -192,6 +193,10 @@ graph_anchored_mfa <- function(Y,
   graph_form <- match.arg(graph_form)
   score_graph_form <- match.arg(score_graph_form)
   score_graph_weight_mode <- match.arg(score_graph_weight_mode)
+  chk::chk_flag(use_future)
+  if (isTRUE(use_future) && !requireNamespace("furrr", quietly = TRUE)) {
+    stop("use_future = TRUE requires the 'furrr' package.", call. = FALSE)
+  }
 
   Y <- .gamfa_as_numeric_matrix(Y, what = "Y")
   chk::chk_list(X)
@@ -267,8 +272,7 @@ graph_anchored_mfa <- function(Y,
     rep(1, length(blocks))
   } else {
     first_sv <- function(mat) {
-      mdim <- min(dim(mat))
-      method <- if (mdim < 3) "base" else "svds"
+      method <- .muscal_svd_method(mat, ncomp = 1)
       tryCatch(
         multivarious::svd_wrapper(mat, ncomp = 1, method = method)$sdev[1],
         error = function(e) multivarious::svd_wrapper(mat, ncomp = 1, method = "base")$sdev[1]
@@ -365,8 +369,7 @@ graph_anchored_mfa <- function(Y,
   }
 
   block_fit <- {
-    Y_hat <- S %*% t(B)
-    sse_y <- sum((Yp - Y_hat)^2)
+    sse_y <- .lmfa_reconstruction_sse(Yp, S, B)
     tss_y <- sum(Yp^2)
     r2_y <- if (tss_y > 0) 1 - sse_y / tss_y else NA_real_
 
@@ -381,8 +384,7 @@ graph_anchored_mfa <- function(Y,
 
     for (k in seq_along(Xp)) {
       idx <- row_index[[k]]
-      X_hat <- S[idx, , drop = FALSE] %*% t(V_list[[k]])
-      sse <- sum((Xp[[k]] - X_hat)^2)
+      sse <- .lmfa_reconstruction_sse(Xp[[k]], S[idx, , drop = FALSE], V_list[[k]])
       tss <- sum(Xp[[k]]^2)
       r2 <- if (tss > 0) 1 - sse / tss else NA_real_
       df <- rbind(
@@ -475,7 +477,8 @@ graph_anchored_mfa <- function(Y,
               max_iter = max_iter,
               tol = tol,
               ridge = ridge,
-              verbose = FALSE
+              verbose = FALSE,
+              use_future = use_future
             ),
             fit_dots
           )
@@ -550,6 +553,7 @@ coupled_graph_anchored_mfa <- function(Y,
                                        tol = 1e-6,
                                        ridge = 1e-8,
                                        verbose = FALSE,
+                                       use_future = FALSE,
                                        ...) {
   fit_call <- match.call(expand.dots = FALSE)
   fit_dots <- list(...)
@@ -558,6 +562,10 @@ coupled_graph_anchored_mfa <- function(Y,
   graph_form <- match.arg(graph_form)
   score_graph_form <- match.arg(score_graph_form)
   score_graph_weight_mode <- match.arg(score_graph_weight_mode)
+  chk::chk_flag(use_future)
+  if (isTRUE(use_future) && !requireNamespace("furrr", quietly = TRUE)) {
+    stop("use_future = TRUE requires the 'furrr' package.", call. = FALSE)
+  }
 
   Y <- .gamfa_as_numeric_matrix(Y, what = "Y")
   chk::chk_list(X)
@@ -634,8 +642,7 @@ coupled_graph_anchored_mfa <- function(Y,
     rep(1, length(blocks))
   } else {
     first_sv <- function(mat) {
-      mdim <- min(dim(mat))
-      method <- if (mdim < 3) "base" else "svds"
+      method <- .muscal_svd_method(mat, ncomp = 1)
       tryCatch(
         multivarious::svd_wrapper(mat, ncomp = 1, method = method)$sdev[1],
         error = function(e) multivarious::svd_wrapper(mat, ncomp = 1, method = "base")$sdev[1]
@@ -723,8 +730,7 @@ coupled_graph_anchored_mfa <- function(Y,
   }
 
   block_fit <- {
-    Y_hat <- S %*% t(B)
-    sse_y <- sum((Yp - Y_hat)^2)
+    sse_y <- .lmfa_reconstruction_sse(Yp, S, B)
     tss_y <- sum(Yp^2)
     r2_y <- if (tss_y > 0) 1 - sse_y / tss_y else NA_real_
 
@@ -738,8 +744,7 @@ coupled_graph_anchored_mfa <- function(Y,
     )
 
     for (k in seq_along(Xp)) {
-      X_hat <- Z_list[[k]] %*% t(V_list[[k]])
-      sse <- sum((Xp[[k]] - X_hat)^2)
+      sse <- .lmfa_reconstruction_sse(Xp[[k]], Z_list[[k]], V_list[[k]])
       tss <- sum(Xp[[k]]^2)
       r2 <- if (tss > 0) 1 - sse / tss else NA_real_
       df <- rbind(
@@ -834,7 +839,8 @@ coupled_graph_anchored_mfa <- function(Y,
               max_iter = max_iter,
               tol = tol,
               ridge = ridge,
-              verbose = FALSE
+              verbose = FALSE,
+              use_future = use_future
             ),
             fit_dots
           )
@@ -1734,12 +1740,11 @@ predict.coupled_graph_anchored_mfa <- function(object,
                              score_graph_laplacian,
                              score_graph_lambda,
                              ridge = 0) {
-  err_y <- alpha_y * sum((Y - S %*% t(B))^2)
+  err_y <- alpha_y * .lmfa_reconstruction_sse(Y, S, B)
   err_x <- 0
   for (k in seq_along(X_list)) {
     Sk <- S[row_index[[k]], , drop = FALSE]
-    resid <- X_list[[k]] - Sk %*% t(V_list[[k]])
-    err_x <- err_x + alpha_blocks[k] * sum(resid^2)
+    err_x <- err_x + alpha_blocks[k] * .lmfa_reconstruction_sse(X_list[[k]], Sk, V_list[[k]])
   }
 
   pen <- 0
@@ -1945,12 +1950,11 @@ predict.coupled_graph_anchored_mfa <- function(object,
                               score_graph_laplacian,
                               score_graph_lambda,
                               ridge = 0) {
-  err_y <- alpha_y * sum((Y - S %*% t(B))^2)
+  err_y <- alpha_y * .lmfa_reconstruction_sse(Y, S, B)
   err_x <- 0
   coupling_pen <- 0
   for (k in seq_along(X_list)) {
-    resid <- X_list[[k]] - Z_list[[k]] %*% t(V_list[[k]])
-    err_x <- err_x + alpha_blocks[k] * sum(resid^2)
+    err_x <- err_x + alpha_blocks[k] * .lmfa_reconstruction_sse(X_list[[k]], Z_list[[k]], V_list[[k]])
     dev <- Z_list[[k]] - S[row_index[[k]], , drop = FALSE]
     coupling_pen <- coupling_pen + coupling_lambda * sum(dev^2)
   }

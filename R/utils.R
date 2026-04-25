@@ -5,8 +5,8 @@
 #' definition, or a list of definitions.
 #' 
 #' @param data_list A list of data matrices (blocks).
-#' @param preproc_arg The user-provided `preproc` argument. Can be NULL, a single 
-#'   `prepper` object, or a list of `prepper` objects.
+#' @param preproc_arg The user-provided `preproc` argument. Can be NULL, a single
+#'   `prepper`/`pre_processor` object, or a list of them.
 #' @param check_consistent_ncol Logical (default: TRUE). If TRUE, checks if all blocks 
 #'   have the same number of columns after preprocessing and issues a warning if not.
 #' 
@@ -18,7 +18,7 @@
 #'   * `p_post`: The number of columns in the first block after preprocessing. If 
 #'       `check_consistent_ncol` is TRUE, this assumes all blocks have this dimension.
 #' 
-#' @importFrom multivarious prep fresh init_transform
+#' @importFrom multivarious fit fresh
 #' @keywords internal
 #' @noRd
 prepare_block_preprocessors <- function(data_list, preproc_arg, check_consistent_ncol = TRUE) {
@@ -36,7 +36,9 @@ prepare_block_preprocessors <- function(data_list, preproc_arg, check_consistent
     }
     
     # Check if preproc_arg is a single definition or a list
-    if (!is.list(preproc_arg) || inherits(preproc_arg, "prepper")) { # Treat single prepper object as template
+    if (!is.list(preproc_arg) ||
+        inherits(preproc_arg, "prepper") ||
+        inherits(preproc_arg, "pre_processor")) {
       # Case 1: Single preproc definition - replicate for each block
       message("Applying the same preprocessor definition independently to each block.")
       single_preproc_def <- preproc_arg
@@ -55,15 +57,16 @@ prepare_block_preprocessors <- function(data_list, preproc_arg, check_consistent
       message("Applying preprocessor list: one definition per block.")
       proclist <- vector("list", S)
       for (i in seq_len(S)) {
-          if (!inherits(preproc_arg[[i]], "prepper")) {
-              stop(sprintf("Element %d of 'preproc' list is not a valid prepper object.", i), call.=FALSE)
+          if (!inherits(preproc_arg[[i]], "prepper") &&
+              !inherits(preproc_arg[[i]], "pre_processor")) {
+              stop(sprintf("Element %d of 'preproc' list is not a valid prepper/pre_processor object.", i), call.=FALSE)
           }
           proclist[[i]] <- multivarious::fresh(preproc_arg[[i]]) %>%
                                multivarious::fit(data_list[[i]])
       }
 
     } else {
-        stop("'preproc' must be NULL, a single prepper object, or a list of prepper objects.", call.=FALSE)
+        stop("'preproc' must be NULL, a single prepper/pre_processor object, or a list of them.", call.=FALSE)
     }
 
     names(proclist) <- block_names
@@ -102,6 +105,34 @@ prepare_block_preprocessors <- function(data_list, preproc_arg, check_consistent
   return(list(proclist = proclist, Xp = Xp, p_post = p_post))
 }
 
+#' Select an SVD backend for exact vs. truncated decompositions
+#'
+#' @param mat Numeric matrix-like object.
+#' @param ncomp Requested number of components.
+#' @param exact_dim_threshold Minimum dimension at or below which base SVD is used.
+#' @param truncation_fraction Maximum fraction of the smaller matrix dimension to
+#'   request from a truncated solver.
+#'
+#' @return `"base"` or `"irlba"`.
+#' @keywords internal
+#' @noRd
+.muscal_svd_method <- function(mat,
+                               ncomp = 1L,
+                               exact_dim_threshold = 2L,
+                               truncation_fraction = 0.5) {
+  mdim <- min(dim(mat))
+  if (mdim <= exact_dim_threshold) {
+    return("base")
+  }
+
+  ncomp <- min(as.integer(ncomp), mdim)
+  if (ncomp >= truncation_fraction * mdim) {
+    "base"
+  } else {
+    "irlba"
+  }
+}
+
 #' Materialize Fitted Identity Preprocessors When None Were Requested
 #'
 #' @param data_list A list of raw data blocks.
@@ -121,7 +152,7 @@ prepare_block_preprocessors <- function(data_list, preproc_arg, check_consistent
   }
 
   fitted_pass <- lapply(data_list, function(x) {
-    multivarious::prep(multivarious::pass(), x)
+    multivarious::fit(multivarious::pass(), x)
   })
   names(fitted_pass) <- block_names
   fitted_pass

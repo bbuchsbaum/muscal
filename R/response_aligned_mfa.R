@@ -184,9 +184,14 @@ response_aligned_mfa <- function(Y,
                                  tol = 1e-6,
                                  ridge = 1e-8,
                                  verbose = FALSE,
+                                 use_future = FALSE,
                                  ...) {
   fit_call <- match.call(expand.dots = FALSE)
   fit_dots <- list(...)
+  chk::chk_flag(use_future)
+  if (isTRUE(use_future) && !requireNamespace("furrr", quietly = TRUE)) {
+    stop("use_future = TRUE requires the 'furrr' package.", call. = FALSE)
+  }
   normalization <- match.arg(normalization)
   graph_form <- match.arg(graph_form)
 
@@ -297,8 +302,7 @@ response_aligned_mfa <- function(Y,
     rep(1, length(X))
   } else {
     first_sv <- function(mat) {
-      mdim <- min(dim(mat))
-      method <- if (mdim < 3) "base" else "svds"
+      method <- .muscal_svd_method(mat, ncomp = 1)
       tryCatch(
         multivarious::svd_wrapper(mat, ncomp = 1, method = method)$sdev[1],
         error = function(e) multivarious::svd_wrapper(mat, ncomp = 1, method = "base")$sdev[1]
@@ -563,7 +567,8 @@ response_aligned_mfa <- function(Y,
               max_iter = max_iter,
               tol = tol,
               ridge = ridge,
-              verbose = FALSE
+              verbose = FALSE,
+              use_future = use_future
             ),
             fit_dots
           )
@@ -824,8 +829,8 @@ response_aligned_mfa <- function(Y,
   out
 }
 
-.ramfa_init_svd_method <- function(mat, exact_dim_threshold = 8L) {
-  if (min(dim(mat)) <= exact_dim_threshold) "base" else "svds"
+.ramfa_init_svd_method <- function(mat, ncomp = 1L, exact_dim_threshold = 8L) {
+  .muscal_svd_method(mat, ncomp = ncomp, exact_dim_threshold = exact_dim_threshold)
 }
 
 .ramfa_initialize_response_loadings <- function(Y_list,
@@ -849,7 +854,7 @@ response_aligned_mfa <- function(Y,
     sv <- multivarious::svd_wrapper(
       Y_pool,
       ncomp = k_resp,
-      method = .ramfa_init_svd_method(Y_pool)
+      method = .ramfa_init_svd_method(Y_pool, ncomp = k_resp)
     )
     B[, seq_len(k_resp)] <- sv$v[, seq_len(k_resp), drop = FALSE]
   }
@@ -882,7 +887,7 @@ response_aligned_mfa <- function(Y,
       sv <- multivarious::svd_wrapper(
         predictor_mat,
         ncomp = take,
-        method = .ramfa_init_svd_method(predictor_mat)
+        method = .ramfa_init_svd_method(predictor_mat, ncomp = take)
       )
       Z[, seq.int(use_resp + 1L, length.out = take)] <-
         sv$u[, seq_len(take), drop = FALSE] %*%

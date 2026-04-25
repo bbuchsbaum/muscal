@@ -93,9 +93,14 @@ aligned_rrr <- function(Y,
                         tol = 1e-6,
                         ridge = 1e-8,
                         verbose = FALSE,
+                        use_future = FALSE,
                         ...) {
   fit_call <- match.call(expand.dots = FALSE)
   fit_dots <- list(...)
+  chk::chk_flag(use_future)
+  if (isTRUE(use_future) && !requireNamespace("furrr", quietly = TRUE)) {
+    stop("use_future = TRUE requires the 'furrr' package.", call. = FALSE)
+  }
 
   chk::chk_list(X)
   chk::chk_true(length(X) >= 2L)
@@ -352,7 +357,8 @@ aligned_rrr <- function(Y,
               max_iter = max_iter,
               tol = tol,
               ridge = ridge,
-              verbose = FALSE
+              verbose = FALSE,
+              use_future = use_future
             ),
             fit_dots
           )

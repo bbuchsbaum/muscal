@@ -337,6 +337,7 @@ test_that("anchored_mcca matches aligned_mcca with Y inserted as an ordinary ali
     X = sim$X,
     row_index = sim$row_index,
     ncomp = 3,
+    normalization = "None",
     ridge = 1e-4
   )
 
@@ -355,7 +356,8 @@ test_that("aligned_mcca should reject all-zero block weights [spec]", {
       N = sim$N,
       ncomp = 2,
       ridge = 1e-4,
-      block_weights = c(0, 0)
+      normalization = "custom",
+      alpha = c(0, 0)
     ),
     regexp = "at least one|positive|non-zero",
     ignore.case = TRUE

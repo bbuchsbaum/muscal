@@ -27,6 +27,7 @@ aligned_interbattery(
   tol = 1e-06,
   ridge = 1e-08,
   verbose = FALSE,
+  use_future = FALSE,
   ...
 )
 }
@@ -101,6 +102,12 @@ whitening operator inside the common-to-side coupling.}
 \item{ridge}{Non-negative ridge stabilization for score/loadings updates.}
 
 \item{verbose}{Logical; if `TRUE`, print iteration diagnostics.}
+
+\item{use_future}{Logical; if `TRUE`, block-wise computations that do not
+depend on one another may be performed via `furrr::future_map()` when
+available. The main alternating-least-squares loop is intrinsically
+sequential and is unaffected. Accepted here primarily for interface parity
+with the rest of the aligned/anchored family.}
 
 \item{...}{Unused; reserved for future extensions.}
 }

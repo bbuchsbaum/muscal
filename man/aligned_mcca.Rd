@@ -10,9 +10,14 @@ aligned_mcca(
   N = NULL,
   preproc = multivarious::center(),
   ncomp = 2,
+  normalization = c("MFA", "balanced", "None", "custom"),
+  alpha = NULL,
   ridge = 1e-06,
-  block_weights = NULL,
+  max_iter = 50,
+  tol = 1e-06,
+  verbose = FALSE,
   use_future = FALSE,
+  block_weights = NULL,
   ...
 )
 }
@@ -32,24 +37,42 @@ applied to `X` in that order.}
 
 \item{ncomp}{Integer; number of canonical components to compute.}
 
-\item{ridge}{Non-negative numeric scalar (or vector of length equal to the
-number of blocks) controlling ridge stabilization. The effective ridge used
-per block is scaled by the block's overall energy so the default works
-across variable scalings.}
+\item{normalization}{Block weighting scheme. One of `"MFA"` (default),
+`"balanced"`, `"None"`, or `"custom"`. See "Block-weighting schemes".}
 
-\item{block_weights}{Optional numeric vector of non-negative weights (length
-= number of blocks) controlling each block's influence on the compromise.}
+\item{alpha}{Optional numeric vector of non-negative weights of length
+`length(X)`. Required for `normalization = "custom"`; used as the IRLS
+target when `normalization = "balanced"`.}
 
-\item{use_future}{Logical; if `TRUE`, block-wise computations are performed via
-`furrr::future_map()` when available.}
+\item{ridge}{Non-negative numeric scalar (or vector of length `length(X)`)
+controlling ridge stabilisation. The effective ridge used per block is
+scaled by the block's overall energy.}
+
+\item{max_iter}{Maximum number of iterations for `normalization = "balanced"`.
+Ignored otherwise.}
+
+\item{tol}{Relative tolerance on the gradient norm / objective change used
+to declare IRLS convergence for `normalization = "balanced"`.}
+
+\item{verbose}{Logical; if `TRUE`, prints IRLS iteration progress.}
+
+\item{use_future}{Logical; if `TRUE`, block-wise projector fitting is
+performed via `furrr::future_map()` when available.}
+
+\item{block_weights}{Deprecated alias for `alpha`. When supplied, implicitly
+sets `normalization = "custom"` unless `normalization` is already explicit.}
 
 \item{...}{Unused (reserved for future extensions).}
 }
 \value{
 An object inheriting from `multivarious::multiblock_biprojector` with
-  additional class `"aligned_mcca"`. The object contains reference-space scores
-  in `s` (`N × ncomp`) and block-wise canonical weights in `canonical_weights`.
-  Per-block row-level score estimates are available in `partial_scores`.
+  additional class `"aligned_mcca"`. Relevant fields include `s`
+  (`N × ncomp` reference-space scores), `v` (concatenated canonical
+  directions), `sdev`, `block_indices`, `alpha_blocks` (block weights used),
+  `block_weights` (alias), `normalization`, `canonical_weights`,
+  `partial_scores`, `cor_loadings`, `block_contribs` (`ncomp × B` matrix of
+  `s_k^T M_b s_k`), and (for `"balanced"`) `alpha_per_component`,
+  `balance_trace`, `balance_converged`, `balance_iters`.
 }
 \description{
 Aligned MCCA extends MAXVAR generalized CCA (GCCA) to the setting where each
@@ -65,14 +88,28 @@ This is the correlation-based counterpart to [aligned_mfa()], analogous to how
 Let `S` be the shared score matrix for the `N` reference rows. For each block
 `X_k` with `n_k` rows, `row_index[[k]]` maps its rows to reference rows:
 \deqn{X_k \; \mathrm{linked\ to}\; S[\mathrm{idx}_k, ]}
-
 Aligned MCCA computes `S` as the leading eigenvectors of a weighted sum of
-block-wise ridge projection operators mapped into the reference space.
+block-wise ridge projection operators lifted into the reference space:
+\deqn{H = \sum_b alpha_b M_b}
+with `M_b = lift(P_b)` and `P_b = X_b (X_b^T X_b + kappa_b I)^{-1} X_b^T`.
 
-## High-dimensional stability
-The implementation works in observation space and uses ridge-stabilized solves
-on `n_k × n_k` systems, which remains well-posed when blocks have more variables
-than rows (`p_k >> n_k`) or are rank deficient after preprocessing.
+## Block-weighting schemes
+The block-weight vector `alpha_blocks` is formed according to `normalization`:
+* `"MFA"` (default) — `alpha_b = 1 / (sigma_1(X_b)^2)` (the CCA analogue of
+  the MFA normalisation; prevents a block from dominating purely by scale).
+* `"balanced"` — per-component projected gradient ascent on the geometric
+  mean criterion `Σ_b β_b log(g^T M_b g)` so every block contributes
+  meaningfully to every component (uses `target = alpha` if supplied,
+  else uniform).
+* `"None"` — uniform weights `alpha_b = 1`.
+* `"custom"` — use `alpha` as supplied (length `length(X)`).
+
+## High-dimensional stability (p > n)
+The implementation works in observation space and uses ridge-stabilised
+solves on `n_b × n_b` systems, so `p_b >> n_b` blocks are handled without
+special casing. Ridge stabilisation (`kappa_b = ridge_b * mean(diag(K_b))`,
+with an automatic ridge floor if `ridge = 0` yields a singular system) keeps
+the Cholesky well-posed.
 }
 \examples{
 \donttest{

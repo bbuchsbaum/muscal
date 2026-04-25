@@ -53,6 +53,12 @@
 #' @param tol Relative tolerance on the objective for convergence.
 #' @param ridge Non-negative ridge stabilization added to normal equations.
 #' @param verbose Logical; if `TRUE`, prints iteration progress.
+#' @param use_future Logical; if `TRUE`, block-wise computations that do not
+#'   depend on one another (initial block-local preprocessing helpers and the
+#'   final partial-scores assembly) are performed via `furrr::future_map()` when
+#'   available. The main alternating-least-squares loop is intrinsically
+#'   sequential and is unaffected. Accepted here primarily for interface parity
+#'   with [anchored_mcca()].
 #' @param ... Unused (reserved for future extensions).
 #'
 #' @return An object inheriting from `multivarious::multiblock_biprojector` with
@@ -91,11 +97,16 @@ anchored_mfa <- function(Y,
                          tol = 1e-6,
                          ridge = 1e-8,
                          verbose = FALSE,
+                         use_future = FALSE,
                          ...) {
   fit_call <- match.call(expand.dots = FALSE)
   fit_dots <- list(...)
   normalization <- match.arg(normalization)
   score_constraint <- match.arg(score_constraint)
+  chk::chk_flag(use_future)
+  if (isTRUE(use_future) && !requireNamespace("furrr", quietly = TRUE)) {
+    stop("use_future = TRUE requires the 'furrr' package.", call. = FALSE)
+  }
 
   # ---------------------------------------------------------------------------
   # 0. Basic checks / coercions
@@ -186,8 +197,7 @@ anchored_mfa <- function(Y,
     rep(1, length(blocks))
   } else { # MFA-style
     first_sv <- function(mat) {
-      mdim <- min(dim(mat))
-      method <- if (mdim < 3) "base" else "svds"
+      method <- .muscal_svd_method(mat, ncomp = 1)
       tryCatch(
         multivarious::svd_wrapper(mat, ncomp = 1, method = method)$sdev[1],
         error = function(e) multivarious::svd_wrapper(mat, ncomp = 1, method = "base")$sdev[1]
@@ -278,8 +288,7 @@ anchored_mfa <- function(Y,
 
   block_fit <- {
     # Y block
-    Y_hat <- S %*% t(B)
-    sse_y <- sum((Yp - Y_hat)^2)
+    sse_y <- .lmfa_reconstruction_sse(Yp, S, B)
     tss_y <- sum(Yp^2)
     r2_y <- if (tss_y > 0) 1 - sse_y / tss_y else NA_real_
 
@@ -294,8 +303,7 @@ anchored_mfa <- function(Y,
 
     for (k in seq_along(Xp)) {
       idx <- row_index[[k]]
-      X_hat <- S[idx, , drop = FALSE] %*% t(V_list[[k]])
-      sse <- sum((Xp[[k]] - X_hat)^2)
+      sse <- .lmfa_reconstruction_sse(Xp[[k]], S[idx, , drop = FALSE], V_list[[k]])
       tss <- sum(Xp[[k]]^2)
       r2 <- if (tss > 0) 1 - sse / tss else NA_real_
       df <- rbind(
@@ -341,6 +349,21 @@ anchored_mfa <- function(Y,
     classes = c("anchored_mfa", "linked_mfa")
   )
 
+  refit_fn <- .lmfa_make_anchored_mfa_refit_fn(
+    preproc = preproc,
+    ncomp = ncomp,
+    normalization = normalization,
+    alpha = alpha,
+    score_constraint = score_constraint,
+    feature_groups = feature_groups,
+    feature_lambda = feature_lambda,
+    max_iter = max_iter,
+    tol = tol,
+    ridge = ridge,
+    use_future = use_future,
+    fit_dots = fit_dots
+  )
+
   .muscal_attach_fit_contract(
     fit,
     method = "anchored_mfa",
@@ -351,30 +374,7 @@ anchored_mfa <- function(Y,
     prediction_target = "Y",
     refit = .muscal_make_refit_spec(
       data = data_refit,
-      fit_fn = function(data) {
-        do.call(
-          anchored_mfa,
-          c(
-            list(
-              Y = data$Y,
-              X = data$X,
-              row_index = data$row_index,
-              preproc = preproc,
-              ncomp = ncomp,
-              normalization = normalization,
-              alpha = alpha,
-              score_constraint = score_constraint,
-              feature_groups = feature_groups,
-              feature_lambda = feature_lambda,
-              max_iter = max_iter,
-              tol = tol,
-              ridge = ridge,
-              verbose = FALSE
-            ),
-            fit_dots
-          )
-        )
-      },
+      fit_fn = refit_fn,
       bootstrap_fn = .muscal_bootstrap_anchored_data,
       permutation_fn = .muscal_permute_anchored_data,
       resample_unit = "anchor_rows"
@@ -401,6 +401,7 @@ linked_mfa <- function(Y,
                        tol = 1e-6,
                        ridge = 1e-8,
                        verbose = FALSE,
+                       use_future = FALSE,
                        ...) {
   anchored_mfa(
     Y = Y,
@@ -417,6 +418,7 @@ linked_mfa <- function(Y,
     tol = tol,
     ridge = ridge,
     verbose = verbose,
+    use_future = use_future,
     ...
   )
 }
@@ -463,7 +465,7 @@ linked_mfa <- function(Y,
 
 .lmfa_init_from_Y <- function(Y, ncomp, ridge = 1e-8) {
   # Use a deterministic initialization: SVD on Y
-  sv <- multivarious::svd_wrapper(Y, ncomp = ncomp, method = if (min(dim(Y)) < 3) "base" else "svds")
+  sv <- multivarious::svd_wrapper(Y, ncomp = ncomp, method = .muscal_svd_method(Y, ncomp = ncomp))
   # sv$u is N x ncomp, sv$v is q x ncomp, sv$sdev is length ncomp
   # Use scores as u * sdev (PCA-style), loadings as v
   S <- sv$u[, seq_len(ncomp), drop = FALSE] %*% diag(sv$sdev[seq_len(ncomp)], ncomp, ncomp)
@@ -488,6 +490,68 @@ linked_mfa <- function(Y,
   }
 
   index_list[target_names]
+}
+
+.lmfa_make_anchored_mfa_refit_fn <- function(preproc,
+                                             ncomp,
+                                             normalization,
+                                             alpha,
+                                             score_constraint,
+                                             feature_groups,
+                                             feature_lambda,
+                                             max_iter,
+                                             tol,
+                                             ridge,
+                                             use_future = FALSE,
+                                             fit_dots) {
+  force(preproc)
+  force(ncomp)
+  force(normalization)
+  force(alpha)
+  force(score_constraint)
+  force(feature_groups)
+  force(feature_lambda)
+  force(max_iter)
+  force(tol)
+  force(ridge)
+  force(use_future)
+  force(fit_dots)
+
+  function(data) {
+    do.call(
+      anchored_mfa,
+      c(
+        list(
+          Y = data$Y,
+          X = data$X,
+          row_index = data$row_index,
+          preproc = preproc,
+          ncomp = ncomp,
+          normalization = normalization,
+          alpha = alpha,
+          score_constraint = score_constraint,
+          feature_groups = feature_groups,
+          feature_lambda = feature_lambda,
+          max_iter = max_iter,
+          tol = tol,
+          ridge = ridge,
+          verbose = FALSE,
+          use_future = use_future
+        ),
+        fit_dots
+      )
+    )
+  }
+}
+
+.lmfa_reconstruction_sse <- function(X, S, V) {
+  XV <- X %*% V
+  VtV <- crossprod(V)
+  sse <- sum(X^2) - 2 * sum(S * XV) + sum((S %*% VtV) * S)
+  if (is.finite(sse) && sse < 0 && abs(sse) <= 1e-8 * max(sum(X^2), 1)) {
+    return(0)
+  }
+  sse
 }
 
 .lmfa_update_loadings <- function(S, X, alpha = 1, ridge = 1e-8) {
@@ -1114,12 +1178,11 @@ linked_mfa <- function(Y,
                            feature_lambda,
                            ridge = 0) {
   # Reconstruction errors
-  err_y <- alpha_y * sum((Y - S %*% t(B))^2)
+  err_y <- alpha_y * .lmfa_reconstruction_sse(Y, S, B)
   err_x <- 0
   for (k in seq_along(X_list)) {
     Sk <- S[row_index[[k]], , drop = FALSE]
-    resid <- X_list[[k]] - Sk %*% t(V_list[[k]])
-    err_x <- err_x + alpha_blocks[k] * sum(resid^2)
+    err_x <- err_x + alpha_blocks[k] * .lmfa_reconstruction_sse(X_list[[k]], Sk, V_list[[k]])
   }
 
   pen <- 0

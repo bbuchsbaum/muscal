@@ -70,6 +70,11 @@
 #' @param tol Relative convergence tolerance on the objective.
 #' @param ridge Non-negative ridge stabilization for score/loadings updates.
 #' @param verbose Logical; if `TRUE`, print iteration diagnostics.
+#' @param use_future Logical; if `TRUE`, block-wise computations that do not
+#'   depend on one another may be performed via `furrr::future_map()` when
+#'   available. The main alternating-least-squares loop is intrinsically
+#'   sequential and is unaffected. Accepted here primarily for interface parity
+#'   with the rest of the aligned/anchored family.
 #' @param ... Unused; reserved for future extensions.
 #'
 #' @return An object inheriting from `multivarious::multiblock_biprojector` with
@@ -100,10 +105,15 @@ aligned_interbattery <- function(X,
                                  tol = 1e-6,
                                  ridge = 1e-8,
                                  verbose = FALSE,
+                                 use_future = FALSE,
                                  ...) {
   fit_call <- match.call(expand.dots = FALSE)
   row_graph_form <- match.arg(row_graph_form)
   decorrelate_type <- match.arg(decorrelate_type)
+  chk::chk_flag(use_future)
+  if (isTRUE(use_future) && !requireNamespace("furrr", quietly = TRUE)) {
+    stop("use_future = TRUE requires the 'furrr' package.", call. = FALSE)
+  }
 
   ncomp <- as.integer(ncomp)
   chk::chk_integer(ncomp)
@@ -845,8 +855,7 @@ aligned_interbattery <- function(X,
   block_names <- names(blocks)
   if (is.null(weights)) {
     first_sv <- function(mat) {
-      mdim <- min(dim(mat))
-      method <- if (mdim < 3L) "base" else "svds"
+      method <- .muscal_svd_method(mat, ncomp = 1)
       tryCatch(
         multivarious::svd_wrapper(mat, ncomp = 1, method = method)$sdev[1],
         error = function(e) multivarious::svd_wrapper(mat, ncomp = 1, method = "base")$sdev[1]

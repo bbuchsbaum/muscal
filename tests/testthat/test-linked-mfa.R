@@ -207,6 +207,27 @@ test_that("anchored_mfa refit contract can rebuild from stored training data", {
   expect_true(all(is.finite(refit$sdev)))
 })
 
+test_that("anchored_mfa refit callback does not retain fit-time work objects", {
+  set.seed(421)
+  Y <- matrix(rnorm(24 * 4), 24, 4)
+  X1 <- matrix(rnorm(18 * 5), 18, 5)
+  X2 <- matrix(rnorm(20 * 6), 20, 6)
+  idx1 <- sample.int(nrow(Y), nrow(X1), replace = TRUE)
+  idx2 <- sample.int(nrow(Y), nrow(X2), replace = TRUE)
+
+  fit <- anchored_mfa(
+    Y = Y,
+    X = list(X1 = X1, X2 = X2),
+    row_index = list(X1 = idx1, X2 = idx2),
+    ncomp = 2,
+    max_iter = 2
+  )
+
+  callback_env_names <- ls(environment(fit$fit_spec$refit$fit_fn), all.names = TRUE)
+  expect_false(any(c("X", "Xp", "Yp", "prep_res", "blocks", "core", "fit") %in% callback_env_names))
+  expect_true(all(c("preproc", "ncomp", "normalization", "fit_dots") %in% callback_env_names))
+})
+
 test_that("anchored_mfa objective trace is finite and non-increasing", {
   set.seed(43)
   Y <- matrix(rnorm(50 * 4), 50, 4)

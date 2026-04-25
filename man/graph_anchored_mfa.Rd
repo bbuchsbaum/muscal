@@ -27,6 +27,7 @@ graph_anchored_mfa(
   tol = 1e-06,
   ridge = 1e-08,
   verbose = FALSE,
+  use_future = FALSE,
   ...
 )
 }

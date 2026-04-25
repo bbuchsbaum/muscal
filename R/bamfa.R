@@ -7,7 +7,7 @@
 #' @importFrom purrr map map2
 #' @importFrom multivarious fit fit_transform transform inverse_transform fresh center concat_pre_processors pass
 #' @importFrom multidesign multiblock
-#' @importFrom RSpectra svds
+#' @importFrom irlba irlba
 #' @importFrom rlang enquo quo_is_missing quo_get_expr
 #' @importFrom dplyr select pull
 #' @importFrom multivarious multiblock_projector
@@ -237,10 +237,10 @@ bamfa.default <- function(data, k_g = 2, k_l = 2, niter = 10,
       S_list[[i]] <- X_p[[i]] %*% G_i # n_obs x k_g
       R_i <- X_p[[i]] - S_list[[i]] %*% t(G_i)
       
-      # Use RSpectra for faster SVD when k_l is smaller than both dims, with fallback
-      if (k_l > 0 && k_l < min(dim(R_i))) {
+      # Use irlba for faster truncated SVD when k_l is smaller than both dims, with fallback
+      if (k_l > 0 && identical(.muscal_svd_method(R_i, ncomp = k_l), "irlba")) {
         svd_R <- tryCatch(
-          RSpectra::svds(R_i, k = k_l, nu = k_l, nv = k_l),
+          irlba::irlba(R_i, nu = k_l, nv = k_l),
           error = function(e) svd(R_i, nu = k_l, nv = k_l)
         )
       } else {

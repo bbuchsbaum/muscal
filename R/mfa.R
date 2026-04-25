@@ -38,9 +38,11 @@ normalization_factors <- function(blocks, type=c("MFA", "RV", "RV2", "None", "Fr
   type <- match.arg(type)
   message("normalization type:", type)
   
-  first_sv <- function(mat, method_pref = "svds") {
-    mdim <- min(dim(mat))
-    method <- if (mdim < 3) "base" else method_pref
+  first_sv <- function(mat, method_pref = "irlba") {
+    method <- .muscal_svd_method(mat, ncomp = 1)
+    if (!identical(method_pref, "irlba") && !identical(method, "base")) {
+      method <- method_pref
+    }
     tryCatch(
       multivarious::svd_wrapper(mat, ncomp = 1, method = method)$sdev[1],
       error = function(e) multivarious::svd_wrapper(mat, ncomp = 1, method = "base")$sdev[1]
@@ -52,12 +54,12 @@ normalization_factors <- function(blocks, type=c("MFA", "RV", "RV2", "None", "Fr
   } else if (type == "RV") {
     smat <- compute_sim_mat(blocks, function(x1,x2) MatrixCorrelation::RV(x1,x2))
     diag(smat) <- 1
-    u1 <- multivarious::svd_wrapper(smat, ncomp=1, method = if (nrow(smat) < 3) "base" else "svds")$u[,1]
+    u1 <- multivarious::svd_wrapper(smat, ncomp=1, method = .muscal_svd_method(smat, ncomp = 1))$u[,1]
     abs(u1) / sum(abs(u1))
   } else if (type == "RV2") {
     smat <- compute_sim_mat(blocks, function(x1,x2) MatrixCorrelation::RV2(x1,x2))
     diag(smat) <- 1
-    u1 <- multivarious::svd_wrapper(smat, ncomp=1, method = if (nrow(smat) < 3) "base" else "svds")$u[,1]
+    u1 <- multivarious::svd_wrapper(smat, ncomp=1, method = .muscal_svd_method(smat, ncomp = 1))$u[,1]
     abs(u1) / sum(abs(u1))
   } else if (type == "Frob") {
     unlist(lapply(as.list(blocks), function(X) sum(X^2)))

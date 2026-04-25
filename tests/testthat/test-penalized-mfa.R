@@ -37,3 +37,17 @@ test_that("penalized_mfa works with multiblock input", {
 test_that("penalized_mfa stops with fewer than 2 blocks", {
   expect_error(penalized_mfa(list(X1), ncomp = 2), "requires at least 2 data blocks")
 })
+
+test_that("penalized_mfa supports preproc = NULL after shared preprocessing consolidation", {
+  fit <- penalized_mfa(
+    data_list_even,
+    preproc = NULL,
+    ncomp = 2,
+    lambda = 1,
+    max_iter = 2,
+    penalty_method = "projection"
+  )
+
+  expect_s3_class(fit, "penalized_mfa")
+  expect_s3_class(fit$preproc, "pre_processor")
+})
