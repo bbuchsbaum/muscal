@@ -17,6 +17,7 @@ principled approaches for multi-table data integration.
 ## Quick start
 
 ``` r
+
 library(muscal)
 library(multivarious)
 library(ggplot2)
@@ -27,6 +28,7 @@ block has a different number of variables — exactly the situation where
 plain PCA on the concatenated data would be misleading.
 
 ``` r
+
 sim <- synthetic_multiblock(
   S = 4, n = 60,
   p = c(20, 30, 15, 25),
@@ -41,6 +43,7 @@ sapply(sim$data_list, dim)
 Fit MFA and extract the compromise scores:
 
 ``` r
+
 fit <- mfa(sim$data_list, ncomp = 3)
 S <- scores(fit)
 dim(S)
@@ -80,6 +83,7 @@ package. You can access global scores, block-specific loadings, and
 normalization weights:
 
 ``` r
+
 head(S, 4)
 #>              PC1        PC2        PC3
 #> Obs1  0.11216956 0.09830377 -0.4334275
@@ -89,6 +93,7 @@ head(S, 4)
 ```
 
 ``` r
+
 # Normalization weights — blocks with more variables get smaller weights
 fit$alpha
 #>         B1         B2         B3         B4 
@@ -103,6 +108,7 @@ Block-specific loadings are slices of the concatenated loading matrix,
 indexed by `block_indices`:
 
 ``` r
+
 str(fit$block_indices)
 #> List of 4
 #>  $ : int [1:20] 1 2 3 4 5 6 7 8 9 10 ...
@@ -124,6 +130,7 @@ You can color points by an external variable to look for group
 structure:
 
 ``` r
+
 groups <- rep(c("A", "B", "C"), length.out = 60)
 autoplot(fit, color = groups)
 ```
@@ -138,6 +145,7 @@ Score plot colored by a grouping variable.
 Assess how the retained components distribute variance:
 
 ``` r
+
 plot_variance(fit, type = "bar")
 ```
 
@@ -152,6 +160,7 @@ three-component MFA solution.
 Understand the normalization effect:
 
 ``` r
+
 plot_block_weights(fit)
 ```
 
@@ -171,6 +180,7 @@ spread of the segments rather than trying to read every observation
 individually:
 
 ``` r
+
 plot_partial_scores(fit, connect = TRUE, show_consensus = TRUE)
 ```
 
@@ -191,6 +201,7 @@ The RV coefficient matrix shows how similar the blocks are to each
 other:
 
 ``` r
+
 plot_block_similarity(fit, method = "RV")
 ```
 
@@ -205,6 +216,7 @@ information.
 Visualize which variables drive each component:
 
 ``` r
+
 plot_loadings(fit, type = "bar", component = 1, top_n = 15)
 ```
 
@@ -234,6 +246,7 @@ argument:
   weights) and `M` (row weights).
 
 ``` r
+
 # RV-based normalization
 fit_rv <- mfa(sim$data_list, ncomp = 3, normalization = "RV")
 
@@ -252,6 +265,7 @@ you want to know whether the leading components are stable and whether
 the fitted compromise generalizes to unseen rows.
 
 ``` r
+
 boot <- infer_muscal(
   fit,
   method = "bootstrap",
@@ -264,12 +278,13 @@ boot$summary
 #> # A tibble: 3 × 7
 #>   component label observed  mean     sd lower upper
 #>       <int> <chr>    <dbl> <dbl>  <dbl> <dbl> <dbl>
-#> 1         1 comp1     1.38  1.62 0.0789  1.54  1.75
-#> 2         2 comp2     1.37  1.45 0.0584  1.35  1.52
-#> 3         3 comp3     1.28  1.32 0.0418  1.24  1.36
+#> 1         1 comp1     1.38  1.59 0.0758  1.52  1.74
+#> 2         2 comp2     1.37  1.42 0.0665  1.34  1.52
+#> 3         3 comp3     1.28  1.35 0.0680  1.24  1.45
 ```
 
 ``` r
+
 perm <- infer_muscal(
   fit,
   method = "permutation",
@@ -282,12 +297,13 @@ perm$component_results
 #> # A tibble: 3 × 6
 #>   component label observed p_value lower_ci upper_ci
 #>       <int> <chr>    <dbl>   <dbl>    <dbl>    <dbl>
-#> 1         1 comp1     1.38    0.55     1.36     1.41
-#> 2         2 comp2     1.37    0.15     1.31     1.37
-#> 3         3 comp3     1.28    0.9      1.28     1.35
+#> 1         1 comp1     1.38    0.6      1.34     1.44
+#> 2         2 comp2     1.37    0.1      1.30     1.36
+#> 3         3 comp3     1.28    0.95     1.28     1.34
 ```
 
 ``` r
+
 stopifnot(all(is.finite(boot$summary$mean)))
 stopifnot(all(boot$summary$upper >= boot$summary$lower))
 stopifnot(all(perm$component_results$p_value >= 0))
@@ -299,6 +315,7 @@ For held-out evaluation, use
 with row folds and reconstruction metrics:
 
 ``` r
+
 X_concat <- do.call(cbind, sim$data_list)
 md <- multidesign::multidesign(X_concat, data.frame(batch = rep(c("A", "B"), each = 30)))
 folds <- multidesign::cv_rows(md, rows = list(1:6, 31:36), preserve_row_ids = TRUE)
@@ -333,6 +350,7 @@ res_cv$scores
 ```
 
 ``` r
+
 stopifnot(all(is.finite(res_cv$scores$mse)))
 stopifnot(all(res_cv$scores$rmse >= 0))
 ```

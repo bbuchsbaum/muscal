@@ -2,6 +2,8 @@
 
 ### All vignettes
 
+- [Bidirectional Response Alignment with
+  aligned_interbattery()](https://bbuchsbaum.github.io/muscal/articles/aligned_interbattery.md):
 - [Aligned Multiblock Canonical Correlation
   Analysis](https://bbuchsbaum.github.io/muscal/articles/aligned_mcca.md):
 - [Aligned Multiple Factor
@@ -26,3 +28,5 @@
   Inference](https://bbuchsbaum.github.io/muscal/articles/model_evaluation.md):
 - [Penalized Multiple Factor
   Analysis](https://bbuchsbaum.github.io/muscal/articles/penalized_mfa.md):
+- [Choosing a Supervised Common-Space
+  Model](https://bbuchsbaum.github.io/muscal/articles/response_alignment.md):

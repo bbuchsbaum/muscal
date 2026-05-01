@@ -34,7 +34,8 @@
 <li class="active nav-item dropdown">
   <button class="nav-link dropdown-toggle" type="button" id="dropdown-articles" data-bs-toggle="dropdown" aria-expanded="false" aria-haspopup="true">Articles</button>
   <ul class="dropdown-menu" aria-labelledby="dropdown-articles">
-<li><a class="dropdown-item" href="../articles/aligned_mcca.html">Aligned Multiblock Canonical Correlation Analysis</a></li>
+<li><a class="dropdown-item" href="../articles/aligned_interbattery.html">Bidirectional Response Alignment with aligned_interbattery()</a></li>
+    <li><a class="dropdown-item" href="../articles/aligned_mcca.html">Aligned Multiblock Canonical Correlation Analysis</a></li>
     <li><a class="dropdown-item" href="../articles/aligned_mfa.html">Aligned Multiple Factor Analysis</a></li>
     <li><a class="dropdown-item" href="../articles/bada.html">Barycentric Discriminant Analysis</a></li>
     <li><a class="dropdown-item" href="../articles/bamfa.html">Barycentric MFA (BaMFA)</a></li>
@@ -46,6 +47,7 @@
     <li><a class="dropdown-item" href="../articles/mfa.html">Multiple Factor Analysis</a></li>
     <li><a class="dropdown-item" href="../articles/model_evaluation.html">Model Evaluation and Inference</a></li>
     <li><a class="dropdown-item" href="../articles/penalized_mfa.html">Penalized Multiple Factor Analysis</a></li>
+    <li><a class="dropdown-item" href="../articles/response_alignment.html">Choosing a Supervised Common-Space Model</a></li>
   </ul>
 </li>
       </ul>
@@ -146,7 +148,7 @@ information constraining their scores.</p>
 <h2 id="the-model">The model<a class="anchor" aria-label="anchor" href="#the-model"></a>
 </h2>
 <p>Anchored MFA fits the structure:</p>
-<p><math display="block" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>Y</mi><mo>≈</mo><mi>S</mi><msup><mi>B</mi><mi>⊤</mi></msup></mrow><annotation encoding="application/x-tex">Y \approx S B^\top</annotation></semantics></math><math display="block" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>X</mi><mi>k</mi></msub><mo>≈</mo><mi>S</mi><mrow><mo stretchy="true" form="prefix">[</mo><msub><mrow><mi mathvariant="normal">i</mi><mi mathvariant="normal">d</mi><mi mathvariant="normal">x</mi></mrow><mi>k</mi></msub><mo>,</mo><mo stretchy="true" form="postfix">]</mo></mrow><msubsup><mi>V</mi><mi>k</mi><mi>⊤</mi></msubsup></mrow><annotation encoding="application/x-tex">X_k \approx S[\mathrm{idx}_k,] V_k^\top</annotation></semantics></math></p>
+<p><math display="block" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>Y</mi><mo>≈</mo><mi>S</mi><msup><mi>B</mi><mi>⊤</mi></msup></mrow><annotation encoding="application/x-tex">Y \approx S B^\top</annotation></semantics></math><math display="block" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>X</mi><mi>k</mi></msub><mo>≈</mo><mi>S</mi><mo stretchy="false" form="prefix">[</mo><msub><mrow><mi mathvariant="normal">i</mi><mi mathvariant="normal">d</mi><mi mathvariant="normal">x</mi></mrow><mi>k</mi></msub><mo>,</mo><mo stretchy="false" form="postfix">]</mo><msubsup><mi>V</mi><mi>k</mi><mi>⊤</mi></msubsup></mrow><annotation encoding="application/x-tex">X_k \approx S[\mathrm{idx}_k,] V_k^\top</annotation></semantics></math></p>
 <p>where:</p>
 <ul>
 <li>

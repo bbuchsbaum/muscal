@@ -15,6 +15,7 @@ that respects subject structure.
 ## What does a quick fit look like?
 
 ``` r
+
 library(muscal)
 library(multivarious)
 library(multidesign)
@@ -22,6 +23,7 @@ library(ggplot2)
 ```
 
 ``` r
+
 table(design$subj_id, design$y)[1:3, ]
 #>     
 #>      Control TaskA TaskB
@@ -31,6 +33,7 @@ table(design$subj_id, design$y)[1:3, ]
 ```
 
 ``` r
+
 fit <- bada(md, y = y, subject = subj_id, ncomp = 2)
 S <- multivarious::scores(fit)
 
@@ -40,6 +43,7 @@ stopifnot(all(is.finite(S)))
 ```
 
 ``` r
+
 sep <- as.matrix(dist(fit$fscores[, 1:2, drop = FALSE]))
 off_diag <- sep[upper.tri(sep)]
 
@@ -79,11 +83,13 @@ structure while still producing one clean class geometry.
 ## What should you inspect after fitting?
 
 ``` r
+
 rownames(fit$barycenters)
 #> [1] "Control" "TaskA"   "TaskB"
 ```
 
 ``` r
+
 length(fit$block_indices)
 #> [1] 6
 ```
@@ -95,6 +101,7 @@ pipelines were used.
 ## How do you project new rows?
 
 ``` r
+
 new_rows <- x[1:6, , drop = FALSE] + matrix(rnorm(6 * p, sd = 0.1), nrow = 6)
 proj <- project(fit, new_rows)
 

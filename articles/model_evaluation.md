@@ -16,6 +16,7 @@ standard fit contract.
 ## Load the package
 
 ``` r
+
 library(muscal)
 library(multivarious)
 library(ggplot2)
@@ -27,6 +28,7 @@ library(ggplot2)
 helper:
 
 ``` r
+
 metric_registry()
 #> # A tibble: 15 × 4
 #>    task                metric                 maximize description              
@@ -66,6 +68,7 @@ The registered task families are:
 We start with a standard same-row MFA problem.
 
 ``` r
+
 sim <- synthetic_multiblock(
   S = 3, n = 48,
   p = c(12, 10, 8),
@@ -84,6 +87,7 @@ Bootstrap inference is useful when you want interval estimates for the
 leading component strengths.
 
 ``` r
+
 boot_mfa <- infer_muscal(
   fit_mfa,
   method = "bootstrap",
@@ -96,11 +100,12 @@ boot_mfa$summary
 #> # A tibble: 2 × 7
 #>   component label observed  mean     sd lower upper
 #>       <int> <chr>    <dbl> <dbl>  <dbl> <dbl> <dbl>
-#> 1         1 comp1     1.24  1.31 0.0444  1.26  1.38
-#> 2         2 comp2     1.15  1.21 0.0260  1.17  1.24
+#> 1         1 comp1     1.24  1.33 0.0866  1.21  1.45
+#> 2         2 comp2     1.15  1.18 0.0523  1.10  1.26
 ```
 
 ``` r
+
 stopifnot(all(is.finite(boot_mfa$summary$mean)))
 stopifnot(all(boot_mfa$summary$upper >= boot_mfa$summary$lower))
 ```
@@ -119,6 +124,7 @@ stronger than what you would expect after breaking row-wise alignment
 across blocks.
 
 ``` r
+
 perm_mfa <- infer_muscal(
   fit_mfa,
   method = "permutation",
@@ -131,11 +137,12 @@ perm_mfa$component_results
 #> # A tibble: 2 × 6
 #>   component label observed p_value lower_ci upper_ci
 #>       <int> <chr>    <dbl>   <dbl>    <dbl>    <dbl>
-#> 1         1 comp1     1.24    0.55     1.19     1.30
-#> 2         2 comp2     1.15    0.75     1.12     1.21
+#> 1         1 comp1     1.24     0.5     1.19     1.30
+#> 2         2 comp2     1.15     0.8     1.12     1.21
 ```
 
 ``` r
+
 stopifnot(all(perm_mfa$component_results$p_value >= 0))
 stopifnot(all(perm_mfa$component_results$p_value <= 1))
 ```
@@ -145,6 +152,7 @@ stopifnot(all(perm_mfa$component_results$p_value <= 1))
 For same-row methods, the usual held-out target is reconstruction error.
 
 ``` r
+
 X_concat <- do.call(cbind, sim$data_list)
 md <- multidesign::multidesign(X_concat, data.frame(batch = rep(c("A", "B"), each = 24)))
 folds_mfa <- multidesign::cv_rows(
@@ -155,6 +163,7 @@ folds_mfa <- multidesign::cv_rows(
 ```
 
 ``` r
+
 res_mfa_cv <- cv_muscal(
   folds = folds_mfa,
   fit_fn = function(analysis) {
@@ -184,6 +193,7 @@ res_mfa_cv$scores
 ```
 
 ``` r
+
 stopifnot(all(is.finite(res_mfa_cv$scores$mse)))
 stopifnot(all(res_mfa_cv$scores$rmse >= 0))
 ```
@@ -194,6 +204,7 @@ Anchored MFA has a different evaluation target: predicting rows of the
 reference block `Y` from auxiliary blocks with incomplete overlap.
 
 ``` r
+
 fit_anchor <- anchored_mfa(
   Y = Y,
   X = list(X1 = X1, X2 = X2),
@@ -206,6 +217,7 @@ stopifnot(setequal(fit_anchor$oos_types, c("response", "scores", "reconstruction
 ```
 
 ``` r
+
 d1 <- multidesign::multidesign(X1, data.frame(anchor = idx1, Y[idx1, , drop = FALSE]))
 d2 <- multidesign::multidesign(X2, data.frame(anchor = idx2, Y[idx2, , drop = FALSE]))
 hd <- multidesign::hyperdesign(list(X1 = d1, X2 = d2), block_names = c("X1", "X2"))
@@ -221,6 +233,7 @@ folds_anchor <- multidesign::cv_rows(
 ```
 
 ``` r
+
 res_anchor_cv <- cv_muscal(
   folds = folds_anchor,
   fit_fn = function(analysis) {
@@ -253,6 +266,7 @@ res_anchor_cv$scores
 ```
 
 ``` r
+
 stopifnot(all(is.finite(res_anchor_cv$scores$mse)))
 stopifnot(all(is.finite(res_anchor_cv$scores$mean_cosine_similarity)))
 ```
@@ -269,6 +283,7 @@ for resampling summaries and
 for held-out prediction.
 
 ``` r
+
 colnames(X1) <- c(paste0("f", 1:4), paste0("u1_", 1:10))
 colnames(X2) <- c(paste0("f", 1:4), paste0("u2_", 1:7))
 
@@ -286,6 +301,7 @@ stopifnot(all(is.finite(scores(fit_graph))))
 ```
 
 ``` r
+
 boot_graph <- infer_muscal(
   fit_graph,
   method = "bootstrap",
@@ -298,11 +314,12 @@ boot_graph$summary
 #> # A tibble: 2 × 7
 #>   component label observed  mean       sd lower upper
 #>       <int> <chr>    <dbl> <dbl>    <dbl> <dbl> <dbl>
-#> 1         1 comp1    0.169 0.169 0.000644 0.167 0.169
-#> 2         2 comp2    0.169 0.168 0.00134  0.166 0.169
+#> 1         1 comp1    0.169 0.168 0.000664 0.167 0.169
+#> 2         2 comp2    0.169 0.168 0.00114  0.167 0.169
 ```
 
 ``` r
+
 stopifnot(all(is.finite(boot_graph$summary$mean)))
 stopifnot(all(boot_graph$summary$upper >= boot_graph$summary$lower))
 ```

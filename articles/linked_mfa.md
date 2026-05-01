@@ -24,6 +24,7 @@ correspond to which rows of the reference.
 ## Quick start
 
 ``` r
+
 library(muscal)
 library(multivarious)
 library(ggplot2)
@@ -34,6 +35,7 @@ measured on overlapping subsets. All three share the same underlying
 latent structure so the model has real signal to recover.
 
 ``` r
+
 # Reference block: all 80 subjects
 dim(Y)
 #> [1] 80 20
@@ -50,6 +52,7 @@ length(intersect(idx1, idx2))
 ```
 
 ``` r
+
 fit <- anchored_mfa(
   Y = Y,
   X = list(X1 = X1, X2 = X2),
@@ -78,7 +81,12 @@ information constraining their scores.
 
 Anchored MFA fits the structure:
 
-$$Y \approx SB^{\top}$$$$X_{k} \approx S\left\lbrack {idx}_{k}, \right\rbrack V_{k}^{\top}$$
+``` math
+Y \approx S B^\top
+```
+``` math
+X_k \approx S[\mathrm{idx}_k,] V_k^\top
+```
 
 where:
 
@@ -98,6 +106,7 @@ The `row_index` argument is the core of Anchored MFA. Each element maps
 rows of an auxiliary block to rows of the reference Y:
 
 ``` r
+
 # row_index[[k]][i] says:
 #   "row i of X[[k]] corresponds to row row_index[[k]][i] of Y"
 
@@ -116,6 +125,7 @@ designs.
 The returned object behaves like a standard `multiblock_biprojector`:
 
 ``` r
+
 # Global scores (N x ncomp)
 dim(scores(fit))
 #> [1] 80  3
@@ -142,6 +152,7 @@ Anchored MFA uses alternating least squares (ALS). Monitor convergence
 to ensure the algorithm has settled:
 
 ``` r
+
 plot_convergence(fit)
 ```
 
@@ -160,6 +171,7 @@ The coverage heatmap shows which observations are present in which
 blocks — essential for understanding your data’s overlap structure:
 
 ``` r
+
 plot_coverage(fit)
 ```
 
@@ -174,6 +186,7 @@ cells indicate presence.
 Color observations by how many blocks contribute to their scores:
 
 ``` r
+
 autoplot(fit, color = "coverage")
 ```
 
@@ -189,6 +202,7 @@ contributing blocks have richer information.
 Compare how each block “sees” the observations:
 
 ``` r
+
 plot_partial_scores(fit, show_consensus = TRUE)
 ```
 
@@ -202,6 +216,7 @@ colored points show each block’s view.
 ### Block weights and fit
 
 ``` r
+
 plot_block_weights(fit)
 ```
 
@@ -211,6 +226,7 @@ weights.](linked_mfa_files/figure-html/block-weights-1.png)
 Block normalization weights.
 
 ``` r
+
 plot_block_fit(fit)
 ```
 
@@ -231,6 +247,7 @@ Projecting new rows from a known block back into the reference space
 uses `predict(..., type = "response")`:
 
 ``` r
+
 pred_x1 <- predict(fit, X1[1:5, , drop = FALSE], block = "X1", type = "response")
 truth_x1 <- Y[idx1[1:5], , drop = FALSE]
 
@@ -248,6 +265,7 @@ For a simple held-out assessment, compute response-prediction metrics
 directly:
 
 ``` r
+
 performance_metrics(
   task = "response_prediction",
   truth = truth_x1,
@@ -264,6 +282,7 @@ Cross-validation scales that idea to repeated folds with synchronized
 holdout across blocks:
 
 ``` r
+
 d1 <- multidesign::multidesign(X1, data.frame(anchor = idx1, Y[idx1, , drop = FALSE]))
 d2 <- multidesign::multidesign(X2, data.frame(anchor = idx2, Y[idx2, , drop = FALSE]))
 hd <- multidesign::hyperdesign(list(X1 = d1, X2 = d2), block_names = c("X1", "X2"))
@@ -309,6 +328,7 @@ res_cv$scores
 ```
 
 ``` r
+
 stopifnot(all(is.finite(res_cv$scores$mse)))
 stopifnot(all(is.finite(res_cv$scores$mean_cosine_similarity)))
 ```
@@ -323,6 +343,7 @@ for bootstrap or permutation summaries. The shared workflow is shown in
 ### Variable loadings
 
 ``` r
+
 plot_loadings(fit, type = "bar", component = 1, top_n = 15)
 ```
 
@@ -340,6 +361,7 @@ Like standard MFA, Anchored MFA supports block weighting:
 - **`"custom"`**: User-supplied weights via `alpha`
 
 ``` r
+
 # Custom weights: emphasize the reference block
 fit_custom <- anchored_mfa(
   Y = Y,
@@ -359,6 +381,7 @@ features to have similar loadings. Anchored MFA supports this via a
 feature grouping prior.
 
 ``` r
+
 # Automatic grouping: features with the same column name are grouped
 fit_grouped <- anchored_mfa(
   Y = Y,

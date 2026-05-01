@@ -21,12 +21,14 @@ an efficient Flip-Flop algorithm.
 ## Quick start
 
 ``` r
+
 library(muscal)
 library(multivarious)
 library(ggplot2)
 ```
 
 ``` r
+
 sim <- synthetic_multiblock(
   S = 4, n = 60,
   p = c(20, 30, 15, 25),
@@ -41,6 +43,7 @@ sapply(sim$data_list, dim)
 Fit iPCA with a moderate penalty:
 
 ``` r
+
 fit <- ipca(sim$data_list, ncomp = 3, lambda = 1)
 S <- scores(fit)
 dim(S)
@@ -56,13 +59,16 @@ while preserving shared structure.
 
 ## How iPCA works
 
-iPCA solves a penalized eigenvalue problem. For $K$ blocks
-$\mathbf{X}_{1},\ldots,\mathbf{X}_{K}$, it finds shared eigenvectors $u$
-by maximizing:
+iPCA solves a penalized eigenvalue problem. For $`K`$ blocks
+$`\mathbf{X}_1, \ldots, \mathbf{X}_K`$, it finds shared eigenvectors
+$`u`$ by maximizing:
 
-$$\sum\limits_{k = 1}^{K}f_{\lambda}\!\left( \frac{u^{\top}\mathbf{X}_{k}^{\top}\mathbf{X}_{k}\, u}{{tr}\left( \mathbf{X}_{k}^{\top}\mathbf{X}_{k} \right)} \right)$$
+``` math
+\sum_{k=1}^K f_\lambda\!\left(\frac{u^\top \mathbf{X}_k^\top \mathbf{X}_k\, u}
+{\mathrm{tr}(\mathbf{X}_k^\top \mathbf{X}_k)}\right)
+```
 
-where $f_{\lambda}$ is a concave penalty function (the multiplicative
+where $`f_\lambda`$ is a concave penalty function (the multiplicative
 Frobenius penalty). This upweights blocks that align well with the
 current direction and downweights those that don’t — a soft, adaptive
 form of integration.
@@ -78,6 +84,7 @@ form of integration.
   roughly equally, regardless of size.
 
 ``` r
+
 fit_low  <- ipca(sim$data_list, ncomp = 3, lambda = 0.01)
 fit_high <- ipca(sim$data_list, ncomp = 3, lambda = 10)
 ```
@@ -96,6 +103,7 @@ selects the optimal penalty by holding out a fraction of the data and
 measuring reconstruction error:
 
 ``` r
+
 tune <- ipca_tune_alpha(
   sim$data_list, ncomp = 3,
   alpha_grid = c(0.01, 0.1, 1, 10),
@@ -113,6 +121,7 @@ Held-out MSE across alpha (lambda) values. Lower is better.
 The tuning result includes a refit on the full data at the best alpha:
 
 ``` r
+
 fit_tuned <- tune$fit
 dim(scores(fit_tuned))
 #> [1] 60  3
@@ -124,6 +133,7 @@ Each block contributes its own view of the observations through
 per-block loadings:
 
 ``` r
+
 # Per-block scores
 ps <- fit$partial_scores
 sapply(ps, dim)
@@ -138,6 +148,7 @@ Project new observations onto the fitted model. You pass a list of
 blocks with the same structure as the training data:
 
 ``` r
+
 new_blocks <- lapply(sim$data_list, function(X) X[1:5, , drop = FALSE])
 proj <- project(fit, new_blocks)
 dim(proj)
@@ -153,6 +164,7 @@ for resampling-based summaries, and
 when you want explicit fold-wise reconstruction metrics.
 
 ``` r
+
 boot <- infer_muscal(
   fit,
   method = "bootstrap",
@@ -171,6 +183,7 @@ boot$summary
 ```
 
 ``` r
+
 perm <- infer_muscal(
   fit,
   method = "permutation",
@@ -189,6 +202,7 @@ perm$component_results
 ```
 
 ``` r
+
 stopifnot(all(is.finite(boot$summary$mean)))
 stopifnot(all(boot$summary$upper >= boot$summary$lower))
 stopifnot(all(perm$component_results$p_value >= 0))
@@ -206,7 +220,7 @@ and the task-aware metric registry, see
 iPCA supports two internal methods:
 
 - **`"gram"`** (default for wide data): Works in sample space
-  ($n \times n$). Efficient when blocks have more variables than
+  ($`n \times n`$). Efficient when blocks have more variables than
   observations.
 - **`"dense"`**: Works in variable space. Better for tall data.
 
@@ -214,6 +228,7 @@ The `"auto"` setting (default) picks the right method based on data
 dimensions.
 
 ``` r
+
 # Force gram mode for high-dimensional blocks
 fit_gram <- ipca(sim$data_list, ncomp = 3, lambda = 1, method = "gram")
 ```

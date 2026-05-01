@@ -34,7 +34,8 @@
 <li class="active nav-item dropdown">
   <button class="nav-link dropdown-toggle" type="button" id="dropdown-articles" data-bs-toggle="dropdown" aria-expanded="false" aria-haspopup="true">Articles</button>
   <ul class="dropdown-menu" aria-labelledby="dropdown-articles">
-<li><a class="dropdown-item" href="../articles/aligned_mcca.html">Aligned Multiblock Canonical Correlation Analysis</a></li>
+<li><a class="dropdown-item" href="../articles/aligned_interbattery.html">Bidirectional Response Alignment with aligned_interbattery()</a></li>
+    <li><a class="dropdown-item" href="../articles/aligned_mcca.html">Aligned Multiblock Canonical Correlation Analysis</a></li>
     <li><a class="dropdown-item" href="../articles/aligned_mfa.html">Aligned Multiple Factor Analysis</a></li>
     <li><a class="dropdown-item" href="../articles/bada.html">Barycentric Discriminant Analysis</a></li>
     <li><a class="dropdown-item" href="../articles/bamfa.html">Barycentric MFA (BaMFA)</a></li>
@@ -46,6 +47,7 @@
     <li><a class="dropdown-item" href="../articles/mfa.html">Multiple Factor Analysis</a></li>
     <li><a class="dropdown-item" href="../articles/model_evaluation.html">Model Evaluation and Inference</a></li>
     <li><a class="dropdown-item" href="../articles/penalized_mfa.html">Penalized Multiple Factor Analysis</a></li>
+    <li><a class="dropdown-item" href="../articles/response_alignment.html">Choosing a Supervised Common-Space Model</a></li>
   </ul>
 </li>
       </ul>
@@ -134,7 +136,7 @@ blocks
 it finds shared eigenvectors
 <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>u</mi><annotation encoding="application/x-tex">u</annotation></semantics></math>
 by maximizing:</p>
-<p><math display="block" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><munderover><mo>∑</mo><mrow><mi>k</mi><mo>=</mo><mn>1</mn></mrow><mi>K</mi></munderover><msub><mi>f</mi><mi>λ</mi></msub><mspace width="-0.167em"></mspace><mrow><mo stretchy="true" form="prefix">(</mo><mfrac><mrow><msup><mi>u</mi><mi>⊤</mi></msup><msubsup><mi>𝐗</mi><mi>k</mi><mi>⊤</mi></msubsup><msub><mi>𝐗</mi><mi>k</mi></msub><mspace width="0.167em"></mspace><mi>u</mi></mrow><mrow><mrow><mi mathvariant="normal">t</mi><mi mathvariant="normal">r</mi></mrow><mrow><mo stretchy="true" form="prefix">(</mo><msubsup><mi>𝐗</mi><mi>k</mi><mi>⊤</mi></msubsup><msub><mi>𝐗</mi><mi>k</mi></msub><mo stretchy="true" form="postfix">)</mo></mrow></mrow></mfrac><mo stretchy="true" form="postfix">)</mo></mrow></mrow><annotation encoding="application/x-tex">\sum_{k=1}^K f_\lambda\!\left(\frac{u^\top \mathbf{X}_k^\top \mathbf{X}_k\, u}
+<p><math display="block" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><munderover><mo>∑</mo><mrow><mi>k</mi><mo>=</mo><mn>1</mn></mrow><mi>K</mi></munderover><msub><mi>f</mi><mi>λ</mi></msub><mspace width="-0.167em"></mspace><mrow><mo stretchy="true" form="prefix">(</mo><mfrac><mrow><msup><mi>u</mi><mi>⊤</mi></msup><msubsup><mi>𝐗</mi><mi>k</mi><mi>⊤</mi></msubsup><msub><mi>𝐗</mi><mi>k</mi></msub><mspace width="0.167em"></mspace><mi>u</mi></mrow><mrow><mrow><mi mathvariant="normal">t</mi><mi mathvariant="normal">r</mi></mrow><mo stretchy="false" form="prefix">(</mo><msubsup><mi>𝐗</mi><mi>k</mi><mi>⊤</mi></msubsup><msub><mi>𝐗</mi><mi>k</mi></msub><mo stretchy="false" form="postfix">)</mo></mrow></mfrac><mo stretchy="true" form="postfix">)</mo></mrow></mrow><annotation encoding="application/x-tex">\sum_{k=1}^K f_\lambda\!\left(\frac{u^\top \mathbf{X}_k^\top \mathbf{X}_k\, u}
 {\mathrm{tr}(\mathbf{X}_k^\top \mathbf{X}_k)}\right)</annotation></semantics></math></p>
 <p>where
 <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><msub><mi>f</mi><mi>λ</mi></msub><annotation encoding="application/x-tex">f_\lambda</annotation></semantics></math>

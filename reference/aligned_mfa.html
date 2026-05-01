@@ -28,7 +28,8 @@ reference block `Y` and estimates scores in the row space of `Y`."></head><body>
       <ul class="navbar-nav me-auto"><li class="active nav-item"><a class="nav-link" href="../reference/index.html">Reference</a></li>
 <li class="nav-item dropdown">
   <button class="nav-link dropdown-toggle" type="button" id="dropdown-articles" data-bs-toggle="dropdown" aria-expanded="false" aria-haspopup="true">Articles</button>
-  <ul class="dropdown-menu" aria-labelledby="dropdown-articles"><li><a class="dropdown-item" href="../articles/aligned_mcca.html">Aligned Multiblock Canonical Correlation Analysis</a></li>
+  <ul class="dropdown-menu" aria-labelledby="dropdown-articles"><li><a class="dropdown-item" href="../articles/aligned_interbattery.html">Bidirectional Response Alignment with aligned_interbattery()</a></li>
+    <li><a class="dropdown-item" href="../articles/aligned_mcca.html">Aligned Multiblock Canonical Correlation Analysis</a></li>
     <li><a class="dropdown-item" href="../articles/aligned_mfa.html">Aligned Multiple Factor Analysis</a></li>
     <li><a class="dropdown-item" href="../articles/bada.html">Barycentric Discriminant Analysis</a></li>
     <li><a class="dropdown-item" href="../articles/bamfa.html">Barycentric MFA (BaMFA)</a></li>
@@ -40,6 +41,7 @@ reference block `Y` and estimates scores in the row space of `Y`."></head><body>
     <li><a class="dropdown-item" href="../articles/mfa.html">Multiple Factor Analysis</a></li>
     <li><a class="dropdown-item" href="../articles/model_evaluation.html">Model Evaluation and Inference</a></li>
     <li><a class="dropdown-item" href="../articles/penalized_mfa.html">Penalized Multiple Factor Analysis</a></li>
+    <li><a class="dropdown-item" href="../articles/response_alignment.html">Choosing a Supervised Common-Space Model</a></li>
   </ul></li>
       </ul><ul class="navbar-nav"><li class="nav-item"><form class="form-inline" role="search">
  <input class="form-control" type="search" name="search-input" id="search-input" autocomplete="off" aria-label="Search site" placeholder="Search for" data-search-index="../search.json"></form></li>
@@ -76,12 +78,14 @@ reference block `Y` and estimates scores in the row space of `Y`.</p>
 <span>  ncomp <span class="op">=</span> <span class="fl">2</span>,</span>
 <span>  normalization <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"MFA"</span>, <span class="st">"None"</span>, <span class="st">"custom"</span><span class="op">)</span>,</span>
 <span>  alpha <span class="op">=</span> <span class="cn">NULL</span>,</span>
+<span>  score_constraint <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"none"</span>, <span class="st">"orthonormal"</span><span class="op">)</span>,</span>
 <span>  feature_groups <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  feature_lambda <span class="op">=</span> <span class="fl">0</span>,</span>
 <span>  max_iter <span class="op">=</span> <span class="fl">50</span>,</span>
 <span>  tol <span class="op">=</span> <span class="fl">1e-06</span>,</span>
 <span>  ridge <span class="op">=</span> <span class="fl">1e-08</span>,</span>
 <span>  verbose <span class="op">=</span> <span class="cn">FALSE</span>,</span>
+<span>  use_future <span class="op">=</span> <span class="cn">FALSE</span>,</span>
 <span>  <span class="va">...</span></span>
 <span><span class="op">)</span></span></code></pre></div>
     </div>
@@ -125,6 +129,14 @@ singular value per block; `"None"` uses uniform weights; `"custom"` uses `alpha`
 used when `normalization = "custom"`.</p></dd>
 
 
+<dt id="arg-score-constraint">score_constraint<a class="anchor" aria-label="anchor" href="#arg-score-constraint"></a></dt>
+<dd><p>Identification strategy for the shared score matrix.
+`"none"` uses the historical unconstrained update followed by QR
+normalization inside each ALS iteration. `"orthonormal"` treats
+`S transpose S = I` as part of the model and updates `S` with a constrained
+majorization/polar step.</p></dd>
+
+
 <dt id="arg-feature-groups">feature_groups<a class="anchor" aria-label="anchor" href="#arg-feature-groups"></a></dt>
 <dd><p>Feature prior specification. One of:
 * `NULL` (no feature prior),
@@ -150,6 +162,14 @@ used when `normalization = "custom"`.</p></dd>
 
 <dt id="arg-verbose">verbose<a class="anchor" aria-label="anchor" href="#arg-verbose"></a></dt>
 <dd><p>Logical; if `TRUE`, prints iteration progress.</p></dd>
+
+
+<dt id="arg-use-future">use_future<a class="anchor" aria-label="anchor" href="#arg-use-future"></a></dt>
+<dd><p>Logical; if `TRUE`, block-wise computations that do not
+depend on one another may be performed via `furrr::future_map()` when
+available. The main alternating-least-squares loop is intrinsically
+sequential and is unaffected. Accepted here primarily for interface parity
+with [aligned_mcca()] and [anchored_mfa()].</p></dd>
 
 
 <dt id="arg--">...<a class="anchor" aria-label="anchor" href="#arg--"></a></dt>

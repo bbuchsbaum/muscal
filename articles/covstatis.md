@@ -16,6 +16,7 @@ method for analyzing collections of data tables.
 ## Quick start
 
 ``` r
+
 library(muscal)
 library(multivarious)
 library(ggplot2)
@@ -26,6 +27,7 @@ subjects share the same underlying factor structure, but with individual
 noise.
 
 ``` r
+
 # 8 subjects, each with a 12 x 12 correlation matrix
 length(cor_list)
 #> [1] 8
@@ -36,6 +38,7 @@ dim(cor_list[[1]])
 Fit COVSTATIS and extract the compromise:
 
 ``` r
+
 fit <- covstatis(cor_list, ncomp = 3)
 ```
 
@@ -74,6 +77,7 @@ Each subject contributes differently to the compromise. The `alpha`
 weights reveal who is most representative:
 
 ``` r
+
 fit$alpha
 #> [1] 0.1252346 0.1248583 0.1261766 0.1260857 0.1234791 0.1251164 0.1239273
 #> [8] 0.1251221
@@ -89,6 +93,7 @@ representative of the group.
 You can also view subjects in the compromise space:
 
 ``` r
+
 autoplot(fit, type = "subjects")
 ```
 
@@ -102,6 +107,7 @@ correlation structure.
 ## Variance explained
 
 ``` r
+
 plot_variance(fit, type = "bar")
 ```
 
@@ -116,6 +122,7 @@ Partial scores show how each subject “sees” the ROIs. Lines connect each
 subject’s view to the consensus:
 
 ``` r
+
 plot_partial_scores(fit, connect = TRUE, show_consensus = TRUE)
 ```
 
@@ -131,6 +138,7 @@ consensus. Short connecting lines indicate agreement.
 The RV matrix shows pairwise similarity between subjects:
 
 ``` r
+
 plot_block_similarity(fit)
 ```
 
@@ -147,6 +155,7 @@ After fitting, you can project a new subject’s correlation matrix into
 the compromise space without refitting:
 
 ``` r
+
 proj <- project_cov(fit, new_cor)
 dim(proj)
 #> [1] 12  3
@@ -163,6 +172,7 @@ distance to the compromise — use
 [`project_subjects()`](https://bbuchsbaum.github.io/muscal/reference/project_subjects.md):
 
 ``` r
+
 result <- project_subjects(fit, list(new_cor), subject_ids = "New_Subject")
 result$scalar_summaries
 #>              subject_id rv_coefficient distance_to_compromise
@@ -176,6 +186,7 @@ variable?” Table-side covariates have one value per input table/block.
 For example, projecting a subject-level cognitive score:
 
 ``` r
+
 # Simulated covariate (e.g., memory score per subject)
 y <- rnorm(n_subjects)
 dim_cos <- project_table_covariate(fit, y, what = "dimension", scale = "cosine")

@@ -18,7 +18,8 @@
       <ul class="navbar-nav me-auto"><li class="nav-item"><a class="nav-link" href="reference/index.html">Reference</a></li>
 <li class="nav-item dropdown">
   <button class="nav-link dropdown-toggle" type="button" id="dropdown-articles" data-bs-toggle="dropdown" aria-expanded="false" aria-haspopup="true">Articles</button>
-  <ul class="dropdown-menu" aria-labelledby="dropdown-articles"><li><a class="dropdown-item" href="articles/aligned_mcca.html">Aligned Multiblock Canonical Correlation Analysis</a></li>
+  <ul class="dropdown-menu" aria-labelledby="dropdown-articles"><li><a class="dropdown-item" href="articles/aligned_interbattery.html">Bidirectional Response Alignment with aligned_interbattery()</a></li>
+    <li><a class="dropdown-item" href="articles/aligned_mcca.html">Aligned Multiblock Canonical Correlation Analysis</a></li>
     <li><a class="dropdown-item" href="articles/aligned_mfa.html">Aligned Multiple Factor Analysis</a></li>
     <li><a class="dropdown-item" href="articles/bada.html">Barycentric Discriminant Analysis</a></li>
     <li><a class="dropdown-item" href="articles/bamfa.html">Barycentric MFA (BaMFA)</a></li>
@@ -30,6 +31,7 @@
     <li><a class="dropdown-item" href="articles/mfa.html">Multiple Factor Analysis</a></li>
     <li><a class="dropdown-item" href="articles/model_evaluation.html">Model Evaluation and Inference</a></li>
     <li><a class="dropdown-item" href="articles/penalized_mfa.html">Penalized Multiple Factor Analysis</a></li>
+    <li><a class="dropdown-item" href="articles/response_alignment.html">Choosing a Supervised Common-Space Model</a></li>
   </ul></li>
       </ul><ul class="navbar-nav"><li class="nav-item"><form class="form-inline" role="search">
  <input class="form-control" type="search" name="search-input" id="search-input" autocomplete="off" aria-label="Search site" placeholder="Search for" data-search-index="search.json"></form></li>
@@ -49,11 +51,11 @@
 <div id="r-cmd-check-issues---todo-list" class="section level1">
 
 <div class="section level2">
-<h2 id="id_-errors-must-fix">🚨 <strong>ERRORS</strong> (Must Fix)<a class="anchor" aria-label="anchor" href="#id_-errors-must-fix"></a></h2>
+<h2 id="rotating_light-errors-must-fix">🚨 <strong>ERRORS</strong> (Must Fix)<a class="anchor" aria-label="anchor" href="#rotating_light-errors-must-fix"></a></h2>
 <ul class="task-list"><li><label><input type="checkbox"><strong>Examples failing</strong>: Missing ‘genpca’ package dependency causing mfa() examples to fail</label></li>
 </ul></div>
 <div class="section level2">
-<h2 id="id_️-warnings-should-fix">⚠️ <strong>WARNINGS</strong> (Should Fix)<a class="anchor" aria-label="anchor" href="#id_%EF%B8%8F-warnings-should-fix"></a></h2>
+<h2 id="warning-warnings-should-fix">⚠️ <strong>WARNINGS</strong> (Should Fix)<a class="anchor" aria-label="anchor" href="#warning-warnings-should-fix"></a></h2>
 <div class="section level3">
 <h3 id="package-metadata">Package Metadata<a class="anchor" aria-label="anchor" href="#package-metadata"></a></h3>
 <ul class="task-list"><li><label><input type="checkbox" checked><strong>License specification</strong>: Change from “TODO - Specify License” to proper license (e.g., MIT, GPL-3)</label></li>
@@ -113,7 +115,7 @@
 </ul></div>
 </div>
 <div class="section level2">
-<h2 id="id_-notes-good-practice">📝 <strong>NOTES</strong> (Good Practice)<a class="anchor" aria-label="anchor" href="#id_-notes-good-practice"></a></h2>
+<h2 id="pencil-notes-good-practice">📝 <strong>NOTES</strong> (Good Practice)<a class="anchor" aria-label="anchor" href="#pencil-notes-good-practice"></a></h2>
 <div class="section level3">
 <h3 id="file-organization">File Organization<a class="anchor" aria-label="anchor" href="#file-organization"></a></h3>
 <ul class="task-list"><li><label><input type="checkbox" checked><strong>Hidden files</strong>: Remove <code>.cursor</code> directory</label></li>
@@ -148,8 +150,8 @@
 </ul><hr></div>
 </div>
 <div class="section level2">
-<h2 id="id_-priority-order">🎯 <strong>Priority Order</strong>
-<a class="anchor" aria-label="anchor" href="#id_-priority-order"></a></h2>
+<h2 id="dart-priority-order">🎯 <strong>Priority Order</strong>
+<a class="anchor" aria-label="anchor" href="#dart-priority-order"></a></h2>
 <ol style="list-style-type: decimal"><li>Fix ERROR (examples)</li>
 <li>Fix missing imports (most common issue)</li>
 <li>Fix license and metadata</li>
@@ -157,15 +159,15 @@
 <li>Address S3 method consistency</li>
 </ol></div>
 <div class="section level2">
-<h2 id="id_-progress-tracker">📊 <strong>Progress Tracker</strong>
-<a class="anchor" aria-label="anchor" href="#id_-progress-tracker"></a></h2>
+<h2 id="bar_chart-progress-tracker">📊 <strong>Progress Tracker</strong>
+<a class="anchor" aria-label="anchor" href="#bar_chart-progress-tracker"></a></h2>
 <ul class="task-list"><li><label><input type="checkbox"><strong>Total Issues</strong>: 27 items</label></li>
 <li><label><input type="checkbox"><strong>Completed</strong>: 14 items ✅</label></li>
 <li><label><input type="checkbox"><strong>Remaining</strong>: 13 items</label></li>
 </ul><hr></div>
 <div class="section level2">
-<h2 id="id_-major-accomplishments">✅ <strong>MAJOR ACCOMPLISHMENTS</strong>
-<a class="anchor" aria-label="anchor" href="#id_-major-accomplishments"></a></h2>
+<h2 id="white_check_mark-major-accomplishments">✅ <strong>MAJOR ACCOMPLISHMENTS</strong>
+<a class="anchor" aria-label="anchor" href="#white_check_mark-major-accomplishments"></a></h2>
 <p><strong>Core Engineering Improvements Completed:</strong> - ✅ Fixed all missing imports (stats, utils functions) - ✅ Set proper MIT license - ✅ Cleaned up non-ASCII characters - ✅ Moved questionable dependencies to Suggests with conditional loading - ✅ Removed hidden files and moved dev files - ✅ <strong>Most importantly</strong>: All 16 penalized MFA clusterwise tests still passing!</p>
 <p><strong>Remaining items are mainly documentation polish and S3 method consistency - the core functionality is solid.</strong></p>
 </div>

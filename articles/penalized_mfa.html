@@ -34,7 +34,8 @@
 <li class="active nav-item dropdown">
   <button class="nav-link dropdown-toggle" type="button" id="dropdown-articles" data-bs-toggle="dropdown" aria-expanded="false" aria-haspopup="true">Articles</button>
   <ul class="dropdown-menu" aria-labelledby="dropdown-articles">
-<li><a class="dropdown-item" href="../articles/aligned_mcca.html">Aligned Multiblock Canonical Correlation Analysis</a></li>
+<li><a class="dropdown-item" href="../articles/aligned_interbattery.html">Bidirectional Response Alignment with aligned_interbattery()</a></li>
+    <li><a class="dropdown-item" href="../articles/aligned_mcca.html">Aligned Multiblock Canonical Correlation Analysis</a></li>
     <li><a class="dropdown-item" href="../articles/aligned_mfa.html">Aligned Multiple Factor Analysis</a></li>
     <li><a class="dropdown-item" href="../articles/bada.html">Barycentric Discriminant Analysis</a></li>
     <li><a class="dropdown-item" href="../articles/bamfa.html">Barycentric MFA (BaMFA)</a></li>
@@ -46,6 +47,7 @@
     <li><a class="dropdown-item" href="../articles/mfa.html">Multiple Factor Analysis</a></li>
     <li><a class="dropdown-item" href="../articles/model_evaluation.html">Model Evaluation and Inference</a></li>
     <li><a class="dropdown-item" href="../articles/penalized_mfa.html">Penalized Multiple Factor Analysis</a></li>
+    <li><a class="dropdown-item" href="../articles/response_alignment.html">Choosing a Supervised Common-Space Model</a></li>
   </ul>
 </li>
       </ul>
@@ -127,7 +129,7 @@ the mean of its block-specific scores.
 <p>Penalized MFA estimates orthonormal loading matrices
 <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>𝐕</mi><mi>i</mi></msub><mo>∈</mo><msup><mi>ℝ</mi><mrow><mi>p</mi><mo>×</mo><mi>k</mi></mrow></msup></mrow><annotation encoding="application/x-tex">\mathbf{V}_i \in \mathbb{R}^{p \times k}</annotation></semantics></math>
 for each block by minimizing:</p>
-<p><math display="block" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><munderover><mo>∑</mo><mrow><mi>i</mi><mo>=</mo><mn>1</mn></mrow><mi>S</mi></munderover><mo stretchy="false" form="postfix">∥</mo><msub><mi>𝐗</mi><mi>i</mi></msub><mo>−</mo><msub><mi>𝐗</mi><mi>i</mi></msub><msub><mi>𝐕</mi><mi>i</mi></msub><msubsup><mi>𝐕</mi><mi>i</mi><mi>⊤</mi></msubsup><msubsup><mo stretchy="false" form="postfix">∥</mo><mi>F</mi><mn>2</mn></msubsup><mspace width="0.278em"></mspace><mo>+</mo><mspace width="0.278em"></mspace><mi>λ</mi><mo>⋅</mo><mtext mathvariant="normal">Penalty</mtext><mrow><mo stretchy="true" form="prefix">(</mo><mo stretchy="false" form="prefix">{</mo><msub><mi>𝐕</mi><mi>i</mi></msub><mo stretchy="false" form="postfix">}</mo><mo stretchy="true" form="postfix">)</mo></mrow></mrow><annotation encoding="application/x-tex">\sum_{i=1}^{S} \|\mathbf{X}_i - \mathbf{X}_i \mathbf{V}_i \mathbf{V}_i^\top\|_F^2
+<p><math display="block" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><munderover><mo>∑</mo><mrow><mi>i</mi><mo>=</mo><mn>1</mn></mrow><mi>S</mi></munderover><mo stretchy="false" form="postfix">∥</mo><msub><mi>𝐗</mi><mi>i</mi></msub><mo>−</mo><msub><mi>𝐗</mi><mi>i</mi></msub><msub><mi>𝐕</mi><mi>i</mi></msub><msubsup><mi>𝐕</mi><mi>i</mi><mi>⊤</mi></msubsup><msubsup><mo stretchy="false" form="postfix">∥</mo><mi>F</mi><mn>2</mn></msubsup><mspace width="0.278em"></mspace><mo>+</mo><mspace width="0.278em"></mspace><mi>λ</mi><mo>⋅</mo><mtext mathvariant="normal">Penalty</mtext><mo stretchy="false" form="prefix">(</mo><mo stretchy="false" form="prefix">{</mo><msub><mi>𝐕</mi><mi>i</mi></msub><mo stretchy="false" form="postfix">}</mo><mo stretchy="false" form="postfix">)</mo></mrow><annotation encoding="application/x-tex">\sum_{i=1}^{S} \|\mathbf{X}_i - \mathbf{X}_i \mathbf{V}_i \mathbf{V}_i^\top\|_F^2
 \;+\; \lambda \cdot \text{Penalty}(\{\mathbf{V}_i\})</annotation></semantics></math></p>
 <p>The first term is reconstruction error; the second encourages
 similarity among block loadings. The optimization uses Riemannian

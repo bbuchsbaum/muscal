@@ -22,6 +22,12 @@ ecosystem for scoring, projection, and preprocessing.
 - [`anchored_mfa()`](https://bbuchsbaum.github.io/muscal/reference/linked_mfa.md)
   for linked blocks that map back to a reference table but do not share
   identical rows.
+- [`response_aligned_mfa()`](https://bbuchsbaum.github.io/muscal/reference/response_aligned_mfa.md)
+  when blocks have paired multivariate responses but do not share exact
+  response rows.
+- [`aligned_rrr()`](https://bbuchsbaum.github.io/muscal/reference/aligned_rrr.md)
+  as the pure shared reduced-rank regression baseline for the same
+  response-prediction setting.
 - [`aligned_mfa()`](https://bbuchsbaum.github.io/muscal/reference/aligned_mfa.md)
   and
   [`aligned_mcca()`](https://bbuchsbaum.github.io/muscal/reference/aligned_mcca.md)
@@ -40,6 +46,7 @@ ecosystem for scoring, projection, and preprocessing.
 Install the package from r-universe:
 
 ``` r
+
 install.packages(
   "muscal",
   repos = c("https://bbuchsbaum.r-universe.dev", "https://cloud.r-project.org")
@@ -49,6 +56,7 @@ install.packages(
 Or install the current GitHub version with `pak`:
 
 ``` r
+
 install.packages("pak")
 pak::pak("bbuchsbaum/muscal")
 ```
@@ -56,6 +64,7 @@ pak::pak("bbuchsbaum/muscal")
 ## Quick start
 
 ``` r
+
 library(muscal)
 
 sim <- synthetic_multiblock(
@@ -98,6 +107,8 @@ to the method-specific articles below.
   [docs/articles/ipca.md](https://bbuchsbaum.github.io/muscal/docs/articles/ipca.md)
 - Anchored MFA article:
   [docs/articles/linked_mfa.md](https://bbuchsbaum.github.io/muscal/docs/articles/linked_mfa.md)
+- Supervised common-space comparison:
+  [vignettes/response_alignment.Rmd](https://bbuchsbaum.github.io/muscal/vignettes/response_alignment.Rmd)
 - Aligned MFA intro:
   [vignettes/aligned_mfa.Rmd](https://bbuchsbaum.github.io/muscal/vignettes/aligned_mfa.Rmd)
 - Aligned MCCA intro:

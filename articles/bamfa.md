@@ -17,6 +17,7 @@ what makes each subject unique.
 ## Quick start
 
 ``` r
+
 library(muscal)
 library(multivarious)
 library(ggplot2)
@@ -26,6 +27,7 @@ We simulate 6 subjects with shared structure (3 global factors) plus
 subject-specific structure (2 local factors per subject).
 
 ``` r
+
 length(data_list)
 #> [1] 6
 sapply(data_list, dim)
@@ -37,6 +39,7 @@ sapply(data_list, dim)
 Fit BaMFA with 3 global and 2 local components:
 
 ``` r
+
 fit <- bamfa(data_list, k_g = 3, k_l = 2, niter = 20)
 fit
 #> Barycentric Multiple Factor Analysis (BaMFA) 
@@ -81,21 +84,24 @@ structure shared by all blocks.
 
 The key idea: BaMFA decomposes each block’s data as:
 
-$$\mathbf{X}_{i} \approx \mathbf{S}_{i}\mathbf{B}_{i}^{\top} + \mathbf{U}_{i}\mathbf{V}_{i}^{\top}$$
+``` math
+\mathbf{X}_i \approx \mathbf{S}_i \mathbf{B}_i^\top + \mathbf{U}_i \mathbf{V}_i^\top
+```
 
 where:
 
-- $\mathbf{S}_{i}$ are the **global scores** — similar across subjects
-- $\mathbf{B}_{i}$ are the **global loadings**
-- $\mathbf{U}_{i}$ are the **local scores** — unique to subject $i$
-- $\mathbf{V}_{i}$ are the **local loadings**
+- $`\mathbf{S}_i`$ are the **global scores** — similar across subjects
+- $`\mathbf{B}_i`$ are the **global loadings**
+- $`\mathbf{U}_i`$ are the **local scores** — unique to subject $`i`$
+- $`\mathbf{V}_i`$ are the **local loadings**
 
-The global loadings $\mathbf{B}_{i}$ are encouraged to be similar across
-subjects, while the local loadings $\mathbf{V}_{i}$ are free to differ.
+The global loadings $`\mathbf{B}_i`$ are encouraged to be similar across
+subjects, while the local loadings $`\mathbf{V}_i`$ are free to differ.
 
 ## Examining the components
 
 ``` r
+
 # Global loadings: one per block, should be similar
 sapply(fit$B_list, dim)
 #>      [,1] [,2] [,3] [,4] [,5] [,6]
@@ -110,6 +116,7 @@ sapply(fit$V_list, dim)
 ## Convergence
 
 ``` r
+
 plot_convergence(fit)
 ```
 
@@ -125,6 +132,7 @@ typically converges within 10-20 iterations.
 View the global scores for a specific subject:
 
 ``` r
+
 autoplot(fit, block = 1)
 ```
 
@@ -138,6 +146,7 @@ Global scores for Subject 1.
 Compare how the global structure looks across subjects:
 
 ``` r
+
 plot_partial_scores(fit, connect = TRUE, show_consensus = TRUE)
 ```
 
@@ -159,6 +168,7 @@ default it is 0 (no regularization). Increasing it shrinks local
 components, pushing more structure into the global subspace:
 
 ``` r
+
 # Strong local regularization — most structure forced into global
 fit_sparse <- bamfa(data_list, k_g = 3, k_l = 2, niter = 20, lambda_l = 1)
 ```

@@ -36,7 +36,8 @@
 <li class="nav-item dropdown">
   <button class="nav-link dropdown-toggle" type="button" id="dropdown-articles" data-bs-toggle="dropdown" aria-expanded="false" aria-haspopup="true">Articles</button>
   <ul class="dropdown-menu" aria-labelledby="dropdown-articles">
-<li><a class="dropdown-item" href="articles/aligned_mcca.html">Aligned Multiblock Canonical Correlation Analysis</a></li>
+<li><a class="dropdown-item" href="articles/aligned_interbattery.html">Bidirectional Response Alignment with aligned_interbattery()</a></li>
+    <li><a class="dropdown-item" href="articles/aligned_mcca.html">Aligned Multiblock Canonical Correlation Analysis</a></li>
     <li><a class="dropdown-item" href="articles/aligned_mfa.html">Aligned Multiple Factor Analysis</a></li>
     <li><a class="dropdown-item" href="articles/bada.html">Barycentric Discriminant Analysis</a></li>
     <li><a class="dropdown-item" href="articles/bamfa.html">Barycentric MFA (BaMFA)</a></li>
@@ -48,6 +49,7 @@
     <li><a class="dropdown-item" href="articles/mfa.html">Multiple Factor Analysis</a></li>
     <li><a class="dropdown-item" href="articles/model_evaluation.html">Model Evaluation and Inference</a></li>
     <li><a class="dropdown-item" href="articles/penalized_mfa.html">Penalized Multiple Factor Analysis</a></li>
+    <li><a class="dropdown-item" href="articles/response_alignment.html">Choosing a Supervised Common-Space Model</a></li>
   </ul>
 </li>
       </ul>
@@ -80,6 +82,10 @@
 <code><a href="reference/penalized_mfa.html">penalized_mfa()</a></code> when you want MFA with loading-similarity penalties.</li>
 <li>
 <code><a href="reference/linked_mfa.html">anchored_mfa()</a></code> for linked blocks that map back to a reference table but do not share identical rows.</li>
+<li>
+<code><a href="reference/response_aligned_mfa.html">response_aligned_mfa()</a></code> when blocks have paired multivariate responses but do not share exact response rows.</li>
+<li>
+<code><a href="reference/aligned_rrr.html">aligned_rrr()</a></code> as the pure shared reduced-rank regression baseline for the same response-prediction setting.</li>
 <li>
 <code><a href="reference/aligned_mfa.html">aligned_mfa()</a></code> and <code><a href="reference/aligned_mcca.html">aligned_mcca()</a></code> for aligned multiblock integration and correlation analysis.</li>
 <li>
@@ -147,6 +153,8 @@
 <li>Integrative PCA article: <a href="docs/articles/ipca.html">docs/articles/ipca.md</a>
 </li>
 <li>Anchored MFA article: <a href="docs/articles/linked_mfa.html">docs/articles/linked_mfa.md</a>
+</li>
+<li>Supervised common-space comparison: <a href="vignettes/response_alignment.Rmd">vignettes/response_alignment.Rmd</a>
 </li>
 <li>Aligned MFA intro: <a href="vignettes/aligned_mfa.Rmd">vignettes/aligned_mfa.Rmd</a>
 </li>

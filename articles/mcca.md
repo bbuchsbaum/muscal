@@ -18,12 +18,14 @@ when correlation structure matters more than variance balancing.
 ## What does a quick fit look like?
 
 ``` r
+
 library(muscal)
 library(multivarious)
 library(ggplot2)
 ```
 
 ``` r
+
 sapply(blocks, dim)
 #>      clinical behavior imaging
 #> [1,]       80       80      80
@@ -31,6 +33,7 @@ sapply(blocks, dim)
 ```
 
 ``` r
+
 fit <- mcca(blocks, ncomp = 2, ridge = 1e-6)
 S <- multivarious::scores(fit)
 
@@ -39,6 +42,7 @@ stopifnot(all(is.finite(S)))
 ```
 
 ``` r
+
 cc <- cancor(
   scale(Z, center = TRUE, scale = FALSE),
   scale(S, center = TRUE, scale = FALSE)
@@ -77,6 +81,7 @@ rank-deficient after centering.
 ## What should you inspect after fitting?
 
 ``` r
+
 sapply(fit$partial_scores, dim)
 #>      clinical behavior imaging
 #> [1,]       80       80      80
@@ -84,6 +89,7 @@ sapply(fit$partial_scores, dim)
 ```
 
 ``` r
+
 S_sum <- Reduce(`+`, fit$partial_scores)
 max_diff <- max(abs(S_sum - S))
 
@@ -106,6 +112,7 @@ the shared score space is more coherent than what you would get after
 breaking row alignment across blocks.
 
 ``` r
+
 boot <- infer_muscal(
   fit,
   method = "bootstrap",
@@ -123,6 +130,7 @@ boot$summary
 ```
 
 ``` r
+
 perm <- infer_muscal(
   fit,
   method = "permutation",
@@ -140,6 +148,7 @@ perm$component_results
 ```
 
 ``` r
+
 stopifnot(all(is.finite(boot$summary$mean)))
 stopifnot(all(boot$summary$upper >= boot$summary$lower))
 stopifnot(all(perm$component_results$p_value >= 0))

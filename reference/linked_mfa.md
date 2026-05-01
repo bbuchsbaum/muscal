@@ -23,12 +23,14 @@ anchored_mfa(
   ncomp = 2,
   normalization = c("MFA", "None", "custom"),
   alpha = NULL,
+  score_constraint = c("none", "orthonormal"),
   feature_groups = NULL,
   feature_lambda = 0,
   max_iter = 50,
   tol = 1e-06,
   ridge = 1e-08,
   verbose = FALSE,
+  use_future = FALSE,
   ...
 )
 
@@ -40,12 +42,14 @@ linked_mfa(
   ncomp = 2,
   normalization = c("MFA", "None", "custom"),
   alpha = NULL,
+  score_constraint = c("none", "orthonormal"),
   feature_groups = NULL,
   feature_lambda = 0,
   max_iter = 50,
   tol = 1e-06,
   ridge = 1e-08,
   verbose = FALSE,
+  use_future = FALSE,
   ...
 )
 ```
@@ -89,6 +93,14 @@ linked_mfa(
   length(X)\`), used when \`normalization = "custom"\`. The first weight
   corresponds to \`Y\`.
 
+- score_constraint:
+
+  Identification strategy for the shared score matrix. \`"none"\` uses
+  the historical unconstrained update followed by QR normalization
+  inside each ALS iteration. \`"orthonormal"\` treats \`S transpose S =
+  I\` as part of the model and updates \`S\` with a constrained
+  majorization/polar step.
+
 - feature_groups:
 
   Feature prior specification. One of: \* \`NULL\` (no feature prior),
@@ -118,6 +130,15 @@ linked_mfa(
 
   Logical; if \`TRUE\`, prints iteration progress.
 
+- use_future:
+
+  Logical; if \`TRUE\`, block-wise computations that do not depend on
+  one another (initial block-local preprocessing helpers and the final
+  partial-scores assembly) are performed via \`furrr::future_map()\`
+  when available. The main alternating-least-squares loop is
+  intrinsically sequential and is unaffected. Accepted here primarily
+  for interface parity with \[anchored_mcca()\].
+
 - ...:
 
   Unused (reserved for future extensions).
@@ -126,9 +147,10 @@ linked_mfa(
 
 An object inheriting from \`multivarious::multiblock_biprojector\` with
 additional classes \`"anchored_mfa"\` and \`"linked_mfa"\`. The object
-contains global scores in \`s\`, concatenated loadings in \`v\`, and
-block mappings in \`block_indices\`. Additional fields include
-\`V_list\`, \`B\`, \`row_index\`, \`alpha_blocks\`, and
+contains global anchor scores in \`s\` (and alias \`S\`), concatenated
+loadings in \`v\`, and block mappings in \`block_indices\`. Additional
+fields include \`V_list\`, \`B\`, \`row_index\`, exact per-block mapped
+scores in \`Z_list\`, \`score_index\`, \`alpha_blocks\`, and
 \`objective_trace\`.
 
 ## Details
@@ -136,6 +158,9 @@ block mappings in \`block_indices\`. Additional fields include
 \## Model The fitted model has the form: \$\$Y \approx S B^\top\$\$
 \$\$X_k \approx S\[\mathrm{idx}\_k,\] V_k^\top\$\$ where \`S\` is \`N ×
 ncomp\`, \`B\` is \`q × ncomp\`, and each \`V_k\` is \`p_k × ncomp\`.
+The score matrix can be identified either with the historical
+unconstrained/QR update (\`score_constraint = "none"\`) or with an
+explicit orthonormal constraint (\`score_constraint = "orthonormal"\`).
 
 \## Feature similarity prior (v1) When \`feature_lambda \> 0\` and
 \`feature_groups\` is supplied, Anchored MFA applies a group-shrinkage

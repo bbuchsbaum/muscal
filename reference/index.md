@@ -2,10 +2,14 @@
 
 ## All functions
 
+- [`aligned_interbattery()`](https://bbuchsbaum.github.io/muscal/reference/aligned_interbattery.md)
+  : Aligned Interbattery Analysis
 - [`aligned_mcca()`](https://bbuchsbaum.github.io/muscal/reference/aligned_mcca.md)
   : Aligned Multiblock Canonical Correlation Analysis (Aligned MCCA)
 - [`aligned_mfa()`](https://bbuchsbaum.github.io/muscal/reference/aligned_mfa.md)
   : Aligned Multiple Factor Analysis (Aligned MFA)
+- [`aligned_rrr()`](https://bbuchsbaum.github.io/muscal/reference/aligned_rrr.md)
+  : Aligned Reduced-Rank Regression
 - [`anchored_mcca()`](https://bbuchsbaum.github.io/muscal/reference/anchored_mcca.md)
   : Anchored Multiblock Canonical Correlation Analysis (Anchored MCCA)
 - [`autoplot(`*`<bada>`*`)`](https://bbuchsbaum.github.io/muscal/reference/autoplot.bada.md)
@@ -37,6 +41,8 @@
   : Tune Bilinear Mixed Hyperparameters via Subject-Block CV
 - [`check_duality()`](https://bbuchsbaum.github.io/muscal/reference/check_duality.md)
   : Verify duality between ROI- and RV-space coordinates
+- [`coupled_graph_anchored_mfa()`](https://bbuchsbaum.github.io/muscal/reference/coupled_graph_anchored_mfa.md)
+  : Coupled Graph-Anchored Multiple Factor Analysis
 - [`covstatis()`](https://bbuchsbaum.github.io/muscal/reference/covstatis.md)
   : STATIS for Covariance Matrices (generic)
 - [`cv_muscal()`](https://bbuchsbaum.github.io/muscal/reference/cv_muscal.md)
@@ -49,6 +55,12 @@
   helpers)
 - [`graph_anchored_mfa()`](https://bbuchsbaum.github.io/muscal/reference/graph_anchored_mfa.md)
   : Graph-Anchored Multiple Factor Analysis
+- [`infer_aligned_rrr()`](https://bbuchsbaum.github.io/muscal/reference/infer_aligned_rrr.md)
+  : Multifer Inference for Aligned RRR
+- [`infer_bada()`](https://bbuchsbaum.github.io/muscal/reference/infer_bada.md)
+  : Multifer Inference for BaDA
+- [`infer_covstatis()`](https://bbuchsbaum.github.io/muscal/reference/infer_covstatis.md)
+  : Multifer Component Tests for COVSTATIS
 - [`infer_muscal()`](https://bbuchsbaum.github.io/muscal/reference/infer_muscal.md)
   : Standard Resampling and Inference for Muscal Fits
 - [`ipca()`](https://bbuchsbaum.github.io/muscal/reference/ipca.md) :
@@ -66,6 +78,8 @@
   : Plotting Functions for MFA and Linked MFA
 - [`mfa()`](https://bbuchsbaum.github.io/muscal/reference/mfa.md) :
   Multiple Factor Analysis (generic)
+- [`orient_components()`](https://bbuchsbaum.github.io/muscal/reference/orient_components.md)
+  : Orient Component Signs for Fitted muscal Models
 - [`penalized_mfa()`](https://bbuchsbaum.github.io/muscal/reference/penalized_mfa.md)
   : Penalized Multiple Factor Analysis (MFA)
 - [`penalized_mfa_clusterwise()`](https://bbuchsbaum.github.io/muscal/reference/penalized_mfa_clusterwise.md)
@@ -114,16 +128,28 @@
   [`plot_variance.bada()`](https://bbuchsbaum.github.io/muscal/reference/plot_variance.md)
   [`plot_variance.penalized_mfa()`](https://bbuchsbaum.github.io/muscal/reference/plot_variance.md)
   : Plot Variance Explained (Scree Plot)
+- [`predict(`*`<aligned_interbattery>`*`)`](https://bbuchsbaum.github.io/muscal/reference/predict.aligned_interbattery.md)
+  : Predict from an Aligned Interbattery Fit
 - [`predict(`*`<aligned_mfa>`*`)`](https://bbuchsbaum.github.io/muscal/reference/predict.aligned_mfa.md)
   : Predict from an Aligned MFA Fit
+- [`predict(`*`<aligned_rrr>`*`)`](https://bbuchsbaum.github.io/muscal/reference/predict.aligned_rrr.md)
+  : Predict from an Aligned RRR Fit
 - [`predict(`*`<anchored_mfa>`*`)`](https://bbuchsbaum.github.io/muscal/reference/predict.anchored_mfa.md)
   : Predict from an Anchored MFA Fit
 - [`predict(`*`<bamfa>`*`)`](https://bbuchsbaum.github.io/muscal/reference/predict.bamfa.md)
   : Predict method for BaMFA objects
+- [`predict(`*`<coupled_graph_anchored_mfa>`*`)`](https://bbuchsbaum.github.io/muscal/reference/predict.coupled_graph_anchored_mfa.md)
+  : Predict from a Coupled Graph-Anchored MFA Fit
 - [`predict(`*`<graph_anchored_mfa>`*`)`](https://bbuchsbaum.github.io/muscal/reference/predict.graph_anchored_mfa.md)
   : Predict from a Graph-Anchored MFA Fit
+- [`predict(`*`<ipca>`*`)`](https://bbuchsbaum.github.io/muscal/reference/predict.ipca.md)
+  : Predict from an iPCA Fit
+- [`predict(`*`<mcca>`*`)`](https://bbuchsbaum.github.io/muscal/reference/predict.mcca.md)
+  : Predict from an MCCA Fit
 - [`predict(`*`<mfa>`*`)`](https://bbuchsbaum.github.io/muscal/reference/predict.mfa.md)
   : Predict from a Multiple Factor Analysis Fit
+- [`predict(`*`<response_aligned_mfa>`*`)`](https://bbuchsbaum.github.io/muscal/reference/predict.response_aligned_mfa.md)
+  : Predict from a Response-Aligned MFA Fit
 - [`print(`*`<bamfa>`*`)`](https://bbuchsbaum.github.io/muscal/reference/print.bamfa.md)
   : Print Method for BaMFA Objects
 - [`print(`*`<penalized_mfa>`*`)`](https://bbuchsbaum.github.io/muscal/reference/print.penalized_mfa.md)
@@ -133,12 +159,20 @@
 - [`project()`](https://bbuchsbaum.github.io/muscal/reference/project.md)
   [`reprocess()`](https://bbuchsbaum.github.io/muscal/reference/project.md)
   : Re‑export selected generics from \*\*multivarious\*\*
+- [`project(`*`<aligned_interbattery>`*`)`](https://bbuchsbaum.github.io/muscal/reference/project.aligned_interbattery.md)
+  : Project New Rows into an Aligned Interbattery Space
 - [`project(`*`<aligned_mfa>`*`)`](https://bbuchsbaum.github.io/muscal/reference/project.aligned_mfa.md)
   : Project New Rows into an Aligned MFA Space
+- [`project(`*`<aligned_rrr>`*`)`](https://bbuchsbaum.github.io/muscal/reference/project.aligned_rrr.md)
+  : Project New Rows into an Aligned RRR Space
 - [`project(`*`<anchored_mfa>`*`)`](https://bbuchsbaum.github.io/muscal/reference/project.anchored_mfa.md)
   : Project New Rows into an Anchored MFA Space
+- [`project(`*`<coupled_graph_anchored_mfa>`*`)`](https://bbuchsbaum.github.io/muscal/reference/project.coupled_graph_anchored_mfa.md)
+  : Project New Rows into a Coupled Graph-Anchored MFA Space
 - [`project(`*`<graph_anchored_mfa>`*`)`](https://bbuchsbaum.github.io/muscal/reference/project.graph_anchored_mfa.md)
   : Project New Rows into a Graph-Anchored MFA Space
+- [`project(`*`<response_aligned_mfa>`*`)`](https://bbuchsbaum.github.io/muscal/reference/project.response_aligned_mfa.md)
+  : Project New Rows into a Response-Aligned MFA Space
 - [`project_cov()`](https://bbuchsbaum.github.io/muscal/reference/project_cov.md)
   : Project a Covariance Matrix (generic)
 - [`project_covariate()`](https://bbuchsbaum.github.io/muscal/reference/project_covariate.md)
@@ -149,6 +183,8 @@
   : Project and Summarize New Subject Data (generic)
 - [`reconstruct(`*`<covstatis>`*`)`](https://bbuchsbaum.github.io/muscal/reference/reconstruct.covstatis.md)
   : Low-rank reconstruction of the compromise matrix
+- [`response_aligned_mfa()`](https://bbuchsbaum.github.io/muscal/reference/response_aligned_mfa.md)
+  : Response-Aligned Multiple Factor Analysis
 - [`roi_map()`](https://bbuchsbaum.github.io/muscal/reference/roi_map.md)
   : Extract ROI map for a compromise dimension
 - [`significant_components()`](https://bbuchsbaum.github.io/muscal/reference/significant_components.md)

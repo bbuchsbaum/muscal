@@ -19,12 +19,14 @@ near-identical loadings.
 ## Quick start
 
 ``` r
+
 library(muscal)
 library(multivarious)
 library(ggplot2)
 ```
 
 ``` r
+
 sim <- synthetic_multiblock(
   S = 4, n = 60, p = 25, r = 3,
   sigma = 0.3, seed = 42
@@ -38,6 +40,7 @@ sapply(sim$data_list, dim)
 Fit Penalized MFA with a moderate penalty:
 
 ``` r
+
 fit <- penalized_mfa(
   sim$data_list, ncomp = 3,
   lambda = 1, max_iter = 20
@@ -55,10 +58,13 @@ the mean of its block-specific scores.
 ## How it works
 
 Penalized MFA estimates orthonormal loading matrices
-$\mathbf{V}_{i} \in {\mathbb{R}}^{p \times k}$ for each block by
+$`\mathbf{V}_i \in \mathbb{R}^{p \times k}`$ for each block by
 minimizing:
 
-$$\sum\limits_{i = 1}^{S} \parallel \mathbf{X}_{i} - \mathbf{X}_{i}\mathbf{V}_{i}\mathbf{V}_{i}^{\top} \parallel_{F}^{2}\; + \;\lambda \cdot \text{Penalty}\left( \{\mathbf{V}_{i}\} \right)$$
+``` math
+\sum_{i=1}^{S} \|\mathbf{X}_i - \mathbf{X}_i \mathbf{V}_i \mathbf{V}_i^\top\|_F^2
+\;+\; \lambda \cdot \text{Penalty}(\{\mathbf{V}_i\})
+```
 
 The first term is reconstruction error; the second encourages similarity
 among block loadings. The optimization uses Riemannian gradient descent
@@ -67,6 +73,7 @@ on the Stiefel manifold (the space of orthonormal matrices).
 ## Convergence
 
 ``` r
+
 plot_convergence(fit)
 ```
 
@@ -86,6 +93,7 @@ The consensus score is the mean of per-block scores. You can also view
 individual block scores:
 
 ``` r
+
 autoplot(fit, block = 1)
 ```
 
@@ -97,6 +105,7 @@ Scores from block 1 alone.
 ### Variance explained
 
 ``` r
+
 plot_variance(fit, type = "bar")
 ```
 
@@ -110,6 +119,7 @@ Variance explained by each consensus component.
 Compare how blocks position the same observations:
 
 ``` r
+
 plot_partial_scores(fit, connect = TRUE, show_consensus = TRUE)
 ```
 
@@ -123,6 +133,7 @@ consensus. The penalty shrinks these distances compared to standard MFA.
 ### Variable loadings
 
 ``` r
+
 plot_loadings(fit, type = "bar", component = 1, top_n = 15)
 ```
 
@@ -137,8 +148,8 @@ Three penalty formulations are available:
 
 - **`"projection"`** (default): Penalizes the distance between
   block-specific projection matrices
-  $\mathbf{P}_{i} = \mathbf{V}_{i}\mathbf{V}_{i}^{\top}$.
-  Rotation-invariant — only the subspace matters, not the basis.
+  $`\mathbf{P}_i = \mathbf{V}_i \mathbf{V}_i^\top`$. Rotation-invariant
+  — only the subspace matters, not the basis.
 
 - **`"pairwise"`**: Penalizes all pairwise distances between loading
   matrices directly. Sensitive to rotation.
@@ -147,6 +158,7 @@ Three penalty formulations are available:
   loading matrix.
 
 ``` r
+
 # Projection penalty (default, recommended)
 fit_proj <- penalized_mfa(sim$data_list, ncomp = 3,
                           lambda = 1, penalty_method = "projection")
@@ -173,6 +185,7 @@ A practical approach is to compare reconstruction error across a grid of
 lambda values and pick the knee of the curve:
 
 ``` r
+
 lambdas <- c(0.01, 0.1, 1, 10, 100)
 fits <- lapply(lambdas, function(lam) {
   penalized_mfa(sim$data_list, ncomp = 3, lambda = lam, max_iter = 20)
@@ -185,6 +198,7 @@ By default, Penalized MFA uses the Adam optimizer on the Stiefel
 manifold. You can also use plain gradient descent:
 
 ``` r
+
 fit_gd <- penalized_mfa(
   sim$data_list, ncomp = 3, lambda = 1,
   optimizer = "gradient",

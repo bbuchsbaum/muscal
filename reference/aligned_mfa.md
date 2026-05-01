@@ -21,12 +21,14 @@ aligned_mfa(
   ncomp = 2,
   normalization = c("MFA", "None", "custom"),
   alpha = NULL,
+  score_constraint = c("none", "orthonormal"),
   feature_groups = NULL,
   feature_lambda = 0,
   max_iter = 50,
   tol = 1e-06,
   ridge = 1e-08,
   verbose = FALSE,
+  use_future = FALSE,
   ...
 )
 ```
@@ -69,6 +71,14 @@ aligned_mfa(
   Optional numeric vector of per-block weights (length \`length(X)\`),
   used when \`normalization = "custom"\`.
 
+- score_constraint:
+
+  Identification strategy for the shared score matrix. \`"none"\` uses
+  the historical unconstrained update followed by QR normalization
+  inside each ALS iteration. \`"orthonormal"\` treats \`S transpose S =
+  I\` as part of the model and updates \`S\` with a constrained
+  majorization/polar step.
+
 - feature_groups:
 
   Feature prior specification. One of: \* \`NULL\` (no feature prior),
@@ -95,6 +105,14 @@ aligned_mfa(
 - verbose:
 
   Logical; if \`TRUE\`, prints iteration progress.
+
+- use_future:
+
+  Logical; if \`TRUE\`, block-wise computations that do not depend on
+  one another may be performed via \`furrr::future_map()\` when
+  available. The main alternating-least-squares loop is intrinsically
+  sequential and is unaffected. Accepted here primarily for interface
+  parity with \[aligned_mcca()\] and \[anchored_mfa()\].
 
 - ...:
 

@@ -34,7 +34,8 @@
 <li class="active nav-item dropdown">
   <button class="nav-link dropdown-toggle" type="button" id="dropdown-articles" data-bs-toggle="dropdown" aria-expanded="false" aria-haspopup="true">Articles</button>
   <ul class="dropdown-menu" aria-labelledby="dropdown-articles">
-<li><a class="dropdown-item" href="../articles/aligned_mcca.html">Aligned Multiblock Canonical Correlation Analysis</a></li>
+<li><a class="dropdown-item" href="../articles/aligned_interbattery.html">Bidirectional Response Alignment with aligned_interbattery()</a></li>
+    <li><a class="dropdown-item" href="../articles/aligned_mcca.html">Aligned Multiblock Canonical Correlation Analysis</a></li>
     <li><a class="dropdown-item" href="../articles/aligned_mfa.html">Aligned Multiple Factor Analysis</a></li>
     <li><a class="dropdown-item" href="../articles/bada.html">Barycentric Discriminant Analysis</a></li>
     <li><a class="dropdown-item" href="../articles/bamfa.html">Barycentric MFA (BaMFA)</a></li>
@@ -46,6 +47,7 @@
     <li><a class="dropdown-item" href="../articles/mfa.html">Multiple Factor Analysis</a></li>
     <li><a class="dropdown-item" href="../articles/model_evaluation.html">Model Evaluation and Inference</a></li>
     <li><a class="dropdown-item" href="../articles/penalized_mfa.html">Penalized Multiple Factor Analysis</a></li>
+    <li><a class="dropdown-item" href="../articles/response_alignment.html">Choosing a Supervised Common-Space Model</a></li>
   </ul>
 </li>
       </ul>
@@ -150,7 +152,7 @@ the latent space to subject traits.</p>
 <p><code><a href="../reference/bilinear_mixed.html">bilinear_mixed()</a></code> decomposes each observed matrix
 <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><msub><mi>X</mi><mi>i</mi></msub><annotation encoding="application/x-tex">X_i</annotation></semantics></math>
 as:</p>
-<p><math display="block" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>X</mi><mi>i</mi></msub><mo>≈</mo><mi>L</mi><mrow><mo stretchy="true" form="prefix">(</mo><msub><mi>β</mi><mn>0</mn></msub><mo>+</mo><mi>B</mi><msub><mi>z</mi><mi>i</mi></msub><mo>+</mo><mi>W</mi><msub><mi>t</mi><mrow><mi>s</mi><mrow><mo stretchy="true" form="prefix">(</mo><mi>i</mi><mo stretchy="true" form="postfix">)</mo></mrow></mrow></msub><mo stretchy="true" form="postfix">)</mo></mrow><msup><mi>R</mi><mi>⊤</mi></msup></mrow><annotation encoding="application/x-tex">X_i \approx L\left(\beta_0 + B z_i + W t_{s(i)}\right) R^\top</annotation></semantics></math></p>
+<p><math display="block" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>X</mi><mi>i</mi></msub><mo>≈</mo><mi>L</mi><mrow><mo stretchy="true" form="prefix">(</mo><msub><mi>β</mi><mn>0</mn></msub><mo>+</mo><mi>B</mi><msub><mi>z</mi><mi>i</mi></msub><mo>+</mo><mi>W</mi><msub><mi>t</mi><mrow><mi>s</mi><mo stretchy="false" form="prefix">(</mo><mi>i</mi><mo stretchy="false" form="postfix">)</mo></mrow></msub><mo stretchy="true" form="postfix">)</mo></mrow><msup><mi>R</mi><mi>⊤</mi></msup></mrow><annotation encoding="application/x-tex">X_i \approx L\left(\beta_0 + B z_i + W t_{s(i)}\right) R^\top</annotation></semantics></math></p>
 <p>where:</p>
 <table class="table">
 <thead><tr class="header">
@@ -185,7 +187,7 @@ as:</p>
 <td align="left">(r_seed * r_roi) x K</td>
 </tr>
 <tr class="even">
-<td align="left"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><msub><mi>t</mi><mrow><mi>s</mi><mrow><mo stretchy="true" form="prefix">(</mo><mi>i</mi><mo stretchy="true" form="postfix">)</mo></mrow></mrow></msub><annotation encoding="application/x-tex">t_{s(i)}</annotation></semantics></math></td>
+<td align="left"><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><msub><mi>t</mi><mrow><mi>s</mi><mo stretchy="false" form="prefix">(</mo><mi>i</mi><mo stretchy="false" form="postfix">)</mo></mrow></msub><annotation encoding="application/x-tex">t_{s(i)}</annotation></semantics></math></td>
 <td align="left">Subject scores (random effects)</td>
 <td align="left">K x 1 per subject</td>
 </tr>
@@ -223,9 +225,9 @@ or structured entities.</p>
 <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><msub><mi>X</mi><mi>i</mi></msub><annotation encoding="application/x-tex">X_i</annotation></semantics></math>
 is projected onto both bases simultaneously to form a compressed core
 vector:</p>
-<p><math display="block" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>m</mi><mi>i</mi></msub><mo>=</mo><mtext mathvariant="normal">vec</mtext><mo minsize="1.2" maxsize="1.2" stretchy="false" form="prefix">(</mo><msup><mi>L</mi><mi>⊤</mi></msup><msub><mi>X</mi><mi>i</mi></msub><mspace width="0.167em"></mspace><mi>R</mi><mo minsize="1.2" maxsize="1.2" stretchy="false" form="postfix">)</mo><mspace width="1.0em"></mspace><mo>∈</mo><msup><mi>ℝ</mi><mrow><msub><mi>r</mi><mtext mathvariant="normal">seed</mtext></msub><mo>⋅</mo><msub><mi>r</mi><mtext mathvariant="normal">roi</mtext></msub></mrow></msup></mrow><annotation encoding="application/x-tex">m_i = \text{vec}\bigl(L^\top X_i\, R\bigr) \quad \in \mathbb{R}^{r_\text{seed} \cdot r_\text{roi}}</annotation></semantics></math></p>
+<p><math display="block" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>m</mi><mi>i</mi></msub><mo>=</mo><mtext mathvariant="normal">vec</mtext><mo minsize="120%" maxsize="120%" stretchy="true" form="prefix">(</mo><msup><mi>L</mi><mi>⊤</mi></msup><msub><mi>X</mi><mi>i</mi></msub><mspace width="0.167em"></mspace><mi>R</mi><mo minsize="120%" maxsize="120%" stretchy="true" form="postfix">)</mo><mspace width="1.0em"></mspace><mo>∈</mo><msup><mi>ℝ</mi><mrow><msub><mi>r</mi><mtext mathvariant="normal">seed</mtext></msub><mo>⋅</mo><msub><mi>r</mi><mtext mathvariant="normal">roi</mtext></msub></mrow></msup></mrow><annotation encoding="application/x-tex">m_i = \text{vec}\bigl(L^\top X_i\, R\bigr) \quad \in \mathbb{R}^{r_\text{seed} \cdot r_\text{roi}}</annotation></semantics></math></p>
 <p>The mixed model is then fit on these core vectors:</p>
-<p><math display="block" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>m</mi><mi>i</mi></msub><mo>=</mo><msub><mi>β</mi><mn>0</mn></msub><mo>+</mo><mi>B</mi><mspace width="0.167em"></mspace><msub><mi>z</mi><mi>i</mi></msub><mo>+</mo><mi>W</mi><mspace width="0.167em"></mspace><msub><mi>t</mi><mrow><mi>s</mi><mrow><mo stretchy="true" form="prefix">(</mo><mi>i</mi><mo stretchy="true" form="postfix">)</mo></mrow></mrow></msub><mo>+</mo><msub><mi>ε</mi><mi>i</mi></msub></mrow><annotation encoding="application/x-tex">m_i = \beta_0 + B\,z_i + W\,t_{s(i)} + \varepsilon_i</annotation></semantics></math></p>
+<p><math display="block" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>m</mi><mi>i</mi></msub><mo>=</mo><msub><mi>β</mi><mn>0</mn></msub><mo>+</mo><mi>B</mi><mspace width="0.167em"></mspace><msub><mi>z</mi><mi>i</mi></msub><mo>+</mo><mi>W</mi><mspace width="0.167em"></mspace><msub><mi>t</mi><mrow><mi>s</mi><mo stretchy="false" form="prefix">(</mo><mi>i</mi><mo stretchy="false" form="postfix">)</mo></mrow></msub><mo>+</mo><msub><mi>ε</mi><mi>i</mi></msub></mrow><annotation encoding="application/x-tex">m_i = \beta_0 + B\,z_i + W\,t_{s(i)} + \varepsilon_i</annotation></semantics></math></p>
 <p><strong>Use seed_axis when:</strong> your matrices represent
 bivariate relationships between two sets of entities (seeds and ROIs,
 genes and conditions, etc.) and you want to model the full matrix
@@ -261,14 +263,14 @@ design variable modulates the connectivity surface.</p>
 <p>In this mode, each row of a matrix is treated as a separate
 observation of the same ROI profile. Instead of compressing both axes,
 only the column (ROI) axis is projected:</p>
-<p><math display="block" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>u</mi><mrow><mi>i</mi><mi>j</mi></mrow></msub><mo>=</mo><msub><mi>X</mi><mi>i</mi></msub><mrow><mo stretchy="true" form="prefix">[</mo><mi>j</mi><mo>,</mo><mo>⋅</mo><mo stretchy="true" form="postfix">]</mo></mrow><mspace width="0.278em"></mspace><mi>R</mi><mspace width="1.0em"></mspace><mo>∈</mo><msup><mi>ℝ</mi><msub><mi>r</mi><mtext mathvariant="normal">roi</mtext></msub></msup></mrow><annotation encoding="application/x-tex">u_{ij} = X_i[j, \cdot]\; R \quad \in \mathbb{R}^{r_\text{roi}}</annotation></semantics></math></p>
+<p><math display="block" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>u</mi><mrow><mi>i</mi><mi>j</mi></mrow></msub><mo>=</mo><msub><mi>X</mi><mi>i</mi></msub><mo stretchy="false" form="prefix">[</mo><mi>j</mi><mo>,</mo><mi>⋅</mi><mo stretchy="false" form="postfix">]</mo><mspace width="0.278em"></mspace><mi>R</mi><mspace width="1.0em"></mspace><mo>∈</mo><msup><mi>ℝ</mi><msub><mi>r</mi><mtext mathvariant="normal">roi</mtext></msub></msup></mrow><annotation encoding="application/x-tex">u_{ij} = X_i[j, \cdot]\; R \quad \in \mathbb{R}^{r_\text{roi}}</annotation></semantics></math></p>
 <p>where
 <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>j</mi><annotation encoding="application/x-tex">j</annotation></semantics></math>
 indexes rows within matrix
 <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>i</mi><annotation encoding="application/x-tex">i</annotation></semantics></math>.
 This creates a “long-form” dataset with n_obs x n_seed rows, each of
 dimension r_roi. The mixed model is then:</p>
-<p><math display="block" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>u</mi><mrow><mi>i</mi><mi>j</mi></mrow></msub><mo>=</mo><msub><mi>β</mi><mn>0</mn></msub><mo>+</mo><mi>B</mi><mspace width="0.167em"></mspace><msub><mi>d</mi><mrow><mi>i</mi><mi>j</mi></mrow></msub><mo>+</mo><mi>W</mi><mspace width="0.167em"></mspace><msub><mi>t</mi><mrow><mi>s</mi><mrow><mo stretchy="true" form="prefix">(</mo><mi>i</mi><mo stretchy="true" form="postfix">)</mo></mrow></mrow></msub><mo>+</mo><msub><mi>ε</mi><mrow><mi>i</mi><mi>j</mi></mrow></msub></mrow><annotation encoding="application/x-tex">u_{ij} = \beta_0 + B\,d_{ij} + W\,t_{s(i)} + \varepsilon_{ij}</annotation></semantics></math></p>
+<p><math display="block" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>u</mi><mrow><mi>i</mi><mi>j</mi></mrow></msub><mo>=</mo><msub><mi>β</mi><mn>0</mn></msub><mo>+</mo><mi>B</mi><mspace width="0.167em"></mspace><msub><mi>d</mi><mrow><mi>i</mi><mi>j</mi></mrow></msub><mo>+</mo><mi>W</mi><mspace width="0.167em"></mspace><msub><mi>t</mi><mrow><mi>s</mi><mo stretchy="false" form="prefix">(</mo><mi>i</mi><mo stretchy="false" form="postfix">)</mo></mrow></msub><mo>+</mo><msub><mi>ε</mi><mrow><mi>i</mi><mi>j</mi></mrow></msub></mrow><annotation encoding="application/x-tex">u_{ij} = \beta_0 + B\,d_{ij} + W\,t_{s(i)} + \varepsilon_{ij}</annotation></semantics></math></p>
 <p>where
 <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><msub><mi>d</mi><mrow><mi>i</mi><mi>j</mi></mrow></msub><annotation encoding="application/x-tex">d_{ij}</annotation></semantics></math>
 is a design vector that can include the repeat-level design

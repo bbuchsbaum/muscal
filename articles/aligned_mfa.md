@@ -17,12 +17,14 @@ contributes through its own `row_index` mapping.
 ## What does a quick fit look like?
 
 ``` r
+
 library(muscal)
 library(multivarious)
 library(ggplot2)
 ```
 
 ``` r
+
 c(
   n_expression_rows = nrow(blocks$expression),
   n_imaging_rows = nrow(blocks$imaging),
@@ -33,6 +35,7 @@ c(
 ```
 
 ``` r
+
 fit <- aligned_mfa(blocks, row_index, N = N, ncomp = 2, normalization = "None")
 S <- multivarious::scores(fit)
 
@@ -42,6 +45,7 @@ stopifnot(length(fit$objective_trace) >= 1)
 ```
 
 ``` r
+
 cc <- cancor(
   scale(S_true, center = TRUE, scale = FALSE),
   scale(S, center = TRUE, scale = FALSE)
@@ -51,7 +55,7 @@ stopifnot(all(is.finite(cc)))
 stopifnot(mean(cc) > 0.77)
 
 round(cc, 3)
-#> [1] 0.913 0.779
+#> [1] 0.913 0.778
 ```
 
 ![Aligned MFA estimates one score vector for each latent reference row.
@@ -68,6 +72,7 @@ all `N` latent rows.
 ## How do row mappings work?
 
 ``` r
+
 lapply(row_index, head, 8)
 #> $expression
 #> [1]  1  4  5  6  7  9 10 11
@@ -92,6 +97,7 @@ should agree with ordinary
 [`mfa()`](https://bbuchsbaum.github.io/muscal/reference/mfa.md).
 
 ``` r
+
 fit_aligned_full <- aligned_mfa(
   full_blocks,
   list(expression = seq_len(N), imaging = seq_len(N), behavior = seq_len(N)),
@@ -102,19 +108,23 @@ fit_aligned_full <- aligned_mfa(
   max_iter = 200,
   tol = 1e-10
 )
-fit_mfa <- mfa(full_blocks, ncomp = 2, normalization = "None")
+if (requireNamespace("genpca", quietly = TRUE)) {
+  fit_mfa <- mfa(full_blocks, ncomp = 2, normalization = "None")
 
-P1 <- multivarious::scores(fit_aligned_full) %*%
-  solve(crossprod(multivarious::scores(fit_aligned_full)), t(multivarious::scores(fit_aligned_full)))
-P2 <- multivarious::scores(fit_mfa) %*%
-  solve(crossprod(multivarious::scores(fit_mfa)), t(multivarious::scores(fit_mfa)))
-rel <- norm(P1 - P2, type = "F") / (norm(P2, type = "F") + 1e-12)
+  P1 <- multivarious::scores(fit_aligned_full) %*%
+    solve(crossprod(multivarious::scores(fit_aligned_full)), t(multivarious::scores(fit_aligned_full)))
+  P2 <- multivarious::scores(fit_mfa) %*%
+    solve(crossprod(multivarious::scores(fit_mfa)), t(multivarious::scores(fit_mfa)))
+  rel <- norm(P1 - P2, type = "F") / (norm(P2, type = "F") + 1e-12)
 
-stopifnot(is.finite(rel))
-stopifnot(rel < 0.05)
+  stopifnot(is.finite(rel))
+  stopifnot(rel < 0.05)
 
-rel
-#> [1] 1.523229e-05
+  rel
+} else {
+  "Package 'genpca' not installed; skipping direct MFA reduction check."
+}
+#> [1] 1.153297e-05
 ```
 
 That reduction check is important: it confirms that you are getting a
@@ -124,6 +134,7 @@ model.
 ## What should you inspect while fitting?
 
 ``` r
+
 sapply(fit$V_list, dim)
 #>      expression imaging behavior
 #> [1,]         20      18       16

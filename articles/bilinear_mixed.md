@@ -20,6 +20,7 @@ bases, then fitting a mixed model in that compressed space.
 ## Quick start
 
 ``` r
+
 library(muscal)
 library(ggplot2)
 ```
@@ -29,6 +30,7 @@ conditions, producing 4-seed x 12-ROI connectivity matrices. A linear
 condition effect and subject-specific latent traits drive the signal.
 
 ``` r
+
 set.seed(42)
 n_subject <- 8
 n_repeat  <- 3
@@ -42,6 +44,7 @@ condition <- rep(seq_len(n_repeat), times = n_subject)
 Each element of `data_list` is a 4 x 12 matrix:
 
 ``` r
+
 dim(data_list[[1]])
 #> [1]  4 12
 length(data_list)
@@ -51,6 +54,7 @@ length(data_list)
 Fit the model with supervised trait prediction:
 
 ``` r
+
 fit <- bilinear_mixed(
   data      = data_list,
   subject   = subject,
@@ -79,25 +83,27 @@ the latent space to subject traits.
 ## How it works
 
 [`bilinear_mixed()`](https://bbuchsbaum.github.io/muscal/reference/bilinear_mixed.md)
-decomposes each observed matrix $X_{i}$ as:
+decomposes each observed matrix $`X_i`$ as:
 
-$$X_{i} \approx L\left( \beta_{0} + Bz_{i} + Wt_{s{(i)}} \right)R^{\top}$$
+``` math
+X_i \approx L\left(\beta_0 + B z_i + W t_{s(i)}\right) R^\top
+```
 
 where:
 
 | Symbol       | Meaning                         | Dimensions                   |
 |:-------------|:--------------------------------|:-----------------------------|
-| $L$          | Seed (row) basis                | n_seed x r_seed              |
-| $R$          | ROI (column) basis              | n_roi x r_roi                |
-| $\beta_{0}$  | Grand-mean core                 | r_seed x r_roi (vectorized)  |
-| $B$          | Design effect coefficients      | (r_seed \* r_roi) x n_design |
-| $W$          | Subject loading matrix          | (r_seed \* r_roi) x K        |
-| $t_{s{(i)}}$ | Subject scores (random effects) | K x 1 per subject            |
-| $A$          | Supervision map (optional)      | K x n_traits                 |
+| $`L`$        | Seed (row) basis                | n_seed x r_seed              |
+| $`R`$        | ROI (column) basis              | n_roi x r_roi                |
+| $`\beta_0`$  | Grand-mean core                 | r_seed x r_roi (vectorized)  |
+| $`B`$        | Design effect coefficients      | (r_seed \* r_roi) x n_design |
+| $`W`$        | Subject loading matrix          | (r_seed \* r_roi) x K        |
+| $`t_{s(i)}`$ | Subject scores (random effects) | K x 1 per subject            |
+| $`A`$        | Supervision map (optional)      | K x n_traits                 |
 
-The bases $L$ and $R$ are learned from the pooled covariance of the
-data, then the model alternates between updating $W$, $B$, $t$, and $A$
-in a regularized alternating least squares (ALS) loop.
+The bases $`L`$ and $`R`$ are learned from the pooled covariance of the
+data, then the model alternates between updating $`W`$, $`B`$, $`t`$,
+and $`A`$ in a regularized alternating least squares (ALS) loop.
 
 ## The three analysis modes
 
@@ -108,15 +114,19 @@ structured entities.
 
 ### seed_axis: rows as a matrix axis
 
-This is the default and most common mode. Each observed matrix $X_{i}$
+This is the default and most common mode. Each observed matrix $`X_i`$
 is projected onto both bases simultaneously to form a compressed core
 vector:
 
-$$m_{i} = \text{vec}(L^{\top}X_{i}\, R)\quad \in {\mathbb{R}}^{r_{\text{seed}} \cdot r_{\text{roi}}}$$
+``` math
+m_i = \text{vec}\bigl(L^\top X_i\, R\bigr) \quad \in \mathbb{R}^{r_\text{seed} \cdot r_\text{roi}}
+```
 
 The mixed model is then fit on these core vectors:
 
-$$m_{i} = \beta_{0} + B\, z_{i} + W\, t_{s{(i)}} + \varepsilon_{i}$$
+``` math
+m_i = \beta_0 + B\,z_i + W\,t_{s(i)} + \varepsilon_i
+```
 
 **Use seed_axis when:** your matrices represent bivariate relationships
 between two sets of entities (seeds and ROIs, genes and conditions,
@@ -124,6 +134,7 @@ etc.) and you want to model the full matrix pattern as a single
 observation.
 
 ``` r
+
 fit_axis <- bilinear_mixed(
   data    = data_list,
   subject = subject,
@@ -138,10 +149,11 @@ fit_axis <- bilinear_mixed(
 
 **What you get back:** the `axis` slot contains seed-by-ROI effect maps
 that can be visualized as heatmaps. Each `trait_maps[[k]]` is a full 4 x
-12 matrix, and each `design_maps[[j]]` shows how the $j$-th design
+12 matrix, and each `design_maps[[j]]` shows how the $`j`$-th design
 variable modulates the connectivity surface.
 
 ``` r
+
 names(fit_axis$axis$trait_maps)
 #> [1] "comp1" "comp2"
 dim(fit_axis$axis$trait_maps[["comp1"]])
@@ -156,16 +168,20 @@ In this mode, each row of a matrix is treated as a separate observation
 of the same ROI profile. Instead of compressing both axes, only the
 column (ROI) axis is projected:
 
-$$u_{ij} = X_{i}\lbrack j, \cdot \rbrack\; R\quad \in {\mathbb{R}}^{r_{\text{roi}}}$$
+``` math
+u_{ij} = X_i[j, \cdot]\; R \quad \in \mathbb{R}^{r_\text{roi}}
+```
 
-where $j$ indexes rows within matrix $i$. This creates a “long-form”
+where $`j`$ indexes rows within matrix $`i`$. This creates a “long-form”
 dataset with n_obs x n_seed rows, each of dimension r_roi. The mixed
 model is then:
 
-$$u_{ij} = \beta_{0} + B\, d_{ij} + W\, t_{s{(i)}} + \varepsilon_{ij}$$
+``` math
+u_{ij} = \beta_0 + B\,d_{ij} + W\,t_{s(i)} + \varepsilon_{ij}
+```
 
-where $d_{ij}$ is a design vector that can include the repeat-level
-design $z_{i}$, row-level covariates from `row_design`, and their
+where $`d_{ij}`$ is a design vector that can include the repeat-level
+design $`z_i`$, row-level covariates from `row_design`, and their
 interactions.
 
 **Use seed_repeat when:** your rows represent entities with their own
@@ -174,6 +190,7 @@ tissue-type labels), and you want those properties to enter as
 covariates.
 
 ``` r
+
 row_cov <- data.frame(
   position = seq(-1, 1, length.out = n_seed),
   hemi     = rep(c(-1, 1), length.out = n_seed)
@@ -196,21 +213,23 @@ rather than full matrices. The design is expanded to include row
 covariates and their interactions with the condition:
 
 ``` r
+
 fit_rep$repeat_head$design_names
 #> [1] "z1"          "row_cov1"    "row_cov2"    "z1:row_cov1" "z1:row_cov2"
 ```
 
 Each `roi_trait_maps[[k]]` is a vector of length n_roi showing how each
-ROI loads on the $k$-th subject component:
+ROI loads on the $`k`$-th subject component:
 
 ``` r
+
 length(fit_rep$repeat_head$roi_trait_maps[[1]])
 #> [1] 12
 ```
 
 ### both: fit both heads with a shared ROI basis
 
-This mode runs both analyses using the same ROI basis $R$, giving you
+This mode runs both analyses using the same ROI basis $`R`$, giving you
 complementary views: the seed_axis head captures the full seed-by-ROI
 pattern, while the seed_repeat head reveals how row-level covariates
 modulate the ROI profile.
@@ -219,6 +238,7 @@ modulate the ROI profile.
 meaningful row covariates.
 
 ``` r
+
 fit_both <- bilinear_mixed(
   data       = data_list,
   subject    = subject,
@@ -235,13 +255,14 @@ fit_both <- bilinear_mixed(
 The shared ROI basis ensures the two heads are comparable:
 
 ``` r
+
 all.equal(fit_both$axis$R, fit_both$repeat_head$R)
 #> [1] TRUE
 ```
 
 ## Interpreting components across spaces
 
-A single latent component $k$ has a footprint in three spaces: seed
+A single latent component $`k`$ has a footprint in three spaces: seed
 space (which rows it activates), ROI space (which columns it activates),
 and trait space (which subject-level outcomes it predicts).
 Understanding a component means seeing all three views together.
@@ -249,6 +270,7 @@ Understanding a component means seeing all three views together.
 We’ll use the supervised fit for this section:
 
 ``` r
+
 fit_sup <- bilinear_mixed(
   data      = data_list,
   subject   = subject,
@@ -265,11 +287,12 @@ fit_sup <- bilinear_mixed(
 
 ### Extracting the building blocks
 
-Every component $k$ is defined by four objects stored in the fitted
+Every component $`k`$ is defined by four objects stored in the fitted
 model. All outputs carry proper names — subject labels on scores,
 component labels on columns, trait names on the supervision map:
 
 ``` r
+
 # Bases learned from the data
 L <- fit_sup$axis$L    # seed basis: n_seed x r_seed
 R <- fit_sup$axis$R    # ROI basis:  n_roi  x r_roi
@@ -283,6 +306,7 @@ A <- fit_sup$axis$A              # supervision map: K x n_traits
 Note how everything is labeled:
 
 ``` r
+
 head(t_scores)  # rows = subjects, cols = comp1, comp2
 #>          comp1      comp2
 #> S1 -0.74220283  0.3029316
@@ -297,11 +321,12 @@ A               # rows = components, cols = trait names
 #> comp2 -0.1092141 -0.9947347
 ```
 
-The loading matrix $W$ is the key to interpretation. Each column
+The loading matrix $`W`$ is the key to interpretation. Each column
 `W[, k]` is a vectorized `r_seed` x `r_roi` core, and the model
 pre-computes its back-projection to the original space as `trait_maps`:
 
 ``` r
+
 # trait_maps[[k]] = L %*% matrix(W[,k], r_seed, r_roi) %*% t(R)
 # Already computed and named:
 names(fit_sup$axis$trait_maps)
@@ -316,6 +341,7 @@ To understand *where* a component acts, the model pre-computes marginal
 profiles by averaging each trait map across the opposite axis:
 
 ``` r
+
 # Pre-computed: no manual derivation needed
 seed_profiles <- fit_sup$axis$seed_profiles  # n_seed x K
 roi_profiles  <- fit_sup$axis$roi_profiles   # n_roi  x K
@@ -349,6 +375,7 @@ The trait map itself is the most informative view — it shows exactly
 which seed-ROI pairs are modulated by the component:
 
 ``` r
+
 tmap1 <- fit_sup$axis$trait_maps[[1]]
 ```
 
@@ -362,10 +389,11 @@ associated with individual differences on this latent dimension.
 ### Subject scores in latent space
 
 Subject scores position each individual along the components. Subjects
-with high scores on component $k$ express the connectivity pattern in
+with high scores on component $`k`$ express the connectivity pattern in
 `trait_maps[[k]]` more strongly:
 
 ``` r
+
 # Subject scores come pre-labeled with subject IDs and component names
 t_scores <- fit_sup$axis$t_scores
 t_scores
@@ -389,11 +417,12 @@ in connectivity patterns after removing condition effects.
 
 ### Trait-space weights
 
-The supervision map $A$ (K x n_traits) links subject scores to external
-measures. Each column of $A$ shows how a trait loads onto the latent
-components:
+The supervision map $`A`$ (K x n_traits) links subject scores to
+external measures. Each column of $`A`$ shows how a trait loads onto the
+latent components:
 
 ``` r
+
 # A comes pre-labeled: rows = components, columns = trait names
 A <- fit_sup$axis$A
 A
@@ -424,9 +453,10 @@ map. Bottom-right: how this component predicts traits, with subject
 scores along the x-axis.
 
 You can generate this panel for each component. Here is the code to
-produce it for an arbitrary component $k$:
+produce it for an arbitrary component $`k`$:
 
 ``` r
+
 k <- 1  # change to inspect other components
 
 par(mfrow = c(2, 2), mar = c(4, 4, 3, 1))
@@ -459,6 +489,7 @@ pre-computes an `roi_profiles` matrix (n_roi x K), analogous to the axis
 head’s profiles:
 
 ``` r
+
 fit_rep2 <- bilinear_mixed(
   data       = data_list,
   subject    = subject,
@@ -495,6 +526,7 @@ The design effect maps similarly live in ROI space. Each element of
 or interaction) affects the ROI profile:
 
 ``` r
+
 names(fit_rep2$repeat_head$roi_design_maps)
 #> [1] "z1"          "row_cov1"    "row_cov2"    "z1:row_cov1" "z1:row_cov2"
 ```
@@ -509,15 +541,15 @@ pattern.
 
 ### Comparing modes: what does each give you?
 
-| What you want         | seed_axis                                   | seed_repeat                              |
-|:----------------------|:--------------------------------------------|:-----------------------------------------|
-| Full seed x ROI maps  | `trait_maps[["comp1"]]`, `design_maps[[j]]` | Not available                            |
-| Per-seed profiles     | `seed_profiles` (pre-computed, n_seed x K)  | Not available                            |
-| Per-ROI profiles      | `roi_profiles` (pre-computed, n_roi x K)    | `roi_profiles` (pre-computed, n_roi x K) |
-| ROI component vectors | Derive via `roi_profiles[, k]`              | `roi_trait_maps[["comp1"]]` directly     |
-| Row-covariate effects | Not supported                               | `roi_design_maps` (main + interactions)  |
-| Subject scores        | `axis$t_scores` (labeled)                   | `repeat_head$t_scores` (labeled)         |
-| Trait prediction      | `axis$A` (labeled)                          | `repeat_head$A` (labeled)                |
+| What you want | seed_axis | seed_repeat |
+|:---|:---|:---|
+| Full seed x ROI maps | `trait_maps[["comp1"]]`, `design_maps[[j]]` | Not available |
+| Per-seed profiles | `seed_profiles` (pre-computed, n_seed x K) | Not available |
+| Per-ROI profiles | `roi_profiles` (pre-computed, n_roi x K) | `roi_profiles` (pre-computed, n_roi x K) |
+| ROI component vectors | Derive via `roi_profiles[, k]` | `roi_trait_maps[["comp1"]]` directly |
+| Row-covariate effects | Not supported | `roi_design_maps` (main + interactions) |
+| Subject scores | `axis$t_scores` (labeled) | `repeat_head$t_scores` (labeled) |
+| Trait prediction | `axis$A` (labeled) | `repeat_head$A` (labeled) |
 
 ## Inspecting design effects
 
@@ -526,6 +558,7 @@ space. In `seed_axis` mode, each `design_maps[[j]]` is a full seed x ROI
 matrix:
 
 ``` r
+
 length(fit$axis$design_maps)
 #> [1] 1
 dim(fit$axis$design_maps[[1]])
@@ -546,10 +579,11 @@ with condition; negative values indicate decreases.
 
 When your matrices are symmetric ROI x ROI correlation or covariance
 matrices, set `connectivity_type = "symmetric"`. The model then forces a
-shared basis for rows and columns ($L = R$), halving the basis
+shared basis for rows and columns ($`L = R`$), halving the basis
 parameters:
 
 ``` r
+
 fit_sym <- bilinear_mixed(
   data              = sym_data,
   subject           = subject,
@@ -573,6 +607,7 @@ When symmetric, the trait maps are symmetric too — the node-level
 profile is just the row (or column) mean:
 
 ``` r
+
 tmap_sym <- fit_sym$axis$trait_maps[[1]]
 node_profile <- rowMeans(tmap_sym)  # = colMeans since symmetric
 node_profile
@@ -588,6 +623,7 @@ picks sensible defaults automatically. You just specify a complexity
 profile:
 
 ``` r
+
 fit_easy <- bilinear_mixed_easy(
   data    = data_list,
   subject = subject,
@@ -617,6 +653,7 @@ Behind the scenes,
 inspects your data to set ranks, regularization strengths, and mode:
 
 ``` r
+
 rec <- bilinear_mixed_recommend(
   data    = data_list,
   subject = subject,
@@ -640,6 +677,7 @@ When you need the best configuration,
 performs subject-blocked cross-validation over a grid of key parameters:
 
 ``` r
+
 tuned <- bilinear_mixed_tune(
   data    = data_list,
   subject = subject,
@@ -683,6 +721,7 @@ For supervised problems with trait data, use `metric = "trait_r2"` to
 select the configuration that best predicts subject traits:
 
 ``` r
+
 tuned_trait <- bilinear_mixed_tune(
   data    = data_list,
   subject = subject,
@@ -698,6 +737,7 @@ The ALS algorithm tracks a penalized objective at each iteration. You
 can inspect convergence to check that the model has stabilized:
 
 ``` r
+
 obj <- fit$axis$objective_trace
 length(obj)
 #> [1] 30
@@ -715,12 +755,12 @@ oscillates, increase the ridge penalties (`lambda_w`, `lambda_t`).
 
 ## Summary of key functions
 
-| Function                                                                                                  | Purpose                                        |
-|:----------------------------------------------------------------------------------------------------------|:-----------------------------------------------|
-| [`bilinear_mixed()`](https://bbuchsbaum.github.io/muscal/reference/bilinear_mixed.md)                     | Full control over all parameters               |
-| [`bilinear_mixed_easy()`](https://bbuchsbaum.github.io/muscal/reference/bilinear_mixed_easy.md)           | Automatic defaults with optional tuning        |
-| [`bilinear_mixed_recommend()`](https://bbuchsbaum.github.io/muscal/reference/bilinear_mixed_recommend.md) | Data-adaptive parameter suggestions            |
-| [`bilinear_mixed_tune()`](https://bbuchsbaum.github.io/muscal/reference/bilinear_mixed_tune.md)           | Subject-blocked CV for rank and regularization |
+| Function | Purpose |
+|:---|:---|
+| [`bilinear_mixed()`](https://bbuchsbaum.github.io/muscal/reference/bilinear_mixed.md) | Full control over all parameters |
+| [`bilinear_mixed_easy()`](https://bbuchsbaum.github.io/muscal/reference/bilinear_mixed_easy.md) | Automatic defaults with optional tuning |
+| [`bilinear_mixed_recommend()`](https://bbuchsbaum.github.io/muscal/reference/bilinear_mixed_recommend.md) | Data-adaptive parameter suggestions |
+| [`bilinear_mixed_tune()`](https://bbuchsbaum.github.io/muscal/reference/bilinear_mixed_tune.md) | Subject-blocked CV for rank and regularization |
 
 ## Next steps
 
