@@ -70,9 +70,11 @@ An object inheriting from `multivarious::multiblock_biprojector` with
   (`N × ncomp` reference-space scores), `v` (concatenated canonical
   directions), `sdev`, `block_indices`, `alpha_blocks` (block weights used),
   `block_weights` (alias), `normalization`, `canonical_weights`,
-  `partial_scores`, `cor_loadings`, `block_contribs` (`ncomp × B` matrix of
-  `s_k^T M_b s_k`), and (for `"balanced"`) `alpha_per_component`,
-  `balance_trace`, `balance_converged`, `balance_iters`.
+  `partial_scores`, `cor_loadings` / `scaled_loadings` (feature-score
+  correlations), `scaled_loadings_by_block`, `block_contribs` (`ncomp × B`
+  matrix of `s_k^T M_b s_k`), and (for `"balanced"`)
+  `alpha_per_component`, `balance_trace`, `balance_converged`,
+  `balance_iters`.
 }
 \description{
 Aligned MCCA extends MAXVAR generalized CCA (GCCA) to the setting where each
@@ -91,7 +93,8 @@ Let `S` be the shared score matrix for the `N` reference rows. For each block
 Aligned MCCA computes `S` as the leading eigenvectors of a weighted sum of
 block-wise ridge projection operators lifted into the reference space:
 \deqn{H = \sum_b alpha_b M_b}
-with `M_b = lift(P_b)` and `P_b = X_b (X_b^T X_b + kappa_b I)^{-1} X_b^T`.
+with \eqn{M_b = lift(P_b)} and
+\eqn{P_b = X_b (X_b^T X_b + kappa_b I)^{-1} X_b^T}.
 
 ## Block-weighting schemes
 The block-weight vector `alpha_blocks` is formed according to `normalization`:

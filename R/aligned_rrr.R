@@ -328,6 +328,8 @@ aligned_rrr <- function(Y,
     block_preproc = setNames(proclist, names(Xp)),
     response_preproc = response_preproc_fit,
     ridge = ridge,
+    max_iter = max_iter,
+    tol = tol,
     score_representation = "stacked_block_scores",
     classes = "aligned_rrr"
   )

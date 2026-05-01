@@ -3,4 +3,6 @@
 #' @keywords internal
 #' @useDynLib muscal, .registration = TRUE
 #' @importFrom Rcpp evalCpp
+#' @importFrom methods as
+#' @importFrom stats setNames
 "_PACKAGE"

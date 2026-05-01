@@ -63,7 +63,7 @@ with the first weight corresponding to `Y`.}
 \item{score_constraint}{Identification strategy for the anchored score
 matrix. `"none"` uses the historical unconstrained update followed by QR
 normalization inside each ALS iteration. `"orthonormal"` enforces
-`S^\top S = I` with a constrained majorization/polar update.}
+`S transpose S = I` with a constrained majorization/polar update.}
 
 \item{feature_graph}{Feature-graph specification; see Details.}
 
@@ -104,6 +104,10 @@ updates.}
 
 \item{verbose}{Logical; if `TRUE`, prints iteration diagnostics.}
 
+\item{use_future}{Logical; if `TRUE`, block-wise computations that do not
+depend on one another are performed via `furrr::future_map()` when
+available.}
+
 \item{...}{Unused (reserved for future extensions).}
 }
 \value{
@@ -131,7 +135,7 @@ Feature-side and score-side graph penalties are inherited from
 \deqn{\lambda_G \mathrm{tr}(V^\top L_G V) + \lambda_S \mathrm{tr}(S^\top L_S S).}
 As in [graph_anchored_mfa()], `score_constraint = "none"` uses the
 historical unconstrained/QR score update, while
-`score_constraint = "orthonormal"` enforces `S^\top S = I` directly during
+`score_constraint = "orthonormal"` enforces `S transpose S = I` directly during
 fitting.
 
 When `coupling_lambda` is large, block-specific scores are strongly tied to

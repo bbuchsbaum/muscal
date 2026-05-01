@@ -245,3 +245,154 @@ test_that("project_subjects round-trips subject scores under default preprocessi
   )
   expect_true(any(abs(proj_subj1$subject_scores[1, ]) > 1e-6))
 })
+
+context("covstatis: multifer component tests")
+
+test_that("COVSTATIS multifer payload preserves processed table shape", {
+  res <- covstatis(subject_data, ncomp = n_comp_fit)
+  payload <- muscal:::.covstatis_multifer_payload(res, subject_data)
+
+  expect_true(muscal:::.covstatis_valid_payload(payload))
+  expect_length(payload$tables, length(subject_data))
+  expect_equal(unique(vapply(payload$tables, nrow, integer(1))), p)
+  expect_equal(unique(vapply(payload$tables, ncol, integer(1))), p)
+})
+
+test_that("COVSTATIS multifer adapters declare the expected component contract", {
+  skip_if_not_installed("multifer")
+  skip_if_not(muscal:::.covstatis_multifer_adapter_geometry_available())
+
+  for (axes in c("compromise", "interstructure")) {
+    adapter <- muscal:::.covstatis_multifer_adapter(axes)
+    expect_true(multifer::adapter_supports(
+      adapter, "adapter", "variance", "component_significance"
+    ))
+    expect_equal(adapter$validity_level, "conditional")
+    expect_true("roi_permutation_null" %in% adapter$declared_assumptions)
+  }
+})
+
+test_that("COVSTATIS multifer statistics match adapter-fit root ratios", {
+  res <- covstatis(subject_data, ncomp = n_comp_fit)
+  payload <- muscal:::.covstatis_multifer_payload(res, subject_data)
+
+  for (axes in c("compromise", "interstructure")) {
+    fit <- muscal:::.covstatis_adapter_fit(payload, axes = axes)
+    oracle <- fit$roots[[1L]] / sum(fit$roots)
+
+    expect_equal(
+      muscal:::.covstatis_leading_root_ratio(payload, axes = axes),
+      oracle,
+      tolerance = 1e-12
+    )
+    expect_true(all(fit$roots >= 0))
+    expect_true(all(is.finite(fit$v)))
+  }
+})
+
+test_that("COVSTATIS multifer null and residual payloads remain valid", {
+  skip_if_not_installed("multifer")
+  skip_if_not(muscal:::.covstatis_multifer_adapter_geometry_available())
+
+  res <- covstatis(subject_data, ncomp = n_comp_fit)
+  payload <- muscal:::.covstatis_multifer_payload(res, subject_data)
+
+  for (axes in c("compromise", "interstructure")) {
+    adapter <- muscal:::.covstatis_multifer_adapter(axes)
+    fit <- muscal:::.covstatis_adapter_fit(payload, axes = axes)
+    residual <- adapter$residualize(fit, 1L, payload)
+    null_payload <- adapter$null_action(fit, payload)
+
+    expect_true(muscal:::.covstatis_valid_payload(residual))
+    expect_true(muscal:::.covstatis_valid_payload(null_payload))
+    expect_named(residual$tables, names(payload$tables))
+    expect_named(null_payload$tables, names(payload$tables))
+  }
+})
+
+test_that("COVSTATIS multifer statistics are invariant to table order", {
+  res <- covstatis(subject_data, ncomp = n_comp_fit)
+  payload <- muscal:::.covstatis_multifer_payload(res, subject_data)
+  reversed <- payload
+  reversed$tables <- rev(payload$tables)
+
+  for (axes in c("compromise", "interstructure")) {
+    expect_equal(
+      muscal:::.covstatis_leading_root_ratio(reversed, axes = axes),
+      muscal:::.covstatis_leading_root_ratio(payload, axes = axes),
+      tolerance = 1e-10
+    )
+  }
+})
+
+test_that("COVSTATIS multifer payload validation rejects contaminated tables", {
+  res <- covstatis(subject_data, ncomp = n_comp_fit)
+  payload <- muscal:::.covstatis_multifer_payload(res, subject_data)
+
+  bad <- payload
+  bad$tables[[1]][1, 2] <- bad$tables[[1]][1, 2] + 1
+  expect_false(muscal:::.covstatis_valid_payload(bad))
+
+  bad <- payload
+  bad$tables[[1]][1, 1] <- NA_real_
+  expect_false(muscal:::.covstatis_valid_payload(bad))
+})
+
+test_that("infer_covstatis tests compromise ROI eigencomponents with multifer", {
+  skip_if_not_installed("multifer")
+  skip_if_not(muscal:::.covstatis_multifer_adapter_geometry_available())
+
+  res <- covstatis(subject_data, ncomp = n_comp_fit)
+  out <- infer_covstatis(
+    res,
+    data = subject_data,
+    axes = "compromise",
+    B = 5L,
+    seed = 6101,
+    mc_batch_size = 5L
+  )
+
+  expect_s3_class(out, "infer_result")
+  expect_equal(out$provenance$adapter_id, "muscal_covstatis_compromise")
+  expect_gt(nrow(out$component_tests), 0L)
+  expect_match(out$mc$statistic_label, "adapter component_stat")
+})
+
+test_that("infer_covstatis tests interstructure RV axes with multifer", {
+  skip_if_not_installed("multifer")
+  skip_if_not(muscal:::.covstatis_multifer_adapter_geometry_available())
+
+  res <- covstatis(subject_data, ncomp = n_comp_fit)
+  out <- infer_covstatis(
+    res,
+    data = subject_data,
+    axes = "interstructure",
+    B = 5L,
+    seed = 6102,
+    mc_batch_size = 5L
+  )
+
+  expect_s3_class(out, "infer_result")
+  expect_equal(out$provenance$adapter_id, "muscal_covstatis_interstructure")
+  expect_gt(nrow(out$component_tests), 0L)
+})
+
+test_that("infer_covstatis can return both COVSTATIS significance families", {
+  skip_if_not_installed("multifer")
+  skip_if_not(muscal:::.covstatis_multifer_adapter_geometry_available())
+
+  res <- covstatis(subject_data, ncomp = n_comp_fit)
+  out <- infer_covstatis(
+    res,
+    data = subject_data,
+    axes = "both",
+    B = 5L,
+    seed = 6103,
+    mc_batch_size = 5L
+  )
+
+  expect_s3_class(out, "covstatis_multifer_result")
+  expect_named(out, c("interstructure", "compromise"))
+  expect_s3_class(out$interstructure, "infer_result")
+  expect_s3_class(out$compromise, "infer_result")
+})

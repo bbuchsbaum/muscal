@@ -15,6 +15,7 @@ aligned_rrr(
   tol = 1e-06,
   ridge = 1e-08,
   verbose = FALSE,
+  use_future = FALSE,
   ...
 )
 }
@@ -49,6 +50,9 @@ block row.}
 weight updates.}
 
 \item{verbose}{Logical; if `TRUE`, prints iteration diagnostics.}
+
+\item{use_future}{Logical; if `TRUE`, block-wise computations are performed via
+`furrr::future_map()` when available.}
 
 \item{...}{Unused (reserved for future extensions).}
 }
@@ -95,8 +99,8 @@ X2 <- matrix(rnorm(36 * 5), 36, 5)
 B <- qr.Q(qr(matrix(rnorm(3 * 2), 3, 2)))
 W1 <- matrix(rnorm(6 * 2), 6, 2)
 W2 <- matrix(rnorm(5 * 2), 5, 2)
-Y1 <- X1 %*% W1 %*% t(B) + matrix(rnorm(40 * 3, sd = 0.05), 40, 3)
-Y2 <- X2 %*% W2 %*% t(B) + matrix(rnorm(36 * 3, sd = 0.05), 36, 3)
+Y1 <- X1 \%*\% W1 \%*\% t(B) + matrix(rnorm(40 * 3, sd = 0.05), 40, 3)
+Y2 <- X2 \%*\% W2 \%*\% t(B) + matrix(rnorm(36 * 3, sd = 0.05), 36, 3)
 
 fit <- aligned_rrr(
   Y = list(X1 = Y1, X2 = Y2),

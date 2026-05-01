@@ -98,6 +98,8 @@ test_that("orient_components updates mcca canonical weights coherently", {
   expect_equal(fit_flip$canonical_weights[[1]][, 1], -fit$canonical_weights[[1]][, 1], tolerance = 1e-8)
   expect_equal(fit_flip$canonical_weights[[2]][, 1], -fit$canonical_weights[[2]][, 1], tolerance = 1e-8)
   expect_equal(fit_flip$partial_scores[[1]][, 1], -fit$partial_scores[[1]][, 1], tolerance = 1e-8)
+  expect_equal(fit_flip$scaled_loadings[, 1], -fit$scaled_loadings[, 1], tolerance = 1e-8)
+  expect_equal(fit_flip$scaled_loadings_by_block[[1]][, 1], -fit$scaled_loadings_by_block[[1]][, 1], tolerance = 1e-8)
 
   new_data <- cbind(X1[1:6, , drop = FALSE], X2[1:6, , drop = FALSE])
   score_ref <- predict(fit, new_data, type = "scores")

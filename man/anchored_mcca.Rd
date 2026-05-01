@@ -73,10 +73,11 @@ An object of class `"anchored_mcca"` (and `"aligned_mcca"`,
   `"multiblock_biprojector"`). Relevant fields include `s` (anchor-space
   scores, `N × ncomp`), `v` (concatenated canonical directions), `sdev`,
   `block_indices`, `alpha_blocks`, `block_weights` (alias), `normalization`,
-  `canonical_weights`, `partial_scores`, `cor_loadings`, `block_contribs`
+  `canonical_weights`, `partial_scores`, `cor_loadings` / `scaled_loadings`
+  (feature-score correlations), `scaled_loadings_by_block`, `block_contribs`
   (`ncomp × B` matrix of raw `g_j^T M_b g_j` contributions),
-  `weighted_block_contribs`, `block_contrib_fraction`, and (for
-  `"balanced"` only) `balance_trace`, `balance_converged`, `balance_iters`.
+  `weighted_block_contribs`, `block_contrib_fraction`, and (for `"balanced"`
+  only) `balance_trace`, `balance_converged`, `balance_iters`.
 }
 \description{
 Anchored MCCA estimates a shared canonical score matrix `S` in the row space
@@ -113,7 +114,7 @@ is formed according to `normalization`:
 * `"custom"` — use `alpha` as supplied.
 
 ## Model
-Let \eqn{P_b = X_b (X_b^\top X_b + \kappa_b I)^-1 X_b^\top} be the
+Let \eqn{P_b = X_b (X_b^\top X_b + \kappa_b I)^{-1} X_b^\top} be the
 ridge-stabilised hat matrix of block `b`, lifted to the anchor row space via
 `row_index[[b]]` to produce `M_b` (`N × N`). Anchored MCCA computes the top
 eigenpairs of

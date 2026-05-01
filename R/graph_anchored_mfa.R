@@ -34,7 +34,7 @@
 #' orthonormal constraint (`score_constraint = "orthonormal"`).
 #' The score-graph term is equivalent to
 #' \deqn{\frac{\lambda_S}{2} \sum_{i,j} w_{ij} \|S_{i\cdot} - S_{j\cdot}\|_2^2}
-#' for adjacency weights `w_{ij}`, so nearby rows in `Y` are encouraged to have
+#' for adjacency weights \eqn{w_{ij}}, so nearby rows in `Y` are encouraged to have
 #' nearby latent scores.
 #'
 #' When both `graph_lambda = 0` (or `feature_graph = NULL`) and
@@ -91,7 +91,7 @@
 #' @param score_constraint Identification strategy for the anchored score
 #'   matrix. `"none"` uses the historical unconstrained update followed by QR
 #'   normalization inside each ALS iteration. `"orthonormal"` enforces
-#'   `S^\top S = I` with a constrained majorization/polar update.
+#'   `S transpose S = I` with a constrained majorization/polar update.
 #' @param feature_graph Feature-graph specification; see Details.
 #' @param graph_lambda Non-negative scalar controlling graph-penalty strength.
 #' @param graph_form Interpretation of `feature_graph` when it is matrix-like, or
@@ -114,6 +114,9 @@
 #' @param ridge Non-negative ridge stabilization applied to loading and score
 #'   updates.
 #' @param verbose Logical; if `TRUE`, prints iteration diagnostics.
+#' @param use_future Logical; if `TRUE`, block-wise computations that do not
+#'   depend on one another are performed via `furrr::future_map()` when
+#'   available.
 #' @param ... Unused (reserved for future extensions).
 #'
 #' @return An object inheriting from `multivarious::multiblock_biprojector` with
@@ -141,25 +144,6 @@
 #'   score_graph_weight_mode = "heat",
 #'   score_graph_lambda = 1
 #' )
-#'
-#' if (requireNamespace("adjoin", quietly = TRUE)) {
-#'   A <- adjoin::graph_weights(
-#'     Y,
-#'     neighbor_mode = "knn",
-#'     k = 5,
-#'     weight_mode = "heat"
-#'   )
-#'
-#'   fit_adjoin <- graph_anchored_mfa(
-#'     Y = Y,
-#'     X = list(X1 = X1, X2 = X2),
-#'     row_index = idx,
-#'     ncomp = 2,
-#'     score_graph = A,
-#'     score_graph_form = "adjacency",
-#'     score_graph_lambda = 1
-#'   )
-#' }
 #'
 #' @export
 graph_anchored_mfa <- function(Y,
@@ -512,7 +496,7 @@ graph_anchored_mfa <- function(Y,
 #' \deqn{\lambda_G \mathrm{tr}(V^\top L_G V) + \lambda_S \mathrm{tr}(S^\top L_S S).}
 #' As in [graph_anchored_mfa()], `score_constraint = "none"` uses the
 #' historical unconstrained/QR score update, while
-#' `score_constraint = "orthonormal"` enforces `S^\top S = I` directly during
+#' `score_constraint = "orthonormal"` enforces `S transpose S = I` directly during
 #' fitting.
 #'
 #' When `coupling_lambda` is large, block-specific scores are strongly tied to

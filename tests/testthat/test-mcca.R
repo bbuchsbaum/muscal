@@ -28,6 +28,11 @@ test_that("mcca.list produces expected structure", {
   expect_equal(dim(multivarious::scores(res)), c(5, 2))
   expect_equal(length(res$partial_scores), 3)
   expect_equal(dim(res$partial_scores[[1]]), c(5, 2))
+  expect_equal(dim(res$scaled_loadings), c(sum(ncols), 2))
+  expect_equal(res$scaled_loadings, res$cor_loadings)
+  expect_equal(length(res$scaled_loadings_by_block), 3)
+  expect_equal(dim(res$scaled_loadings_by_block[[1]]), c(ncols[1], 2))
+  expect_true(all(abs(res$scaled_loadings) <= 1 + 1e-12))
 })
 
 test_that("mcca handles p > n blocks without error", {

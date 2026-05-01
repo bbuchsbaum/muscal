@@ -40,7 +40,7 @@
 #' @param score_constraint Identification strategy for the shared score matrix.
 #'   `"none"` uses the historical unconstrained update followed by QR
 #'   normalization inside each ALS iteration. `"orthonormal"` treats
-#'   `S^\top S = I` as part of the model and updates `S` with a constrained
+#'   `S transpose S = I` as part of the model and updates `S` with a constrained
 #'   majorization/polar step.
 #' @param feature_groups Feature prior specification. One of:
 #'   * `NULL` (no feature prior),

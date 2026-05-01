@@ -115,7 +115,11 @@ mfa <- function(data, preproc, ncomp = 2, normalization = "MFA", A = NULL, M = N
 #'   `furrr::future_map()` when available.
 #' @param ... Additional arguments passed to the underlying method.
 #'
-#' @return An object inheriting from class `mcca`.
+#' @return An object inheriting from class `mcca`. Relevant fields include
+#'   `s` (compromise scores), `v` (concatenated canonical directions),
+#'   `canonical_weights` (raw block-wise ridge back-projection weights),
+#'   `partial_scores`, `cor_loadings` / `scaled_loadings` (feature-score
+#'   correlations), and `scaled_loadings_by_block`.
 #'
 #' @references
 #' Kettenring, J. R. (1971). Canonical analysis of several sets of variables.

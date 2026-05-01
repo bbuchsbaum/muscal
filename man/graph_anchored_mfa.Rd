@@ -62,7 +62,7 @@ with the first weight corresponding to `Y`.}
 \item{score_constraint}{Identification strategy for the anchored score
 matrix. `"none"` uses the historical unconstrained update followed by QR
 normalization inside each ALS iteration. `"orthonormal"` enforces
-`S^\top S = I` with a constrained majorization/polar update.}
+`S transpose S = I` with a constrained majorization/polar update.}
 
 \item{feature_graph}{Feature-graph specification; see Details.}
 
@@ -98,6 +98,10 @@ robust value is estimated from the k-th neighbor distances.}
 updates.}
 
 \item{verbose}{Logical; if `TRUE`, prints iteration diagnostics.}
+
+\item{use_future}{Logical; if `TRUE`, block-wise computations that do not
+depend on one another are performed via `furrr::future_map()` when
+available.}
 
 \item{...}{Unused (reserved for future extensions).}
 }
@@ -143,7 +147,7 @@ unconstrained/QR update (`score_constraint = "none"`) or with an explicit
 orthonormal constraint (`score_constraint = "orthonormal"`).
 The score-graph term is equivalent to
 \deqn{\frac{\lambda_S}{2} \sum_{i,j} w_{ij} \|S_{i\cdot} - S_{j\cdot}\|_2^2}
-for adjacency weights `w_{ij}`, so nearby rows in `Y` are encouraged to have
+for adjacency weights \eqn{w_{ij}}, so nearby rows in `Y` are encouraged to have
 nearby latent scores.
 
 When both `graph_lambda = 0` (or `feature_graph = NULL`) and
@@ -196,24 +200,5 @@ fit <- graph_anchored_mfa(
   score_graph_weight_mode = "heat",
   score_graph_lambda = 1
 )
-
-if (requireNamespace("adjoin", quietly = TRUE)) {
-  A <- adjoin::graph_weights(
-    Y,
-    neighbor_mode = "knn",
-    k = 5,
-    weight_mode = "heat"
-  )
-
-  fit_adjoin <- graph_anchored_mfa(
-    Y = Y,
-    X = list(X1 = X1, X2 = X2),
-    row_index = idx,
-    ncomp = 2,
-    score_graph = A,
-    score_graph_form = "adjacency",
-    score_graph_lambda = 1
-  )
-}
 
 }

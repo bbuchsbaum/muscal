@@ -28,6 +28,7 @@ response_aligned_mfa(
   tol = 1e-06,
   ridge = 1e-08,
   verbose = FALSE,
+  use_future = FALSE,
   ...
 )
 }
@@ -109,6 +110,9 @@ the Laplacian construction used for edge-based inputs.}
 \item{ridge}{Non-negative ridge stabilization applied to scores and loadings.}
 
 \item{verbose}{Logical; if `TRUE`, prints iteration diagnostics.}
+
+\item{use_future}{Logical; if `TRUE`, block-wise computations are performed via
+`furrr::future_map()` when available.}
 
 \item{...}{Unused (reserved for future extensions).}
 }

@@ -17,7 +17,8 @@
 #' Aligned MCCA computes `S` as the leading eigenvectors of a weighted sum of
 #' block-wise ridge projection operators lifted into the reference space:
 #' \deqn{H = \sum_b alpha_b M_b}
-#' with `M_b = lift(P_b)` and `P_b = X_b (X_b^T X_b + kappa_b I)^{-1} X_b^T`.
+#' with \eqn{M_b = lift(P_b)} and
+#' \eqn{P_b = X_b (X_b^T X_b + kappa_b I)^{-1} X_b^T}.
 #'
 #' ## Block-weighting schemes
 #' The block-weight vector `alpha_blocks` is formed according to `normalization`:
@@ -71,9 +72,11 @@
 #'   (`N × ncomp` reference-space scores), `v` (concatenated canonical
 #'   directions), `sdev`, `block_indices`, `alpha_blocks` (block weights used),
 #'   `block_weights` (alias), `normalization`, `canonical_weights`,
-#'   `partial_scores`, `cor_loadings`, `block_contribs` (`ncomp × B` matrix of
-#'   `s_k^T M_b s_k`), and (for `"balanced"`) `alpha_per_component`,
-#'   `balance_trace`, `balance_converged`, `balance_iters`.
+#'   `partial_scores`, `cor_loadings` / `scaled_loadings` (feature-score
+#'   correlations), `scaled_loadings_by_block`, `block_contribs` (`ncomp × B`
+#'   matrix of `s_k^T M_b s_k`), and (for `"balanced"`)
+#'   `alpha_per_component`, `balance_trace`, `balance_converged`,
+#'   `balance_iters`.
 #'
 #' @examples
 #' \donttest{
@@ -342,16 +345,8 @@ aligned_mcca <- function(X,
     partial_scores[[k]] <- Xk %*% V_block
   }
 
-  cor_list <- lapply(seq_along(Xp), function(k) {
-    Ck <- tryCatch(
-      suppressWarnings(stats::cor(Xp[[k]], S_scores[row_index[[k]], , drop = FALSE])),
-      error = function(e) NULL
-    )
-    if (!is.null(Ck)) Ck[!is.finite(Ck)] <- 0
-    Ck
-  })
-  cor_list <- cor_list[!vapply(cor_list, is.null, logical(1))]
-  cor_loadings <- if (length(cor_list) > 0) do.call(rbind, cor_list) else NULL
+  score_cor <- .mcca_score_correlations(Xp, S_scores, row_index)
+  cor_loadings <- score_cor$concatenated
 
   # Per-block per-component contribution matrix (ncomp x B)
   block_contribs <- vapply(M_list, function(Mb) {
@@ -381,6 +376,8 @@ aligned_mcca <- function(X,
     partial_scores = partial_scores,
     canonical_weights = W_list,
     cor_loadings = cor_loadings,
+    scaled_loadings = cor_loadings,
+    scaled_loadings_by_block = score_cor$by_block,
     block_contribs = block_contribs,
     alpha_per_component = alpha_per_component,
     balance_trace = balance_info$trace,
@@ -431,7 +428,7 @@ aligned_mcca <- function(X,
 #' * `"custom"` — use `alpha` as supplied.
 #'
 #' ## Model
-#' Let \eqn{P_b = X_b (X_b^\top X_b + \kappa_b I)^-1 X_b^\top} be the
+#' Let \eqn{P_b = X_b (X_b^\top X_b + \kappa_b I)^{-1} X_b^\top} be the
 #' ridge-stabilised hat matrix of block `b`, lifted to the anchor row space via
 #' `row_index[[b]]` to produce `M_b` (`N × N`). Anchored MCCA computes the top
 #' eigenpairs of
@@ -506,10 +503,11 @@ aligned_mcca <- function(X,
 #'   `"multiblock_biprojector"`). Relevant fields include `s` (anchor-space
 #'   scores, `N × ncomp`), `v` (concatenated canonical directions), `sdev`,
 #'   `block_indices`, `alpha_blocks`, `block_weights` (alias), `normalization`,
-#'   `canonical_weights`, `partial_scores`, `cor_loadings`, `block_contribs`
+#'   `canonical_weights`, `partial_scores`, `cor_loadings` / `scaled_loadings`
+#'   (feature-score correlations), `scaled_loadings_by_block`, `block_contribs`
 #'   (`ncomp × B` matrix of raw `g_j^T M_b g_j` contributions),
-#'   `weighted_block_contribs`, `block_contrib_fraction`, and (for
-#'   `"balanced"` only) `balance_trace`, `balance_converged`, `balance_iters`.
+#'   `weighted_block_contribs`, `block_contrib_fraction`, and (for `"balanced"`
+#'   only) `balance_trace`, `balance_converged`, `balance_iters`.
 #'
 #' @examples
 #' \donttest{
@@ -793,17 +791,9 @@ anchored_mcca <- function(Y,
     partial_scores[[k]] <- Xk %*% V_block
   }
 
-  # cor_loadings (feature-vs-score correlations)
-  cor_list <- lapply(seq_len(B_all), function(k) {
-    Ck <- tryCatch(
-      suppressWarnings(stats::cor(Xp[[k]], S_scores[idx_all[[k]], , drop = FALSE])),
-      error = function(e) NULL
-    )
-    if (!is.null(Ck)) Ck[!is.finite(Ck)] <- 0
-    Ck
-  })
-  cor_list <- cor_list[!vapply(cor_list, is.null, logical(1))]
-  cor_loadings <- if (length(cor_list) > 0) do.call(rbind, cor_list) else NULL
+  # Feature-vs-score correlations: scale-stable loadings for interpretation.
+  score_cor <- .mcca_score_correlations(Xp, S_scores, idx_all)
+  cor_loadings <- score_cor$concatenated
 
   # Per-block per-component contribution matrix (ncomp x B). Raw contributions
   # are g_j^T M_b g_j; weighted contributions include the block/component weight
@@ -852,6 +842,8 @@ anchored_mcca <- function(Y,
     partial_scores = partial_scores,
     canonical_weights = W_list,
     cor_loadings = cor_loadings,
+    scaled_loadings = cor_loadings,
+    scaled_loadings_by_block = score_cor$by_block,
     block_contribs = block_contribs,
     weighted_block_contribs = weighted_block_contribs,
     block_contrib_fraction = block_contrib_fraction,

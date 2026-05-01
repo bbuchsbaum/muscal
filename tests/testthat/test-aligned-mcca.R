@@ -47,6 +47,11 @@ test_that("aligned_mcca validates row_index and returns expected structure", {
   expect_equal(fit$N, N)
   expect_equal(length(fit$partial_scores), 2)
   expect_equal(length(fit$canonical_weights), 2)
+  expect_equal(dim(fit$scaled_loadings), c(ncol(X1) + ncol(X2), 2))
+  expect_equal(fit$scaled_loadings, fit$cor_loadings)
+  expect_equal(length(fit$scaled_loadings_by_block), 2)
+  expect_equal(dim(fit$scaled_loadings_by_block$X1), c(ncol(X1), 2))
+  expect_true(all(abs(fit$scaled_loadings) <= 1 + 1e-12))
 })
 
 test_that("aligned_mcca infers N when not supplied", {
@@ -273,6 +278,11 @@ test_that("anchored_mcca default normalization is 'MFA' and matches anchored_mfa
 
   fit <- anchored_mcca(Y, list(X1 = X1, X2 = X2), list(X1 = idx1, X2 = idx2), ncomp = 2)
   expect_equal(fit$normalization, "MFA")
+  expect_equal(dim(fit$scaled_loadings), c(ncol(Y) + ncol(X1) + ncol(X2), 2))
+  expect_equal(fit$scaled_loadings, fit$cor_loadings)
+  expect_equal(names(fit$scaled_loadings_by_block), c("Y", "X1", "X2"))
+  expect_equal(dim(fit$scaled_loadings_by_block$Y), c(ncol(Y), 2))
+  expect_true(all(abs(fit$scaled_loadings) <= 1 + 1e-12))
   # Interface parity: same core args should be accepted as anchored_mfa
   shared_args <- c("Y", "X", "row_index", "preproc", "ncomp", "normalization",
                    "alpha", "ridge", "max_iter", "tol", "verbose", "use_future")

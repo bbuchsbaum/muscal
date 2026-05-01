@@ -125,6 +125,33 @@ mcca.list <- function(data, preproc = multivarious::center(), ncomp = 2,
   out
 }
 
+.mcca_score_correlations <- function(Xp, scores, row_index = NULL) {
+  if (is.null(row_index)) {
+    row_index <- lapply(Xp, function(X) seq_len(nrow(X)))
+  }
+  chk::chk_equal(length(Xp), length(row_index))
+
+  by_block <- lapply(seq_along(Xp), function(k) {
+    Ck <- tryCatch(
+      suppressWarnings(stats::cor(Xp[[k]], scores[row_index[[k]], , drop = FALSE])),
+      error = function(e) NULL
+    )
+    if (is.null(Ck)) {
+      Ck <- matrix(0, nrow = ncol(Xp[[k]]), ncol = ncol(scores))
+      rownames(Ck) <- colnames(Xp[[k]])
+      colnames(Ck) <- colnames(scores)
+    }
+    Ck <- as.matrix(Ck)
+    Ck[!is.finite(Ck)] <- 0
+    colnames(Ck) <- colnames(scores)
+    Ck
+  })
+  names(by_block) <- names(Xp)
+
+  concatenated <- if (length(by_block) > 0) do.call(rbind, by_block) else NULL
+  list(concatenated = concatenated, by_block = by_block)
+}
+
 # Top-ncomp symmetric eigendecomposition with RSpectra fallback to base eigen.
 .mcca_top_eigen <- function(H, ncomp, N) {
   ncomp_eff <- min(as.integer(ncomp), N)
@@ -597,15 +624,8 @@ mcca.multiblock <- function(data, preproc = multivarious::center(), ncomp = 2,
     partial_scores[[i]] <- X %*% V_block
   }
 
-  cor_loadings <- tryCatch(
-    {
-      X_concat <- do.call(cbind, strata)
-      C <- suppressWarnings(stats::cor(X_concat, S_scores))
-      C[!is.finite(C)] <- 0
-      C
-    },
-    error = function(e) NULL
-  )
+  score_cor <- .mcca_score_correlations(strata, S_scores)
+  cor_loadings <- score_cor$concatenated
 
   rv <- tryCatch(
     {
@@ -641,6 +661,8 @@ mcca.multiblock <- function(data, preproc = multivarious::center(), ncomp = 2,
     partial_scores = partial_scores,
     canonical_weights = W_list,
     cor_loadings = cor_loadings,
+    scaled_loadings = cor_loadings,
+    scaled_loadings_by_block = score_cor$by_block,
     rv = rv,
     rv2 = rv2,
     names = names(data),

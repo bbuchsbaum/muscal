@@ -12,8 +12,8 @@ Description: Provides core 'French school' multivariate analysis methods includi
     and processing potentially used by related statistical packages.
 License: MIT + file LICENSE
 Encoding: UTF-8
-SystemRequirements: C++11
 Imports:
+    methods,
     Matrix,
     Rcpp,
     stats,
@@ -48,14 +48,16 @@ Suggests:
     rmarkdown,
     genpca,
     future,
-    adjoin
+    adjoin,
+    multifer
 VignetteBuilder: knitr
 Depends:
     R (>= 3.5.0)
 Additional_repositories: https://bbuchsbaum.r-universe.dev
 Remotes:
     bbuchsbaum/multidesign,
-    bbuchsbaum/genpca
+    bbuchsbaum/genpca,
+    bbuchsbaum/multifer
 RoxygenNote: 7.3.3
 Config/Needs/website: bbuchsbaum/albersdown
 URL: https://bbuchsbaum.github.io/muscal/, https://github.com/bbuchsbaum/muscal

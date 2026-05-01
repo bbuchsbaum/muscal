@@ -202,8 +202,8 @@ orient_components.mcca <- function(x,
   .muscal_apply_component_signs(
     x,
     signs = signs,
-    matrix_fields = c("s", "v", "cor_loadings"),
-    list_fields = c("partial_scores", "canonical_weights")
+    matrix_fields = c("s", "v", "cor_loadings", "scaled_loadings"),
+    list_fields = c("partial_scores", "canonical_weights", "scaled_loadings_by_block")
   )
 }
 
@@ -230,8 +230,8 @@ orient_components.aligned_mcca <- function(x,
   .muscal_apply_component_signs(
     x,
     signs = signs,
-    matrix_fields = c("s", "v", "cor_loadings"),
-    list_fields = c("partial_scores", "canonical_weights")
+    matrix_fields = c("s", "v", "cor_loadings", "scaled_loadings"),
+    list_fields = c("partial_scores", "canonical_weights", "scaled_loadings_by_block")
   )
 }
 

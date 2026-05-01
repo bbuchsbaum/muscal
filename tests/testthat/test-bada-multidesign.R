@@ -278,3 +278,181 @@ test_that("bootstrap.bada requires data argument", {
     "data.*required"
   )
 })
+
+# --- multifer inference adapter ----------------------------------------------
+
+make_bada_multifer_fixture <- function() {
+  set.seed(5501)
+  subjects <- factor(rep(paste0("S", 1:4), each = 12))
+  y <- factor(rep(rep(c("A", "B", "C"), each = 4), times = 4))
+  class_signal <- model.matrix(~ y - 1)
+  subject_shift <- model.matrix(~ subjects - 1) %*% matrix(rnorm(4 * 6, sd = 0.2), 4, 6)
+  load <- matrix(c(
+    1.2, 0.1, -0.4, 0.0, 0.2, 0.0,
+   -0.8, 0.5,  0.3, 0.1, 0.0, 0.2,
+    0.1, 1.1,  0.2, 0.4, 0.3, 0.0
+  ), 3, 6, byrow = TRUE)
+  x <- class_signal %*% load + subject_shift + matrix(rnorm(length(y) * 6, sd = 0.25), length(y), 6)
+  design <- data.frame(subj_id = subjects, y = y)
+  md <- multidesign::multidesign(x, design)
+  list(data = md, fit = bada(md, y = y, subject = subj_id, ncomp = 2))
+}
+
+test_that("BaDA reconstructs subject barycenter blocks for multifer", {
+  fixture <- make_bada_multifer_fixture()
+  blocks <- muscal:::.bada_subject_barycenter_blocks(fixture$fit, fixture$data)
+
+  expect_length(blocks, 4)
+  expect_true(all(vapply(blocks, is.matrix, logical(1))))
+  expect_equal(unique(vapply(blocks, nrow, integer(1))), 3L)
+  expect_equal(unique(vapply(blocks, ncol, integer(1))), 6L)
+  expect_equal(rownames(blocks[[1]]), fixture$fit$label_set)
+})
+
+test_that("infer_bada delegates BaDA inference to multifer multiblock hooks", {
+  skip_if_not_installed("multifer")
+  skip_if_not(muscal:::.bada_multifer_contract_available())
+
+  fixture <- make_bada_multifer_fixture()
+  res <- infer_bada(
+    fixture$fit,
+    data = fixture$data,
+    B = 5L,
+    R = 3L,
+    seed = 5502,
+    mc_batch_size = 5L
+  )
+
+  expect_s3_class(res, "infer_result")
+  expect_equal(res$provenance$adapter_id, "muscal_bada")
+  expect_gt(nrow(res$component_tests), 0L)
+  expect_true(all(unique(res$variable_stability$domain) == "global"))
+  expect_true(all(unique(res$score_stability$domain) == "global"))
+})
+
+test_that("BaDA multifer adapter declares and enforces its hook contract", {
+  skip_if_not_installed("multifer")
+  skip_if_not(muscal:::.bada_multifer_contract_available())
+
+  fixture <- make_bada_multifer_fixture()
+  adapter <- muscal:::.bada_multifer_adapter()
+  blocks <- muscal:::.bada_subject_barycenter_blocks(fixture$fit, fixture$data)
+
+  expect_true(multifer::adapter_supports(
+    adapter, "multiblock", "variance", "component_significance"
+  ))
+  expect_true(multifer::adapter_supports(
+    adapter, "multiblock", "variance", "score_stability"
+  ))
+  expect_equal(adapter$domains(fixture$fit, blocks), "global")
+  expect_error(adapter$scores(fixture$fit, domain = "subject"), "global")
+
+  check <- adapter$checked_assumptions[[1]]$check
+  expect_true(check(blocks))
+  bad_blocks <- blocks
+  bad_blocks[[1]][1, 1] <- NA_real_
+  expect_false(check(bad_blocks))
+})
+
+test_that("BaDA multifer statistic matches the barycenter SVD oracle", {
+  fixture <- make_bada_multifer_fixture()
+  blocks <- muscal:::.bada_subject_barycenter_blocks(fixture$fit, fixture$data)
+  fit <- muscal:::.bada_fit_from_barycenter_blocks(blocks, reference = fixture$fit)
+
+  Xc <- Reduce("+", blocks) / length(blocks)
+  roots <- svd(Xc, nu = 0L, nv = 0L)$d^2
+  oracle <- roots[[1L]] / sum(roots)
+
+  expect_equal(muscal:::.bada_leading_root_ratio(blocks), oracle, tolerance = 1e-10)
+  expect_equal(fit$roots, roots[seq_len(ncol(fit$v))], tolerance = 1e-10)
+  expect_true(all(is.finite(fit$v)))
+  expect_true(all(is.finite(fit$fscores)))
+})
+
+test_that("BaDA multifer residual and null actions preserve payload validity", {
+  skip_if_not_installed("multifer")
+  skip_if_not(muscal:::.bada_multifer_contract_available())
+
+  fixture <- make_bada_multifer_fixture()
+  adapter <- muscal:::.bada_multifer_adapter()
+  blocks <- muscal:::.bada_subject_barycenter_blocks(fixture$fit, fixture$data)
+
+  stat_before <- adapter$component_stat(fixture$fit, blocks, 1L)
+  residual <- adapter$residualize(fixture$fit, 1L, blocks)
+  null_blocks <- adapter$null_action(fixture$fit, blocks)
+  residual_average <- Reduce("+", residual) / length(residual)
+  removed_direction <- fixture$fit$v[, 1L, drop = FALSE]
+
+  expect_true(muscal:::.bada_valid_barycenter_blocks(residual))
+  expect_true(muscal:::.bada_valid_barycenter_blocks(null_blocks))
+  expect_named(residual, names(blocks))
+  expect_named(null_blocks, names(blocks))
+  expect_true(is.finite(stat_before))
+  expect_equal(unname(residual_average %*% removed_direction),
+               matrix(0, nrow(residual_average), 1L),
+               tolerance = 1e-8)
+})
+
+test_that("BaDA multifer leading statistic is invariant to subject-block order", {
+  fixture <- make_bada_multifer_fixture()
+  blocks <- muscal:::.bada_subject_barycenter_blocks(fixture$fit, fixture$data)
+  reversed <- rev(blocks)
+
+  expect_equal(
+    muscal:::.bada_leading_root_ratio(reversed),
+    muscal:::.bada_leading_root_ratio(blocks),
+    tolerance = 1e-12
+  )
+})
+
+test_that("BaDA multifer bootstrap uses subject-block resampling and projected scores", {
+  skip_if_not_installed("multifer")
+  skip_if_not(muscal:::.bada_multifer_contract_available())
+
+  fixture <- make_bada_multifer_fixture()
+  adapter <- muscal:::.bada_multifer_adapter()
+  blocks <- muscal:::.bada_subject_barycenter_blocks(fixture$fit, fixture$data)
+  recipe <- multifer::infer_recipe(
+    geometry = "multiblock",
+    relation = "variance",
+    adapter = adapter,
+    targets = c("variable_stability", "score_stability", "subspace_stability")
+  )
+  units <- multifer::form_units(adapter$roots(fixture$fit))
+
+  artifact <- multifer::bootstrap_fits(
+    recipe = recipe,
+    adapter = adapter,
+    data = blocks,
+    original_fit = fixture$fit,
+    units = units,
+    R = 2L,
+    seed = 5503
+  )
+
+  expect_s3_class(artifact, "multifer_bootstrap_artifact")
+  expect_true(artifact$used_bootstrap_action)
+  expect_equal(artifact$score_source, "project_scores")
+  expect_equal(artifact$domains, "global")
+  expect_length(artifact$reps[[1]]$resample_indices, length(blocks))
+})
+
+test_that("infer_bada refuses residual BaDA components for now", {
+  skip_if_not_installed("multifer")
+  skip_if_not(muscal:::.bada_multifer_contract_available())
+
+  set.seed(5504)
+  n_obs <- 48
+  x <- matrix(rnorm(n_obs * 8), nrow = n_obs)
+  design <- data.frame(
+    subj_id = factor(rep(c("S1", "S2", "S3", "S4"), each = 12)),
+    y = factor(rep(rep(c("A", "B", "C"), each = 4), times = 4))
+  )
+  md <- multidesign::multidesign(x, design)
+  fit <- bada(md, y = y, subject = subj_id, ncomp = 1, resdim = 3, rescomp = 1)
+
+  expect_error(
+    infer_bada(fit, data = md, B = 3L, R = 1L),
+    "rescomp = 0"
+  )
+})

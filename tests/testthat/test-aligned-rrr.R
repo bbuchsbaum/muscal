@@ -407,3 +407,252 @@ test_that("aligned_rrr stores parsed row weights and exposes deterministic refit
   expect_equal(refit$W_list$X1, fit$W_list$X1, tolerance = 1e-8)
   expect_equal(refit$W_list$X2, fit$W_list$X2, tolerance = 1e-8)
 })
+
+test_that("aligned_rrr prepares an opaque predictive multifer payload", {
+  sim <- .sim_aligned_rrr(n = c(24, 22), p = c(5, 4), q = 3, K = 2, seed = 51)
+  fit <- aligned_rrr(
+    Y = sim$Y,
+    X = sim$X,
+    ncomp = 2,
+    preproc = multivarious::pass(),
+    response_preproc = multivarious::pass(),
+    ridge = 1e-8,
+    max_iter = 80,
+    tol = 1e-9
+  )
+
+  payload <- muscal:::.arrr_multifer_payload(fit)
+  prepared <- muscal:::.arrr_multifer_prepare_fit(fit, payload)
+
+  expect_true(muscal:::.arrr_valid_multifer_payload(payload))
+  expect_equal(names(payload$X), names(sim$X))
+  expect_equal(dim(muscal:::.arrr_project_predictor_scores(prepared, payload)),
+               c(sum(vapply(sim$X, nrow, integer(1))), 2))
+  expect_equal(dim(muscal:::.arrr_project_response_scores(prepared, payload)),
+               c(sum(vapply(sim$Y, nrow, integer(1))), 2))
+  expect_true(all(muscal:::.arrr_predictive_roots(prepared, payload) >= 0))
+})
+
+test_that("aligned_rrr multifer adapter declares predictive and stability capabilities", {
+  skip_if_not_installed("multifer")
+  skip_if_not(muscal:::.arrr_multifer_contract_available())
+
+  adapter <- muscal:::.arrr_multifer_adapter()
+
+  for (target in c("component_significance", "variable_stability",
+                   "score_stability", "subspace_stability")) {
+    expect_true(multifer::adapter_supports(adapter, "adapter", "predictive", target))
+  }
+  expect_equal(adapter$domains(NULL, NULL), c("predictor", "response"))
+  expect_equal(adapter$validity_level, "conditional")
+  expect_true("block_rows_exchangeable_within_block" %in% adapter$declared_assumptions)
+})
+
+test_that("aligned_rrr multifer predictive roots match weighted SSE oracle", {
+  sim <- .sim_aligned_rrr(n = c(24, 22), p = c(5, 4), q = 3, K = 2, seed = 54)
+  fit <- aligned_rrr(
+    Y = sim$Y,
+    X = sim$X,
+    ncomp = 2,
+    preproc = multivarious::pass(),
+    response_preproc = multivarious::pass(),
+    block_weight = c(X1 = 0.8, X2 = 1.2),
+    response_weights = list(
+      X1 = seq(0.7, 1.1, length.out = nrow(sim$X$X1)),
+      X2 = seq(1.2, 0.8, length.out = nrow(sim$X$X2))
+    ),
+    ridge = 1e-8,
+    max_iter = 80,
+    tol = 1e-9
+  )
+  payload <- muscal:::.arrr_multifer_payload(fit)
+  prepared <- muscal:::.arrr_multifer_prepare_fit(fit, payload)
+
+  zero_sse <- sum(vapply(names(payload$Y), function(nm) {
+    payload$block_weight[[nm]] *
+      sum(payload$response_weights[[nm]] * rowSums(payload$Y[[nm]]^2))
+  }, numeric(1)))
+  sse_for_k <- function(k) {
+    Bk <- prepared$B[, seq_len(k), drop = FALSE]
+    sum(vapply(names(payload$Y), function(nm) {
+      pred <- prepared$Z_list[[nm]][, seq_len(k), drop = FALSE] %*% t(Bk)
+      resid <- payload$Y[[nm]] - pred
+      payload$block_weight[[nm]] *
+        sum(payload$response_weights[[nm]] * rowSums(resid^2))
+    }, numeric(1)))
+  }
+  oracle <- c(
+    (zero_sse - sse_for_k(1L)) / zero_sse,
+    (sse_for_k(1L) - sse_for_k(2L)) / zero_sse
+  )
+  oracle <- cummin(pmax(oracle, 0))
+
+  expect_equal(muscal:::.arrr_predictive_roots(prepared, payload), oracle,
+               tolerance = 1e-10)
+  expect_true(all(diff(muscal:::.arrr_predictive_roots(prepared, payload)) <= 1e-12))
+})
+
+test_that("aligned_rrr multifer null/bootstrap/residual payloads preserve contracts", {
+  sim <- .sim_aligned_rrr(n = c(22, 20), p = c(5, 4), q = 3, K = 2, seed = 55)
+  fit <- aligned_rrr(
+    Y = sim$Y,
+    X = sim$X,
+    ncomp = 2,
+    preproc = multivarious::pass(),
+    response_preproc = multivarious::pass(),
+    ridge = 1e-8,
+    max_iter = 80,
+    tol = 1e-9
+  )
+  payload <- muscal:::.arrr_multifer_payload(fit)
+  prepared <- muscal:::.arrr_multifer_prepare_fit(fit, payload)
+
+  null_payload <- muscal:::.arrr_permute_multifer_payload(payload)
+  boot <- muscal:::.arrr_bootstrap_multifer_payload(payload)
+  residual <- muscal:::.arrr_residualize_multifer_payload(prepared, payload)
+  prediction <- muscal:::.arrr_component_prediction(prepared, k = 1L)
+
+  expect_true(muscal:::.arrr_valid_multifer_payload(null_payload))
+  expect_true(muscal:::.arrr_valid_multifer_payload(boot$data))
+  expect_true(muscal:::.arrr_valid_multifer_payload(residual))
+  expect_named(boot$indices, names(payload$X))
+  for (nm in names(payload$X)) {
+    z <- prepared$Z_list[[nm]][, 1L, drop = FALSE]
+    w <- payload$block_weight[[nm]] * payload$response_weights[[nm]]
+    expect_equal(crossprod(z * w, residual$X[[nm]]),
+                 matrix(0, 1L, ncol(residual$X[[nm]])),
+                 tolerance = 1e-8)
+    expect_equal(residual$Y[[nm]], payload$Y[[nm]] - prediction[[nm]],
+                 tolerance = 1e-10)
+  }
+})
+
+test_that("aligned_rrr multifer payload alignment is invariant to named block order", {
+  sim <- .sim_aligned_rrr(n = c(24, 22), p = c(5, 4), q = 3, K = 2, seed = 56)
+  fit <- aligned_rrr(
+    Y = sim$Y,
+    X = sim$X,
+    ncomp = 2,
+    preproc = multivarious::pass(),
+    response_preproc = multivarious::pass(),
+    ridge = 1e-8,
+    max_iter = 80,
+    tol = 1e-9
+  )
+
+  payload <- muscal:::.arrr_multifer_payload(fit)
+  reversed_payload <- muscal:::.arrr_multifer_payload(
+    fit,
+    data = list(X = rev(sim$X), Y = rev(sim$Y))
+  )
+
+  expect_equal(names(reversed_payload$X), names(payload$X))
+  expect_equal(
+    muscal:::.arrr_predictive_roots(
+      muscal:::.arrr_multifer_prepare_fit(fit, reversed_payload),
+      reversed_payload
+    ),
+    muscal:::.arrr_predictive_roots(
+      muscal:::.arrr_multifer_prepare_fit(fit, payload),
+      payload
+    ),
+    tolerance = 1e-12
+  )
+})
+
+test_that("aligned_rrr multifer payload validation rejects invalid weights and shapes", {
+  sim <- .sim_aligned_rrr(n = c(20, 18), p = c(5, 4), q = 3, K = 2, seed = 57)
+  fit <- aligned_rrr(
+    Y = sim$Y,
+    X = sim$X,
+    ncomp = 2,
+    preproc = multivarious::pass(),
+    response_preproc = multivarious::pass(),
+    ridge = 1e-8,
+    max_iter = 80,
+    tol = 1e-9
+  )
+  payload <- muscal:::.arrr_multifer_payload(fit)
+
+  bad <- payload
+  bad$response_weights$X1[1] <- NA_real_
+  expect_false(muscal:::.arrr_valid_multifer_payload(bad))
+
+  bad <- payload
+  bad$Y$X2 <- bad$Y$X2[-1, , drop = FALSE]
+  expect_false(muscal:::.arrr_valid_multifer_payload(bad))
+
+  bad <- payload
+  bad$ncomp <- ncol(payload$Y[[1]]) + 1L
+  expect_false(muscal:::.arrr_valid_multifer_payload(bad))
+})
+
+test_that("infer_aligned_rrr delegates predictive component tests to multifer", {
+  skip_if_not_installed("multifer")
+  skip_if_not(muscal:::.arrr_multifer_contract_available())
+
+  sim <- .sim_aligned_rrr(n = c(26, 24), p = c(5, 4), q = 3, K = 2, seed = 52)
+  fit <- aligned_rrr(
+    Y = sim$Y,
+    X = sim$X,
+    ncomp = 2,
+    preproc = multivarious::pass(),
+    response_preproc = multivarious::pass(),
+    ridge = 1e-8,
+    max_iter = 80,
+    tol = 1e-9
+  )
+
+  res <- infer_aligned_rrr(
+    fit,
+    targets = "component_significance",
+    B = 7L,
+    R = 0L,
+    seed = 52L
+  )
+
+  expect_s3_class(res, "infer_result")
+  expect_match(res$provenance$capabilities,
+               "adapter/predictive:component_significance",
+               fixed = TRUE)
+  expect_match(res$mc$estimand_label, "adapter predictive gain")
+  expect_true(nrow(res$component_tests) >= 1L)
+  expect_true(all(is.finite(res$component_tests$statistic)))
+})
+
+test_that("infer_aligned_rrr uses adapter-owned bootstrap projections for stability", {
+  skip_if_not_installed("multifer")
+  skip_if_not(muscal:::.arrr_multifer_contract_available())
+
+  sim <- .sim_aligned_rrr(n = c(22, 20), p = c(5, 4), q = 3, K = 2, seed = 53)
+  fit <- aligned_rrr(
+    Y = sim$Y,
+    X = sim$X,
+    ncomp = 2,
+    preproc = multivarious::pass(),
+    response_preproc = multivarious::pass(),
+    ridge = 1e-8,
+    max_iter = 80,
+    tol = 1e-9
+  )
+
+  bundle <- infer_aligned_rrr(
+    fit,
+    targets = c("variable_stability", "score_stability", "subspace_stability"),
+    B = 0L,
+    R = 4L,
+    seed = 53L,
+    return_bundle = TRUE
+  )
+
+  artifact <- bundle$artifacts$bootstrap
+  expect_s3_class(bundle$result, "infer_result")
+  expect_s3_class(artifact, "multifer_bootstrap_artifact")
+  expect_true(artifact$used_bootstrap_action)
+  expect_equal(artifact$score_source, "project_scores")
+  expect_setequal(artifact$domains, c("predictor", "response"))
+  expect_setequal(names(artifact$reps[[1]]$aligned_scores), c("predictor", "response"))
+  expect_gt(nrow(bundle$result$variable_stability), 0L)
+  expect_gt(nrow(bundle$result$score_stability), 0L)
+  expect_gt(nrow(bundle$result$subspace_stability), 0L)
+})

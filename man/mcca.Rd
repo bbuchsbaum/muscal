@@ -59,7 +59,11 @@ across variable scalings.}
 \item{...}{Additional arguments passed to the underlying method.}
 }
 \value{
-An object inheriting from class `mcca`.
+An object inheriting from class `mcca`. Relevant fields include
+  `s` (compromise scores), `v` (concatenated canonical directions),
+  `canonical_weights` (raw block-wise ridge back-projection weights),
+  `partial_scores`, `cor_loadings` / `scaled_loadings` (feature-score
+  correlations), and `scaled_loadings_by_block`.
 }
 \description{
 A generic front-end for **multiblock canonical correlation analysis** (MCCA),
