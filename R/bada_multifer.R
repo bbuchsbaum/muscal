@@ -90,6 +90,10 @@ infer_bada <- function(x,
       .bada_check_global_domain(domain)
       as.matrix(x$v)
     },
+    variable_stat = function(x, data, domain = NULL, k, ...) {
+      .bada_check_global_domain(domain)
+      .muscal_squared_loading_stat(as.matrix(x$v), k)
+    },
     project_scores = function(x, data, domain = NULL, ...) {
       .bada_check_global_domain(domain)
       Xc <- .bada_average_barycenter_blocks(data)

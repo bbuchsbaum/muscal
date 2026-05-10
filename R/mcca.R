@@ -471,6 +471,49 @@ mcca.list <- function(data, preproc = multivarious::center(), ncomp = 2,
   }
 }
 
+.mcca_make_aligned_mcca_refit_fn <- function(preproc,
+                                             ncomp,
+                                             normalization,
+                                             alpha,
+                                             ridge,
+                                             max_iter,
+                                             tol,
+                                             use_future,
+                                             fit_dots) {
+  force(preproc)
+  force(ncomp)
+  force(normalization)
+  force(alpha)
+  force(ridge)
+  force(max_iter)
+  force(tol)
+  force(use_future)
+  force(fit_dots)
+
+  function(data) {
+    do.call(
+      aligned_mcca,
+      c(
+        list(
+          X = data$X,
+          row_index = data$row_index,
+          N = data$N,
+          preproc = preproc,
+          ncomp = ncomp,
+          normalization = normalization,
+          alpha = alpha,
+          ridge = ridge,
+          max_iter = max_iter,
+          tol = tol,
+          verbose = FALSE,
+          use_future = use_future
+        ),
+        fit_dots
+      )
+    )
+  }
+}
+
 #' @md
 #' @rdname mcca
 #' @details

@@ -89,6 +89,23 @@ infer_covstatis <- function(x,
     roots = function(x, ...) {
       x$roots
     },
+    domains = function(x, data = NULL, ...) {
+      "global"
+    },
+    loadings = function(x, domain = NULL, ...) {
+      if (!is.null(domain) && !identical(domain, "global")) {
+        stop("COVSTATIS multifer adapter only exposes the `global` domain.",
+             call. = FALSE)
+      }
+      as.matrix(x$v)
+    },
+    variable_stat = function(x, data, domain = NULL, k, ...) {
+      if (!is.null(domain) && !identical(domain, "global")) {
+        stop("COVSTATIS multifer adapter only exposes the `global` domain.",
+             call. = FALSE)
+      }
+      .muscal_squared_loading_stat(as.matrix(x$v), k)
+    },
     refit = function(x, new_data, ...) {
       .covstatis_adapter_fit(new_data, axes = axes)
     },

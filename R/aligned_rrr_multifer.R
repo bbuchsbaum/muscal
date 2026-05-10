@@ -104,6 +104,11 @@ infer_aligned_rrr <- function(x,
       }
       as.matrix(x$B)
     },
+    variable_stat = function(x, data, domain = NULL, k, ...) {
+      domain <- .arrr_check_multifer_domain(domain)
+      L <- if (identical(domain, "predictor")) as.matrix(x$v) else as.matrix(x$B)
+      .muscal_squared_loading_stat(L, k)
+    },
     project_scores = function(x, data, domain = NULL, ...) {
       domain <- .arrr_check_multifer_domain(domain)
       if (identical(domain, "predictor")) {

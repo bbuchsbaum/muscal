@@ -105,6 +105,8 @@ aligned_mcca <- function(X,
                          use_future = FALSE,
                          block_weights = NULL,
                          ...) {
+  fit_call <- match.call(expand.dots = FALSE)
+  fit_dots <- list(...)
   normalization_missing <- missing(normalization)
   normalization <- match.arg(normalization)
 
@@ -167,6 +169,12 @@ aligned_mcca <- function(X,
     if (any(idx < 1L) || any(idx > N)) stop("row_index values must be in 1..N.", call. = FALSE)
     row_index[[k]] <- idx
   }
+
+  data_refit <- list(
+    X = X,
+    row_index = row_index,
+    N = N
+  )
 
   # ----- ridge vector ---------------------------------------------------------
   if (length(ridge) == 1) ridge <- rep(ridge, S_blocks)
@@ -358,7 +366,7 @@ aligned_mcca <- function(X,
   rownames(block_contribs) <- paste0("Comp", seq_len(ncomp_eff))
   colnames(block_contribs) <- block_names
 
-  multivarious::multiblock_biprojector(
+  out <- multivarious::multiblock_biprojector(
     v = v_concat,
     s = S_scores,
     sdev = sdev,
@@ -388,6 +396,35 @@ aligned_mcca <- function(X,
     balance_target = if (!is.null(balance_info$target)) balance_info$target else NULL,
     names = block_names,
     classes = "aligned_mcca"
+  )
+
+  refit_fn <- .mcca_make_aligned_mcca_refit_fn(
+    preproc = preproc,
+    ncomp = ncomp,
+    normalization = normalization,
+    alpha = alpha_in,
+    ridge = ridge,
+    max_iter = max_iter,
+    tol = tol,
+    use_future = use_future,
+    fit_dots = fit_dots
+  )
+
+  .muscal_attach_fit_contract(
+    out,
+    method = "aligned_mcca",
+    task = "association",
+    oos_types = "scores",
+    fit_call = fit_call,
+    refit_supported = TRUE,
+    prediction_target = "shared_scores",
+    refit = .muscal_make_refit_spec(
+      data = data_refit,
+      fit_fn = refit_fn,
+      bootstrap_fn = .muscal_bootstrap_aligned_data,
+      permutation_fn = .muscal_permute_aligned_data,
+      resample_unit = "reference_rows"
+    )
   )
 }
 
