@@ -12,6 +12,8 @@
   : Aligned Reduced-Rank Regression
 - [`anchored_mcca()`](https://bbuchsbaum.github.io/muscal/reference/anchored_mcca.md)
   : Anchored Multiblock Canonical Correlation Analysis (Anchored MCCA)
+- [`as_multifer_adapter()`](https://bbuchsbaum.github.io/muscal/reference/as_multifer_adapter.md)
+  : Resolve a muscal fit to a multifer adapter
 - [`autoplot(`*`<bada>`*`)`](https://bbuchsbaum.github.io/muscal/reference/autoplot.bada.md)
   : Autoplot for BaDA
 - [`autoplot(`*`<bamfa>`*`)`](https://bbuchsbaum.github.io/muscal/reference/autoplot.bamfa.md)
