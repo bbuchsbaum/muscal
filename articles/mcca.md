@@ -97,7 +97,7 @@ stopifnot(is.finite(max_diff))
 stopifnot(max_diff < 1e-6)
 
 max_diff
-#> [1] 2.832118e-10
+#> [1] 2.965363e-10
 ```
 
 Each block has its own partial score matrix. Their sum reproduces the

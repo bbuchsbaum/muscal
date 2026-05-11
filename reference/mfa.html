@@ -82,6 +82,11 @@ should perform the estimation and return an object inheriting from class
 <span>  normalization <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"MFA"</span>, <span class="st">"RV"</span>, <span class="st">"None"</span>, <span class="st">"Frob"</span>, <span class="st">"custom"</span><span class="op">)</span>,</span>
 <span>  A <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  M <span class="op">=</span> <span class="cn">NULL</span>,</span>
+<span>  missing <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"error"</span>, <span class="st">"regularized"</span>, <span class="st">"em"</span>, <span class="st">"nipals"</span><span class="op">)</span>,</span>
+<span>  ncp_impute <span class="op">=</span> <span class="va">ncomp</span>,</span>
+<span>  missing_tol <span class="op">=</span> <span class="fl">1e-06</span>,</span>
+<span>  missing_maxiter <span class="op">=</span> <span class="fl">100</span>,</span>
+<span>  return_imputed <span class="op">=</span> <span class="cn">FALSE</span>,</span>
 <span>  <span class="va">...</span></span>
 <span><span class="op">)</span></span></code></pre></div>
     </div>
@@ -116,6 +121,31 @@ methods for details).</p></dd>
 
 <dt id="arg--">...<a class="anchor" aria-label="anchor" href="#arg--"></a></dt>
 <dd><p>Additional arguments passed to the method.</p></dd>
+
+
+<dt id="arg-missing">missing<a class="anchor" aria-label="anchor" href="#arg-missing"></a></dt>
+<dd><p>Missing-data handling mode. <code>"error"</code> preserves the historical
+complete-data contract. <code>"regularized"</code> and <code>"em"</code> run iterative MFA
+imputation before the final complete-data MFA fit. <code>"nipals"</code> is reserved
+for a future direct available-data backend.</p></dd>
+
+
+<dt id="arg-ncp-impute">ncp_impute<a class="anchor" aria-label="anchor" href="#arg-ncp-impute"></a></dt>
+<dd><p>Integer; number of MFA components used inside the iterative
+imputation loop.</p></dd>
+
+
+<dt id="arg-missing-tol">missing_tol<a class="anchor" aria-label="anchor" href="#arg-missing-tol"></a></dt>
+<dd><p>Numeric convergence tolerance for iterative imputation.</p></dd>
+
+
+<dt id="arg-missing-maxiter">missing_maxiter<a class="anchor" aria-label="anchor" href="#arg-missing-maxiter"></a></dt>
+<dd><p>Integer maximum number of imputation iterations.</p></dd>
+
+
+<dt id="arg-return-imputed">return_imputed<a class="anchor" aria-label="anchor" href="#arg-return-imputed"></a></dt>
+<dd><p>Logical; if <code>TRUE</code>, attach completed blocks as
+<code>imputed_data</code>.</p></dd>
 
 </dl></div>
     <div class="section level2">

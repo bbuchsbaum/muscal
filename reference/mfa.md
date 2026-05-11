@@ -28,6 +28,11 @@ mfa(
   normalization = c("MFA", "RV", "None", "Frob", "custom"),
   A = NULL,
   M = NULL,
+  missing = c("error", "regularized", "em", "nipals"),
+  ncp_impute = ncomp,
+  missing_tol = 1e-06,
+  missing_maxiter = 100,
+  return_imputed = FALSE,
   ...
 )
 ```
@@ -61,6 +66,30 @@ mfa(
 - ...:
 
   Additional arguments passed to the method.
+
+- missing:
+
+  Missing-data handling mode. `"error"` preserves the historical
+  complete-data contract. `"regularized"` and `"em"` run iterative MFA
+  imputation before the final complete-data MFA fit. `"nipals"` is
+  reserved for a future direct available-data backend.
+
+- ncp_impute:
+
+  Integer; number of MFA components used inside the iterative imputation
+  loop.
+
+- missing_tol:
+
+  Numeric convergence tolerance for iterative imputation.
+
+- missing_maxiter:
+
+  Integer maximum number of imputation iterations.
+
+- return_imputed:
+
+  Logical; if `TRUE`, attach completed blocks as `imputed_data`.
 
 ## Value
 
