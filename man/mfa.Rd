@@ -25,6 +25,11 @@ mfa(data, preproc, ncomp = 2, normalization = "MFA", A = NULL, M = NULL, ...)
   normalization = c("MFA", "RV", "None", "Frob", "custom"),
   A = NULL,
   M = NULL,
+  missing = c("error", "regularized", "em", "nipals"),
+  ncp_impute = ncomp,
+  missing_tol = 1e-06,
+  missing_maxiter = 100,
+  return_imputed = FALSE,
   ...
 )
 }
@@ -44,6 +49,21 @@ methods for details).}
 `normalization = "custom"`.}
 
 \item{...}{Additional arguments passed to the method.}
+
+\item{missing}{Missing-data handling mode. \code{"error"} preserves the historical
+complete-data contract. \code{"regularized"} and \code{"em"} run iterative MFA
+imputation before the final complete-data MFA fit. \code{"nipals"} is reserved
+for a future direct available-data backend.}
+
+\item{ncp_impute}{Integer; number of MFA components used inside the iterative
+imputation loop.}
+
+\item{missing_tol}{Numeric convergence tolerance for iterative imputation.}
+
+\item{missing_maxiter}{Integer maximum number of imputation iterations.}
+
+\item{return_imputed}{Logical; if \code{TRUE}, attach completed blocks as
+\code{imputed_data}.}
 }
 \value{
 An object of class `mfa`.

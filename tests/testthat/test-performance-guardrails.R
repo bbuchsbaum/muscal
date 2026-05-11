@@ -41,6 +41,37 @@ test_that("mfa representative fit stays within a soft runtime budget", {
   expect_lt(elapsed, .perf_guardrail_budget(0.20))
 })
 
+test_that("mfa representative missing-data fit stays within a soft runtime budget", {
+  set.seed(604)
+  X1 <- matrix(rnorm(120 * 16), 120, 16)
+  X2 <- matrix(rnorm(120 * 14), 120, 14)
+  mask_random <- function(X, prop) {
+    Y <- X
+    Y[sample.int(length(Y), floor(prop * length(Y)))] <- NA_real_
+    Y
+  }
+  blocks <- list(
+    X1 = mask_random(X1, 0.05),
+    X2 = mask_random(X2, 0.05)
+  )
+
+  elapsed <- .perf_guardrail_time(
+    function() {
+      mfa(
+        blocks,
+        ncomp = 3,
+        missing = "regularized",
+        ncp_impute = 3,
+        missing_tol = 1e-5,
+        missing_maxiter = 8
+      )
+    },
+    iterations = 2L
+  )
+
+  expect_lt(elapsed, .perf_guardrail_budget(0.45))
+})
+
 test_that("cv_muscal representative reconstruction workflow stays within a soft runtime budget", {
   set.seed(602)
   X1 <- matrix(rnorm(300 * 30), 300, 30)

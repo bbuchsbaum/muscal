@@ -104,6 +104,17 @@ mfa.list <- function(data, preproc=center(), ncomp=2,
 #' * `Frob`: Uses Frobenius norm for scaling
 #' * `custom`: Uses custom weight matrices provided via A and M parameters
 #'
+#' @param missing Missing-data handling mode. `"error"` preserves the historical
+#'   complete-data contract. `"regularized"` and `"em"` run iterative MFA
+#'   imputation before the final complete-data MFA fit. `"nipals"` is reserved
+#'   for a future direct available-data backend.
+#' @param ncp_impute Integer; number of MFA components used inside the iterative
+#'   imputation loop.
+#' @param missing_tol Numeric convergence tolerance for iterative imputation.
+#' @param missing_maxiter Integer maximum number of imputation iterations.
+#' @param return_imputed Logical; if `TRUE`, attach completed blocks as
+#'   `imputed_data`.
+#'
 #' @examples
 #' \donttest{
 #' # Create 5 random matrices of the same size
@@ -131,9 +142,124 @@ mfa.list <- function(data, preproc=center(), ncomp=2,
 #' @export
 mfa.multiblock <- function(data, preproc=center(), ncomp=2,
                 normalization=c("MFA", "RV", "None", "Frob", "custom"),
-                A=NULL, M=NULL, ...) {
+                A=NULL, M=NULL,
+                missing = c("error", "regularized", "em", "nipals"),
+                ncp_impute = ncomp,
+                missing_tol = 1e-6,
+                missing_maxiter = 100,
+                return_imputed = FALSE,
+                ...) {
   fit_call <- match.call(expand.dots = FALSE)
   fit_dots <- list(...)
+  missing <- match.arg(missing)
+
+  has_na <- any(vapply(data, anyNA, logical(1L)))
+  if (!has_na) {
+    return(.mfa_complete(
+      data = data,
+      preproc = preproc,
+      ncomp = ncomp,
+      normalization = normalization,
+      A = A,
+      M = M,
+      fit_call = fit_call,
+      fit_dots = fit_dots,
+      ...
+    ))
+  }
+
+  if (identical(missing, "error")) {
+    stop(
+      "mfa() does not accept NA values unless `missing` is set to ",
+      "'regularized', 'em', or 'nipals'.",
+      call. = FALSE
+    )
+  }
+
+  if (identical(missing, "nipals")) {
+    stop(
+      "missing = 'nipals' is not implemented yet; use missing = 'regularized' or 'em'.",
+      call. = FALSE
+    )
+  }
+
+  missing_controls <- .mfa_validate_missing_controls(
+    ncp_impute = ncp_impute,
+    missing_tol = missing_tol,
+    missing_maxiter = missing_maxiter,
+    return_imputed = return_imputed
+  )
+  ncp_impute <- missing_controls$ncp_impute
+  missing_tol <- missing_controls$missing_tol
+  missing_maxiter <- missing_controls$missing_maxiter
+  return_imputed <- missing_controls$return_imputed
+
+  imp <- .mfa_impute_iterative(
+    data = data,
+    preproc = preproc,
+    ncp = ncp_impute,
+    normalization = normalization,
+    A = A,
+    M = M,
+    method = missing,
+    tol = missing_tol,
+    maxiter = missing_maxiter,
+    ...
+  )
+
+  fit <- .mfa_complete(
+    data = imp$data,
+    preproc = preproc,
+    ncomp = ncomp,
+    normalization = normalization,
+    A = A,
+    M = M,
+    fit_call = fit_call,
+    fit_dots = fit_dots,
+    ...
+  )
+  fit$missing <- list(
+    method = missing,
+    ncp_impute = ncp_impute,
+    iterations = imp$iterations,
+    converged = imp$converged,
+    delta = imp$delta,
+    mask = imp$mask
+  )
+  fit$fit_spec$refit <- .mfa_missing_refit_spec(
+    data = data,
+    preproc = preproc,
+    ncomp = ncomp,
+    normalization = normalization,
+    A = A,
+    M = M,
+    missing = missing,
+    ncp_impute = ncp_impute,
+    missing_tol = missing_tol,
+    missing_maxiter = missing_maxiter,
+    return_imputed = return_imputed,
+    fit_dots = fit_dots
+  )
+  fit$fit_spec$refit_supported <- TRUE
+  if (isTRUE(return_imputed)) {
+    fit$imputed_data <- imp$data
+  }
+  fit
+}
+
+.mfa_complete <- function(data, preproc=center(), ncomp=2,
+                normalization=c("MFA", "RV", "None", "Frob", "custom"),
+                A=NULL, M=NULL,
+                build_diagnostics = TRUE,
+                fit_call = NULL,
+                fit_dots = list(),
+                ...) {
+  if (is.null(fit_call)) {
+    fit_call <- match.call(expand.dots = FALSE)
+  }
+  if (is.null(fit_dots)) {
+    fit_dots <- list(...)
+  }
   A_input <- A
   M_input <- M
   
@@ -209,40 +335,47 @@ mfa.multiblock <- function(data, preproc=center(), ncomp=2,
   # -------------------------------------------------------------------------
   # Derived quantities for plotting / diagnostics
   # -------------------------------------------------------------------------
-  partial_scores <- lapply(seq_along(strata), function(i) {
-    idx <- block_indices[[i]]
-    strata[[i]] %*% fit$v[idx, , drop = FALSE]
-  })
-  names(partial_scores) <- names(data)
+  if (isTRUE(build_diagnostics)) {
+    partial_scores <- lapply(seq_along(strata), function(i) {
+      idx <- block_indices[[i]]
+      strata[[i]] %*% fit$v[idx, , drop = FALSE]
+    })
+    names(partial_scores) <- names(data)
 
-  cor_loadings <- tryCatch(
-    {
-      C <- stats::cor(Xp, fit$s)
-      C[!is.finite(C)] <- 0
-      C
-    },
-    error = function(e) NULL
-  )
+    cor_loadings <- tryCatch(
+      {
+        C <- stats::cor(Xp, fit$s)
+        C[!is.finite(C)] <- 0
+        C
+      },
+      error = function(e) NULL
+    )
 
-  rv <- tryCatch(
-    {
-      M <- compute_sim_mat(strata, function(x1, x2) MatrixCorrelation::RV(x1, x2))
-      diag(M) <- 1
-      rownames(M) <- colnames(M) <- names(data)
-      M
-    },
-    error = function(e) NULL
-  )
+    rv <- tryCatch(
+      {
+        M <- compute_sim_mat(strata, function(x1, x2) MatrixCorrelation::RV(x1, x2))
+        diag(M) <- 1
+        rownames(M) <- colnames(M) <- names(data)
+        M
+      },
+      error = function(e) NULL
+    )
 
-  rv2 <- tryCatch(
-    {
-      M <- compute_sim_mat(strata, function(x1, x2) MatrixCorrelation::RV2(x1, x2))
-      diag(M) <- 1
-      rownames(M) <- colnames(M) <- names(data)
-      M
-    },
-    error = function(e) NULL
-  )
+    rv2 <- tryCatch(
+      {
+        M <- compute_sim_mat(strata, function(x1, x2) MatrixCorrelation::RV2(x1, x2))
+        diag(M) <- 1
+        rownames(M) <- colnames(M) <- names(data)
+        M
+      },
+      error = function(e) NULL
+    )
+  } else {
+    partial_scores <- NULL
+    cor_loadings <- NULL
+    rv <- NULL
+    rv2 <- NULL
+  }
 
   # Construct the final multiblock_biprojector
   mfa_result <- multivarious::multiblock_biprojector(
@@ -307,4 +440,180 @@ mfa.multiblock <- function(data, preproc=center(), ncomp=2,
   )
 
   return(mfa_result)
+}
+
+.mfa_impute_iterative <- function(data, preproc, ncp, normalization, A, M,
+                                  method = c("regularized", "em"),
+                                  tol = 1e-6, maxiter = 100, ...) {
+  method <- match.arg(method)
+  X <- lapply(data, function(x) as.matrix(x))
+  if (is.null(names(X))) {
+    names(X) <- paste0("B", seq_along(X))
+  }
+  mask <- lapply(X, is.na)
+
+  for (b in seq_along(X)) {
+    bad_cols <- which(colSums(!mask[[b]]) == 0L)
+    if (length(bad_cols) > 0L) {
+      stop(
+        sprintf(
+          "Cannot impute variable/column %d with all values missing in block '%s'.",
+          bad_cols[[1L]], names(X)[[b]]
+        ),
+        call. = FALSE
+      )
+    }
+  }
+
+  Ximp <- lapply(X, function(block) {
+    out <- block
+    cm <- colMeans(out, na.rm = TRUE)
+    miss <- is.na(out)
+    if (any(miss)) {
+      out[miss] <- cm[col(out)[miss]]
+    }
+    out
+  })
+
+  converged <- FALSE
+  delta <- Inf
+  iter <- 0L
+  for (iter in seq_len(maxiter)) {
+    fit <- .mfa_complete(
+      data = Ximp,
+      preproc = preproc,
+      ncomp = ncp,
+      normalization = normalization,
+      A = A,
+      M = M,
+      build_diagnostics = FALSE,
+      ...
+    )
+    Xhat <- .mfa_reconstruct_blocks(fit, Ximp, ncomp = ncp, method = method)
+
+    old_missing <- unlist(Map(function(x, m) x[m], Ximp, mask), use.names = FALSE)
+    for (b in seq_along(Ximp)) {
+      Ximp[[b]][mask[[b]]] <- Xhat[[b]][mask[[b]]]
+    }
+    new_missing <- unlist(Map(function(x, m) x[m], Ximp, mask), use.names = FALSE)
+    denom <- max(1, sqrt(sum(old_missing^2, na.rm = TRUE)))
+    delta <- sqrt(sum((new_missing - old_missing)^2, na.rm = TRUE)) / denom
+    if (is.finite(delta) && delta < tol) {
+      converged <- TRUE
+      break
+    }
+  }
+
+  list(
+    data = Ximp,
+    mask = mask,
+    iterations = iter,
+    converged = converged,
+    delta = delta
+  )
+}
+
+.mfa_validate_missing_controls <- function(ncp_impute, missing_tol,
+                                           missing_maxiter, return_imputed) {
+  if (!is.numeric(ncp_impute) ||
+      length(ncp_impute) != 1L ||
+      is.na(ncp_impute) ||
+      !is.finite(ncp_impute) ||
+      ncp_impute < 1 ||
+      abs(ncp_impute - round(ncp_impute)) > 1e-8) {
+    stop("`ncp_impute` must be a single integer-like value >= 1.", call. = FALSE)
+  }
+
+  if (!is.numeric(missing_tol) ||
+      length(missing_tol) != 1L ||
+      is.na(missing_tol) ||
+      !is.finite(missing_tol) ||
+      missing_tol <= 0) {
+    stop("`missing_tol` must be a single finite value > 0.", call. = FALSE)
+  }
+
+  if (!is.numeric(missing_maxiter) ||
+      length(missing_maxiter) != 1L ||
+      is.na(missing_maxiter) ||
+      !is.finite(missing_maxiter) ||
+      missing_maxiter < 1 ||
+      abs(missing_maxiter - round(missing_maxiter)) > 1e-8) {
+    stop("`missing_maxiter` must be a single integer-like value >= 1.", call. = FALSE)
+  }
+
+  if (!is.logical(return_imputed) || length(return_imputed) != 1L || is.na(return_imputed)) {
+    stop("`return_imputed` must be `TRUE` or `FALSE`.", call. = FALSE)
+  }
+
+  list(
+    ncp_impute = as.integer(round(ncp_impute)),
+    missing_tol = as.numeric(missing_tol),
+    missing_maxiter = as.integer(round(missing_maxiter)),
+    return_imputed = isTRUE(return_imputed)
+  )
+}
+
+.mfa_reconstruct_blocks <- function(fit, data, ncomp, method = c("regularized", "em")) {
+  method <- match.arg(method)
+  comp <- seq_len(min(as.integer(ncomp), ncol(fit$v), ncol(fit$s)))
+  Xconcat <- do.call(cbind, data)
+
+  Xhat <- if (identical(method, "em")) {
+    multivarious::reconstruct_new(fit, Xconcat, comp = comp)
+  } else {
+    sdev <- fit$sdev[comp]
+    lambda <- sdev^2
+    sigma2 <- if (length(lambda) > 1L) min(lambda, na.rm = TRUE) else 0
+    shrink <- if (is.finite(sigma2) && sigma2 > 0) {
+      lambda / (lambda + sigma2)
+    } else {
+      rep(1, length(comp))
+    }
+    scores_new <- multivarious::project(fit, Xconcat)[, comp, drop = FALSE]
+    Xhat_p <- scores_new %*%
+      diag(shrink, nrow = length(comp), ncol = length(comp)) %*%
+      t(fit$v[, comp, drop = FALSE])
+    multivarious::inverse_transform(fit$preproc, Xhat_p)
+  }
+
+  lapply(fit$block_indices, function(idx) Xhat[, idx, drop = FALSE])
+}
+
+.mfa_missing_refit_spec <- function(data, preproc, ncomp, normalization, A, M,
+                                    missing, ncp_impute, missing_tol,
+                                    missing_maxiter, return_imputed, fit_dots) {
+  data_refit <- lapply(data, function(x) as.matrix(x))
+  .muscal_make_refit_spec(
+    data = data_refit,
+    fit_fn = function(data) {
+      do.call(
+        mfa,
+        c(
+          list(
+            data = data,
+            preproc = preproc,
+            ncomp = ncomp,
+            normalization = normalization,
+            A = A,
+            M = M,
+            missing = missing,
+            ncp_impute = ncp_impute,
+            missing_tol = missing_tol,
+            missing_maxiter = missing_maxiter,
+            return_imputed = return_imputed
+          ),
+          fit_dots
+        )
+      )
+    },
+    bootstrap_fn = function(data) {
+      n <- nrow(data[[1L]])
+      idx <- sample.int(n, size = n, replace = TRUE)
+      lapply(data, function(block) block[idx, , drop = FALSE])
+    },
+    permutation_fn = function(data) {
+      lapply(data, function(block) block[sample.int(nrow(block)), , drop = FALSE])
+    },
+    resample_unit = "rows"
+  )
 }
