@@ -109,10 +109,10 @@ stopifnot(all(dim(proj) == c(6, ncol(fit$v))))
 stopifnot(all(is.finite(proj)))
 
 head(proj, 3)
-#>        [,1]      [,2]
-#> 1 -1.824206 0.3455320
-#> 2 -1.821593 0.8609624
-#> 3 -1.820092 0.2496454
+#>           [,1]      [,2]
+#> [1,] -1.824206 0.3455320
+#> [2,] -1.821593 0.8609624
+#> [3,] -1.820092 0.2496454
 ```
 
 Projection is useful when you want to score held-out observations in the

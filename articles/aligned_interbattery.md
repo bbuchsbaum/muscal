@@ -41,7 +41,7 @@ kable(quick_summary, align = c("l", "r"))
 |:---------------------|--------------:|
 | x:D1 + x:D2 -\> y:E1 |        0.0038 |
 | y:E1 -\> x:D1        |        0.0159 |
-| x:D1 + y:E1 -\> x:D2 |        0.0039 |
+| x:D1 + y:E1 -\> x:D2 |        0.0041 |
 
 The important point is not which direction wins on this toy simulation.
 It is that one fitted object supports all three contracts: `X -> Y`,

@@ -1,5 +1,5 @@
 pandoc: 3.8.3
-pkgdown: 2.2.0
+pkgdown: 2.2.1
 pkgdown_sha: ~
 articles:
   aligned_interbattery: aligned_interbattery.html
@@ -16,7 +16,7 @@ articles:
   model_evaluation: model_evaluation.html
   penalized_mfa: penalized_mfa.html
   response_alignment: response_alignment.html
-last_built: 2026-05-11T02:28Z
+last_built: 2026-08-17T14:31Z
 urls:
   reference: https://bbuchsbaum.github.io/muscal/reference
   article: https://bbuchsbaum.github.io/muscal/articles

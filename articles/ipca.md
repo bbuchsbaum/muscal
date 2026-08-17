@@ -110,7 +110,7 @@ tune <- ipca_tune_alpha(
   holdout_frac = 0.1
 )
 tune$best_alpha
-#> [1] 10
+#> [1] 0.1
 ```
 
 ![Held-out MSE across alpha (lambda) values. Lower is
