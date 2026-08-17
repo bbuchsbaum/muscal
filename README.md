@@ -29,6 +29,12 @@ projection, and preprocessing.
 - `bada()` and `bamfa()` for barycentric and discriminant variants.
 - `bilinear_mixed()` for repeated connectivity matrices with subject- and
   design-level structure.
+- `design_mfa()` for trialwise multivariate fields decomposed by named design
+  effects, with subject-aware weighting, coordinate-derived sparse alignment,
+  and held-out or nested tuning via `tune_design_mfa()` and
+  `nested_tune_design_mfa()`. Despite the API name, this is an
+  ASCA+/partial-RDA-style design decomposition; it does not apply MFA block
+  normalization.
 
 ## Installation
 
@@ -92,6 +98,7 @@ articles below.
 - COVSTATIS article: [docs/articles/covstatis.md](docs/articles/covstatis.md)
 - BaDA intro: [vignettes/bada.Rmd](vignettes/bada.Rmd)
 - Bilinear mixed-model article: [docs/articles/bilinear_mixed.md](docs/articles/bilinear_mixed.md)
+- Trialwise design-effect article: [vignettes/design_mfa.Rmd](vignettes/design_mfa.Rmd)
 
 ## Package scope
 

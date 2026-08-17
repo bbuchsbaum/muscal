@@ -1,0 +1,6 @@
+"gate","value","threshold","direction","passed","replicates_per_scenario","mode","elapsed_sec","r_version","platform"
+"mean_soft_error_below_0.15",0.123010109771511,0.15,"below",TRUE,60,"standard",14.962,"R version 4.5.1 (2025-06-13)","aarch64-apple-darwin20"
+"mean_soft_error_below_35pct_naive",0.109926636540872,0.35,"below",TRUE,60,"standard",14.962,"R version 4.5.1 (2025-06-13)","aarch64-apple-darwin20"
+"median_loading_correlation_above_0.95",0.998574558882222,0.95,"above",TRUE,60,"standard",14.962,"R version 4.5.1 (2025-06-13)","aarch64-apple-darwin20"
+"mean_null_energy_below_1.25x_naive",0.351050787013647,1.25,"below",TRUE,60,"standard",14.962,"R version 4.5.1 (2025-06-13)","aarch64-apple-darwin20"
+"max_null_energy_below_2.5x_naive",0.373688751382549,2.5,"below",TRUE,60,"standard",14.962,"R version 4.5.1 (2025-06-13)","aarch64-apple-darwin20"
