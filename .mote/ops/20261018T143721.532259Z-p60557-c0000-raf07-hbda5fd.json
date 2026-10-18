@@ -1,0 +1,1 @@
+{"actor":"codex-muscal-repairs-20261018","entity":"bd-01M57PTDDWKWG8DDZ45MZXRE4N","kind":"reserve_open","mode":"exclusive","op":"20261018T143721.532259Z-p60557-c0000-raf07-hbda5fd","paths":["R/infer_muscal.R","tests/testthat/test-infer-muscal.R","man/infer_muscal.Rd"],"reservation_id":"rv-01M57Q47QW7269KTF9A7NN2W9E","ts":"2026-10-18T14:37:21.532259Z","ttl_s":3600,"v":2}

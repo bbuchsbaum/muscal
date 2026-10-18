@@ -1,0 +1,7 @@
+{
+  "R/utils.R": "e1dc58b13ff08c3f2daacf4857bbd5e2a6f7ecd03bcd560d67df1213123e5a76",
+  "tests/testthat/test-rmt-edge.R": "19083d7f738a482ff410767ba4767b6368a549eb538520e6229c6571442acb18",
+  "tests/testthat/test-summary-utils.R": "74db78c2049021c288b7f78d5c6b67c2c5aedfef18e536ee340403ecd6becea7",
+  "tests/testthat/test-utils-misc.R": "eb34de94b7d4b636c25f890bbf8722fdc5594f2234902ec7dbf0d142947992db",
+  "man/significant_components.Rd": "62dd36db16429494a2d0bebf80fb92e27ca5439c8439afc0eae7023cf7b23fb0"
+}

@@ -27,6 +27,10 @@ infer_covstatis <- function(x,
                             seed = NULL,
                             strict = TRUE,
                             ...) {
+  if (inherits(x, "distatis")) {
+    stop("DISTATIS inference is not implemented; infer_covstatis() uses a different interstructure.",
+         call. = FALSE)
+  }
   if (!inherits(x, "covstatis")) {
     stop("`x` must be a fitted covstatis object.", call. = FALSE)
   }

@@ -59,10 +59,24 @@ summarize_boot <- function(boot_ret, alpha=.05){
 #'   \describe{
 #'     \item{data}{The dataset on which the bootstrap resampling should be performed (required).}
 #'     \item{alpha}{The percentile level for the computation of the lower and upper percentiles (default is 0.05).}
-#'     \item{verbose}{Logical; if `TRUE`, progress information is printed during resampling. Defaults to `FALSE`.}
+#'     \item{verbose}{Logical; print draw indices (default FALSE).}
+#'     \item{seed}{Optional integer seed passed to furrr.}
+#'     \item{resample_indices}{Optional list of nboot subject-index vectors, each of length the number of subjects.}
+#'     \item{keep_replicates}{Retain aligned loading/score matrices and draw metadata (default FALSE).}
 #'   }
-#' @details The function returns a list containing the summarized bootstrap resampled components and scores for the model.
-#' The returned list contains eight elements:
+#' @details Whole subjects are sampled with replacement, with unique replicate subject
+#' identities for duplicate draws. Each draw refits the point estimator and freshly
+#' fits the original subject preprocessing recipe. This assumes a deterministic,
+#' row-preserving preprocessing recipe and supports `rescomp = 0` only.
+#' Permutations and signs are aligned to the fitted loading basis. Tied retained
+#' reference roots have NA coordinate summaries and subspace diagnostics instead.
+#' This experimental percentile summary does not establish coverage or subject
+#' exchangeability. Failed/rank-deficient draws are reported and excluded; selective
+#' failures may bias inference. At least two valid draws are required.
+#' `alpha` is a one-sided tail probability: the default 0.05 gives central 90%
+#' intervals; use 0.025 for central 95% intervals. Additional fields report attempted
+#' and valid counts, failures, resampling indices, and alignment diagnostics.
+#' The returned list contains eight summary matrices:
 #'    * `boot_scores_mean`: A matrix which is the mean of all bootstrapped scores matrices.
 #'    * `boot_scores_sd`: A matrix which is the standard deviation of all bootstrapped scores matrices.
 #'    * `boot_scores_upper`: A matrix which is the upper alpha percentile of all bootstrapped scores matrices.
@@ -72,6 +86,12 @@ summarize_boot <- function(boot_ret, alpha=.05){
 #'    * `boot_lds_upper`: A matrix which is the upper alpha percentile of all bootstrapped loadings matrices.
 #'    * `boot_lds_lower`: A matrix which is the lower alpha percentile of all bootstrapped loadings matrices.
 #' The dimensions of each matrix in the list correspond to the dimensions of the respective matrices in the input data.
+#' @section Bootstrap controls:
+#' `bootstrap(x, nboot, data=...)` requires the original fitted multidesign data.
+#' Optional `seed` controls reproducibility, `verbose=TRUE` prints draw indices,
+#' `keep_replicates=TRUE` retains aligned loading/score matrices, and
+#' `resample_indices` supplies a list of nboot subject-index vectors, each of
+#' length the original subject count. `alpha` is the one-sided percentile tail.
 #' @importFrom furrr future_map furrr_options
 #' @importFrom dplyr tibble bind_rows
 #' @importFrom purrr map
@@ -85,59 +105,95 @@ bootstrap.bada <- function(x, nboot = 500, ...) {
   dots <- list(...)
   data <- dots$data
   alpha <- dots$alpha %||% 0.05
-  verbose <- dots$verbose %||% FALSE
-
-  if (is.null(data)) {
-    stop("'data' argument is required for bootstrap.bada")
+  if (is.null(data)) stop("'data' argument is required for bootstrap.bada")
+  if (!is.numeric(nboot) || length(nboot) != 1L || !is.finite(nboot) ||
+      nboot < 2 || nboot != floor(nboot)) stop("`nboot` must be an integer >= 2.", call. = FALSE)
+  if (!is.numeric(alpha) || length(alpha) != 1L || !is.finite(alpha) ||
+      alpha <= 0 || alpha >= 0.5) stop("`alpha` must be strictly between 0 and 0.5.", call. = FALSE)
+  if ((x$rescomp %||% 0L) != 0L) stop("BaDA bootstrap supports `rescomp = 0` only.", call. = FALSE)
+  y_name <- rlang::as_name(rlang::quo_get_expr(x$y_var))
+  subject_name <- rlang::as_name(rlang::quo_get_expr(x$subject_var))
+  if (!inherits(data, "multidesign") || !is.numeric(data$x) || any(!is.finite(data$x)) ||
+      !identical(as.character(data$design[[y_name]]), as.character(x$labels)) ||
+      !identical(as.character(data$design[[subject_name]]), as.character(x$subjects)) ||
+      ncol(data$x) != nrow(x$v) ||
+      (!is.null(rownames(x$v)) && !identical(colnames(data$x), rownames(x$v)))) {
+    stop("`data` must match the fitted BaDA row identities and feature schema and be finite.", call. = FALSE)
   }
-
+  blocks <- .bada_subject_barycenter_blocks(x, data)
+  reference <- .bada_average_barycenter_blocks(blocks)
+  if (!isTRUE(all.equal(reference, x$barycenters, check.attributes = FALSE))) {
+    stop("`data` does not reproduce the fitted BaDA barycenters.", call. = FALSE)
+  }
+  K <- ncol(x$v)
+  reference_d <- svd(reference, nu = 0L, nv = 0L)$d
+  full_rank <- function(B) {
+    d <- svd(B, nu = 0L, nv = 0L)$d
+    length(d) >= K && d[1L] > reference_d[1L] * 1e-10 && d[K] > d[1L] * 1e-8
+  }
+  if (!full_rank(reference)) stop("Fitted BaDA barycenters lack the requested rank.", call. = FALSE)
   sdat <- split(data, x$subjects)
-  ## subject-split and preprocessed data
-  strata <- seq_along(sdat) %>% purrr::map(function(i) {
-    p <- x$proclist[[i]]
-    Xi <- sdat[[i]]$x
-    Xout <- multivarious::transform(p, Xi)
-    multidesign(Xout, sdat[[i]]$design)
+  S <- length(sdat)
+  schedule <- dots$resample_indices
+  if (!is.null(schedule) && (!is.list(schedule) || length(schedule) != nboot ||
+      any(!vapply(schedule, function(idx) is.numeric(idx) && length(idx) == S &&
+        all(is.finite(idx)) && all(idx == floor(idx)) && all(idx >= 1 & idx <= S), logical(1))))) {
+    stop("`resample_indices` must contain nboot vectors of S valid subject indices.", call. = FALSE)
+  }
+  draws <- furrr::future_map(seq_len(nboot), function(i) {
+    idx <- if (is.null(schedule)) sample.int(S, S, replace = TRUE) else schedule[[i]]
+    if (isTRUE(dots$verbose)) message(i)
+    tryCatch({
+      # Reject cancelled/rank-deficient means before the point estimator's jitter fallback.
+      if (!full_rank(.bada_average_barycenter_blocks(blocks[idx]))) {
+        stop("Resampled class barycenters have insufficient rank.")
+      }
+      selected <- sdat[idx]
+      designs <- lapply(seq_along(selected), function(j) {
+        design <- selected[[j]]$design
+        design[[subject_name]] <- sprintf(".boot_%08d", j)
+        design
+      })
+      boot_data <- multidesign::multidesign(do.call(rbind, lapply(selected, `[[`, "x")),
+                                           do.call(rbind, designs))
+      fit <- rlang::inject(bada(boot_data, y = !!rlang::sym(y_name),
+        subject = !!rlang::sym(subject_name), preproc = x$proclist[[1L]],
+        ncomp = K, rescomp = 0))
+      if (!full_rank(fit$barycenters)) stop("Refitted class barycenters have insufficient rank.")
+      if (!identical(dim(fit$v), dim(x$v)) || any(!is.finite(fit$v)) ||
+          !identical(rownames(fit$fscores), rownames(x$fscores)) ||
+          any(!is.finite(fit$fscores))) stop("Refitted BaDA target schema is incompatible.")
+      list(index = i, indices = idx, loadings = fit$v, scores = fit$fscores,
+           n_subjects = length(unique(fit$subjects)))
+    }, error = function(e) list(index = i, indices = idx, stage = "refit", message = conditionMessage(e)))
+  }, .options = furrr::furrr_options(seed = dots$seed %||% TRUE))
+  failed <- vapply(draws, function(draw) !is.null(draw$message), logical(1))
+  valid <- draws[!failed]
+  if (length(valid) < 2L) stop(sprintf("Only %d valid BaDA bootstrap refits; %d failed. At least two are required.",
+                                     length(valid), sum(failed)), call. = FALSE)
+  reliability <- loading_reliability(list(sdev = reference_d[seq_len(K)]),
+    V_ref = x$v, boot_loadings = lapply(valid, `[[`, "loadings"), alpha = 2 * alpha)
+  aligned <- lapply(seq_along(valid), function(i) {
+    draw <- valid[[i]]
+    p <- reliability$alignment$permutations[[i]]
+    signs <- reliability$alignment$signs[[i]]
+    draw$loadings <- sweep(draw$loadings[, p, drop = FALSE], 2L, signs, "*")
+    draw$scores <- sweep(draw$scores[, p, drop = FALSE], 2L, signs, "*")
+    draw
   })
-
-
-  boot_ret <- furrr::future_map(1:nboot, function(i) {
-    if (isTRUE(verbose)) message(i)
-    boot_indices <- sample(1:length(strata), replace=TRUE)
-    boot_strata <- strata[boot_indices]
-    ## group designs
-    Dc <- boot_strata %>% purrr::map(function(s) {
-      summarize_by(s, !!x$y_var)
-    })
-    
-    ## group barycenters
-    Xc <-Reduce("+", lapply(Dc, "[[", "x"))/length(Dc)
-    
-    ## requires consistent ordering. Better to extract from design
-    row.names(Xc) <- x$label_set
-    ncomp <- min(x$ncomp, nrow(Xc))
-    
-    comp_idx <- seq_len(ncomp)
-    v_boot   <- x$v[, comp_idx, drop = FALSE]
-    boot_i   <- Xc %*% v_boot
-    
-    variance <- sdev(x)^2
-    inv_var  <- ifelse(variance > 1e-12, 1/variance, 0)
-    inv_var  <- inv_var[comp_idx]
-    fs_boot  <- x$fscores[, comp_idx, drop = FALSE]
-    boot_j   <- t(Xc) %*% fs_boot %*% diag(inv_var, nrow = ncomp, ncol = ncomp)
-    
-    dplyr::tibble(i=i, boot_i=list(boot_i), boot_j=list(boot_j))
-    
-    ## group pca
-    ##pca_group <- pca(Xc, ncomp=ncomp, preproc=pass())
-  },.options = furrr::furrr_options(seed=TRUE)) %>% bind_rows()
-    
-  ret <- summarize_boot(boot_ret,alpha)
+  ret <- summarize_boot(list(boot_i = lapply(aligned, `[[`, "scores"),
+                             boot_j = lapply(aligned, `[[`, "loadings")), alpha)
+  for (name in names(ret)) ret[[name]][, reliability$alignment$ambiguous_components] <- NA_real_
+  ret$nboot <- nboot
+  ret$n_success <- length(valid)
+  ret$failures <- draws[failed]
+  ret$resample_indices <- lapply(draws, `[[`, "indices")
+  ret$alignment <- reliability$alignment
+  ret$target <- "Whole-subject BaDA refits with fresh subject preprocessing; conditional on retained reference alignment."
+  if (isTRUE(dots$keep_replicates)) ret$replicates <- aligned
   class(ret) <- c("bootstrap_bada_result", "list")
   ret
 }
-
 
 #' @import chk
 #' @param resdim pca dimensionality for residual analysis (only relevant if `rescomp` > 0)

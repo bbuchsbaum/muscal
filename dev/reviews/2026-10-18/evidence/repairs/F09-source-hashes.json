@@ -1,0 +1,6 @@
+{
+  "R/penalized_mfa_clusterwise.R": "5fbf6ef187b57729fabdbde2af5c2956b1e688337643a54b40099e80bff31351",
+  "tests/testthat/test-clusterwise-rank.R": "4d01e772dae5536d7e296b72ecd7cb664a01e7b3dcdb7a6069ec50df0a5e8536",
+  "tests/testthat/test-penalized-mfa-clusterwise.R": "95db7993d1a390d3283d98a5b911a1e5e3aaaff3a05c3eef1601c6f4ab1ed9b8",
+  "man/penalized_mfa_clusterwise.Rd": "bc1d095e05c7091001a686c5f2bc2f7f0157902b627319338c66c75c72ff8988"
+}

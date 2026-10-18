@@ -155,41 +155,61 @@ covstatis.list <- function(data, ncomp=2, normalize=TRUE, dcenter=TRUE, ...) {
     }
     S <- lapply(S, mfa_norm)
   }
-  
+
+  .fit_statis_grams(S, ncomp, norm_method, dcenter, block_labels, labels)
+}
+
+# Shared fitting in Gram space. COVSTATIS keeps its historical inner-product
+# interstructure; DISTATIS requests RV without changing the compromise tables.
+.fit_statis_grams <- function(S, ncomp, norm_method, dcenter, block_labels,
+                              labels, interstructure = "inner_product",
+                              tol = 1e-8, classes = "covstatis") {
   # Cache vectorized preprocessed tables for RV-space diagnostics and
   # supplementary subject projection.
   table_matrix <- vapply(S, c, numeric(length(S[[1]])), USE.NAMES = FALSE)
 
   # RV-matrix and weights
   C <- crossprod(table_matrix)
-  if (norm_method == "frobenius") {
+  if (interstructure == "rv") {
+    C <- crossprod(.statis_unit_table_matrix(table_matrix))
+  } else if (norm_method == "frobenius") {
     diag(C) <- 1
   }
   eigC <- eigen(C, symmetric = TRUE)
+  if (interstructure == "rv" && length(S) > 1L &&
+      eigC$values[1L] - eigC$values[2L] <= tol * eigC$values[1L]) {
+    stop("The leading RV eigenvalue is tied; assessor weights are not identifiable.",
+         call. = FALSE)
+  }
   alpha_vec <- eigC$vectors[,1]
   alpha_vec <- alpha_vec * sign(sum(alpha_vec))
   if (abs(sum(alpha_vec)) < 1e-12) {
     alpha_vec <- abs(alpha_vec)            # fallback in rare degenerate case
   }
   alpha <- alpha_vec / sum(alpha_vec)
+  if (interstructure == "rv") {
+    eigC$vectors[, 1L] <- alpha_vec
+  }
   
   # Compromise and eigen-decomposition
   Sall <- Reduce("+", Map(`*`, S, alpha))
   fit <- eigen(Sall, symmetric = TRUE)
   
   # Component retention - take the first ncomp whose eigenvalues exceed tolerance
-  tol <- max(fit$values) * 1e-8
-  valid_comps <- which(fit$values > tol)
+  valid_comps <- which(fit$values > max(fit$values) * tol)
   keep <- valid_comps[seq_len(min(ncomp, length(valid_comps)))]
-  
-  scores <- fit$vectors[,keep,drop=FALSE] %*% diag(sqrt(fit$values[keep]))
-  projmat <- fit$vectors[,keep,drop=FALSE] %*% diag(1/sqrt(fit$values[keep]))
+  if (!length(keep)) {
+    stop("The compromise has no positive components.", call. = FALSE)
+  }
+
+  scores <- sweep(fit$vectors[, keep, drop = FALSE], 2, sqrt(fit$values[keep]), `*`)
+  projmat <- sweep(fit$vectors[, keep, drop = FALSE], 2, sqrt(fit$values[keep]), `/`)
   
   partial_scores <- lapply(S, function(mat) mat %*% projmat)
   names(partial_scores) <- block_labels
   
   # Create result object using projector - using 'basis' instead of 'v' for clarity
-  ret <- multivarious::projector(fit$vectors[,keep,drop=FALSE], classes="covstatis", 
+  ret <- multivarious::projector(fit$vectors[,keep,drop=FALSE], classes=classes,
                                  roi_scores=scores,
                                  projmat=projmat,
                                  sdev=sqrt(fit$values[keep]),
@@ -198,12 +218,25 @@ covstatis.list <- function(data, ncomp=2, normalize=TRUE, dcenter=TRUE, ...) {
                                  alpha=alpha, 
                                  C=C,
                                   eigC=eigC,
+                                 eigenvalues=fit$values,
+                                 interstructure=interstructure,
                                  compromise_full=Sall,
                                  partial_scores=partial_scores,
                                  table_matrix=table_matrix,
                                  block_labels=block_labels, 
                                  labels=labels)
   ret
+}
+
+.statis_unit_table_matrix <- function(M) {
+  scaled <- sweep(M, 2, apply(abs(M), 2, max), `/`)
+  sweep(scaled, 2, sqrt(colSums(scaled^2)), `/`)
+}
+
+.statis_frobenius <- function(S) {
+  scale <- max(abs(S))
+  if (scale == 0) return(0)
+  scale * sqrt(sum((S / scale)^2))
 }
 
 # Internal helper to apply the same preprocessing steps to a new matrix
@@ -537,6 +570,7 @@ project_covariate.covstatis <- function(x, y, side = c("table", "feature"),
 #' @keywords internal
 #' @noRd
 rv_subject_scores <- function(x) {
+  if (inherits(x, "distatis")) return(x$subject_scores)
   eigC <- x$eigC
   V    <- eigC$vectors[, seq_len(ncol(coefficients(x))), drop = FALSE]
   sigma <- x$sdev[seq_len(ncol(coefficients(x)))]
@@ -562,6 +596,10 @@ rv_subject_scores <- function(x) {
 #' # Check duality
 #' check_duality(res)
 check_duality <- function(x, tol = 1e-10) {
+  if (inherits(x, "distatis")) {
+    stop("DISTATIS object and assessor maps have separate spectra; check partial-score barycenters instead.",
+         call. = FALSE)
+  }
   F_scores  <- x$roi_scores                         # ROI × D  (U Σ)
   T_scores  <- rv_subject_scores(x)        # subj × D (V Σ)
   isTRUE(all.equal(colSums(F_scores^2),
@@ -586,6 +624,7 @@ roi_map <- function(x, d) {
 #' @importFrom graphics par plot
 #' @export
 plot_subjects <- function(x, dim = c(1,2)) {
+  if (inherits(x, "distatis")) return(plot(x, dims = dim, type = "subjects"))
   T_scores <- rv_subject_scores(x)
   plot(T_scores[,dim], main = "Subject scores (RV space)",
        xlab = paste("Dim", dim[1]), ylab = paste("Dim", dim[2]))

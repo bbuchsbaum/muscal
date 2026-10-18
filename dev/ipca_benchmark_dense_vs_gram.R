@@ -1,11 +1,7 @@
 #!/usr/bin/env Rscript
 
-suppressPackageStartupMessages({
-  if (requireNamespace("devtools", quietly = TRUE)) {
-    devtools::load_all(".", quiet = TRUE)
-  }
-  library(muscal)
-})
+source("dev/benchmark_qualification.R")
+suppressPackageStartupMessages(bench_load_local())
 
 sim_ipca_blocks <- function(n, r, p_vec, noise_sd = 0.05, seed = 1) {
   set.seed(seed)
@@ -39,7 +35,7 @@ run_once <- function(blocks, method, ncomp = 3, lambda = 1, max_iter = 30, tol =
   list(
     fit = fit,
     elapsed_sec = elapsed,
-    converged = isTRUE(fit$converged),
+    converged = if (is.null(fit$converged)) NA else fit$converged,
     iter = fit$iter,
     method_used = fit$method_used
   )
@@ -79,12 +75,12 @@ for (i in seq_along(scenarios)) {
 
   dense_time <- if (inherits(dense_res, "error")) NA_real_ else dense_res$elapsed_sec
   gram_time <- if (inherits(gram_res, "error")) NA_real_ else gram_res$elapsed_sec
-  speedup <- if (is.finite(dense_time) && is.finite(gram_time) && gram_time > 0) dense_time / gram_time else NA_real_
-  subspace_rel <- if (!inherits(dense_res, "error") && !inherits(gram_res, "error")) {
+  pair_ok <- !inherits(dense_res, "error") && !inherits(gram_res, "error") &&
+    isTRUE(dense_res$converged) && isTRUE(gram_res$converged)
+  speedup <- if (pair_ok && is.finite(dense_time) && is.finite(gram_time) && gram_time > 0) dense_time / gram_time else NA_real_
+  subspace_rel <- if (pair_ok) {
     proj_diff(multivarious::scores(dense_res$fit), multivarious::scores(gram_res$fit))
-  } else {
-    NA_real_
-  }
+  } else NA_real_
 
   rows[[i]] <- data.frame(
     scenario = sc$name,
@@ -92,11 +88,17 @@ for (i in seq_along(scenarios)) {
     K = sc$K,
     p_min = min(sc$p_vec),
     p_max = max(sc$p_vec),
+    seed = 100 + i,
+    paired_eligible = pair_ok,
+    dense_ok = !inherits(dense_res, "error"),
+    gram_ok = !inherits(gram_res, "error"),
+    dense_error = if (inherits(dense_res, "error")) conditionMessage(dense_res) else NA_character_,
+    gram_error = if (inherits(gram_res, "error")) conditionMessage(gram_res) else NA_character_,
     dense_sec = dense_time,
     gram_sec = gram_time,
     speedup_dense_over_gram = speedup,
-    dense_converged = if (inherits(dense_res, "error")) FALSE else dense_res$converged,
-    gram_converged = if (inherits(gram_res, "error")) FALSE else gram_res$converged,
+    dense_converged = if (inherits(dense_res, "error")) NA else dense_res$converged,
+    gram_converged = if (inherits(gram_res, "error")) NA else gram_res$converged,
     dense_iter = if (inherits(dense_res, "error")) NA_integer_ else dense_res$iter,
     gram_iter = if (inherits(gram_res, "error")) NA_integer_ else gram_res$iter,
     score_subspace_rel_diff = subspace_rel,
@@ -105,6 +107,7 @@ for (i in seq_along(scenarios)) {
 }
 
 res <- do.call(rbind, rows)
+saveRDS(bench_provenance(101: (100 + length(scenarios))), "dev/ipca_benchmark_provenance.rds")
 print(res, row.names = FALSE)
 
 out_path <- "dev/ipca_benchmark_results.csv"

@@ -1,0 +1,24 @@
+During startup - Warning messages:
+1: Setting LC_CTYPE failed, using "C" 
+2: Setting LC_COLLATE failed, using "C" 
+3: Setting LC_TIME failed, using "C" 
+4: Setting LC_MESSAGES failed, using "C" 
+5: Setting LC_MONETARY failed, using "C" 
+Warning message:
+package 'testthat' was built under R version 4.5.2 
+covstatis: W
+covstatis: helper functions: .......
+covstatis: main function and properties: W.................
+covstatis: projection and summary methods: ...............
+covstatis: multifer component tests: .......................................
+
+== Warnings ====================================================================
+1. (code run outside of `test_that()`) ('test-covstatis.R:3:1') - package 'multivarious' was built under R version 4.5.2
+
+2. covstatis model output has correct structure and properties ('test-covstatis.R:89:3') - `prep()` was deprecated in multivarious 0.3.0.
+i Please use `fit()` instead.
+i The prep() function is deprecated. Use fit() for a more standard interface.
+i The deprecated feature was likely used in the multivarious package.
+  Please report the issue to the authors.
+
+== DONE ========================================================================

@@ -4,15 +4,18 @@
 \alias{cluster_graph}
 \title{Build a cluster graph from spatial coordinates}
 \usage{
-cluster_graph(coords_list, adjacency_opts = list())
+cluster_graph(coords_list, adjacency_opts = list(), return_graph = FALSE)
 }
 \arguments{
 \item{coords_list}{List of coordinate matrices (each k_s x 3)}
 
 \item{adjacency_opts}{Options for adjacency construction}
+
+\item{return_graph}{Return adjacency, adjacency degrees, and combinatorial
+Laplacian together instead of only the Laplacian (default FALSE).}
 }
 \value{
-Sparse adjacency matrix
+A sparse combinatorial Laplacian, or graph data if requested.
 }
 \description{
 Build a cluster graph from spatial coordinates

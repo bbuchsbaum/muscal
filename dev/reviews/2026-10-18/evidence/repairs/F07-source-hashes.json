@@ -1,0 +1,6 @@
+{
+  "R/penalized_mfa_clusterwise.R": "916f2bd6a5d1743256e2b8786372d3da8805f9a4ab7ca3efb6d9266b8dcbe4e9",
+  "tests/testthat/test-clusterwise-graph.R": "e49111f7b863ae268e2f54fbfe24ba2c60d3da917639955dfa926e2b4558eb76",
+  "man/spatial_constraints.Rd": "569ddc523caa987aabf9d66e81912a75eeedd34f0e218dc8a6c0cb2c9059063d",
+  "man/penalized_mfa_clusterwise.Rd": "667758514fdb0792d0e2dc5fff6286070fe076b79f089fea5cc2fbea758e7ee1"
+}

@@ -23,7 +23,9 @@ penalized_mfa_clusterwise(
   verbose = FALSE,
   preproc = NULL,
   memory_budget_mb = 1024,
-  normalized_laplacian = TRUE
+  normalized_laplacian = TRUE,
+  rank_action = c("error", "reduce"),
+  rank_tol = sqrt(.Machine$double.eps)
 )
 
 pmfa_cluster(
@@ -44,7 +46,9 @@ pmfa_cluster(
   verbose = FALSE,
   preproc = NULL,
   memory_budget_mb = 1024,
-  normalized_laplacian = TRUE
+  normalized_laplacian = TRUE,
+  rank_action = c("error", "reduce"),
+  rank_tol = sqrt(.Machine$double.eps)
 )
 }
 \arguments{
@@ -58,8 +62,7 @@ is a \eqn{k_s \times 3} matrix of (x, y, z) spatial coordinates for the clusters
 the corresponding data block. Must have exactly 3 columns.}
 
 \item{ncomp}{Integer number of latent components to extract per block (default: 2).
-When a block has fewer than `ncomp` clusters, the effective rank is automatically
-reduced to match the number of clusters.}
+One common rank must be supported by every block after preprocessing.}
 
 \item{lambda}{Non-negative scalar controlling the spatial smoothness penalty strength
 (default: 1). Larger values enforce stronger smoothness among spatially adjacent
@@ -135,19 +138,24 @@ if memory is constrained.}
 
 \item{normalized_laplacian}{Logical indicating whether to use the normalized graph
 Laplacian (default: TRUE). When TRUE, uses \eqn{\mathbf{L}_{\text{sym}} = \mathbf{D}^{-1/2} \mathbf{L} \mathbf{D}^{-1/2}}
-for scale-free smoothness that is independent of node degree. When FALSE, uses the
-unnormalized Laplacian \eqn{\mathbf{L} = \mathbf{D} - \mathbf{A}}. Normalized is
-recommended for most applications.}
+with degrees computed from adjacency. Isolated vertices have zero normalized
+rows and columns. When FALSE, uses the combinatorial Laplacian
+\eqn{\mathbf{L} = \mathbf{D} - \mathbf{A}}. The choice changes the penalty.}
+
+\item{rank_action}{`"error"` (default) rejects unsupported common ranks;
+`"reduce"` explicitly reduces the rank for every block together.}
+
+\item{rank_tol}{Relative singular-value tolerance for numerical rank after
+preprocessing (default `sqrt(.Machine$double.eps)`).}
 }
 \value{
 A `multiblock_projector` object of class `"penalized_mfa_clusterwise"` with
   the following components:
   \describe{
-    \item{\code{v}}{Concatenated loading matrix (total_clusters × ncomp) formed by
-      vertically stacking all block-specific loading matrices. Padded with zeros for
-      variable-rank blocks.}
-    \item{\code{preproc}}{A pass-through preprocessor (identity transformation), since
-      this function expects pre-processed input.}
+    \item{\code{v}}{Concatenated loading matrix (total_clusters <c3><97> ncomp) formed by
+      vertically stacking all block-specific loading matrices at the common rank.}
+    \item{\code{preproc}}{The concatenated fitted training preprocessors. Raw
+      block projection uses each stored fitted transformation exactly once.}
     \item{\code{block_indices}}{Named list indicating which rows of `v` correspond to
       each block/subject. Each element is an integer vector of row indices.}
   }
@@ -155,11 +163,14 @@ A `multiblock_projector` object of class `"penalized_mfa_clusterwise"` with
   Additional information stored as named elements (accessible via `$`):
   \describe{
     \item{\code{V_list}}{List of length S containing the final orthonormal loading
-      matrices for each block. Each element is a \eqn{k_s \times r_s} matrix where
-      \eqn{r_s = \min(\text{ncomp}, k_s)}.}
+      matrices for each block. Each element is a \eqn{k_s \times K} matrix.}
+    \item{\code{block_preproc, feature_names}}{Fitted block transformations and
+      their original feature identities.}
     \item{\code{Sadj}}{The (normalized or unnormalized) graph Laplacian matrix used
       for the spatial smoothness penalty. Sparse matrix of dimension
       \eqn{\sum_s k_s \times \sum_s k_s}.}
+    \item{\code{adjacency, graph_degree, normalized_laplacian}}{Retained union
+      adjacency, its degree vector, and the chosen Laplacian type.}
     \item{\code{LV}}{The matrix product \eqn{\mathbf{L} \mathbf{V}} from the final
       iteration, useful for computing spatial penalty contributions.}
     \item{\code{obj_values}}{Numeric vector of objective function values at each
@@ -170,9 +181,10 @@ A `multiblock_projector` object of class `"penalized_mfa_clusterwise"` with
       computation (FALSE).}
     \item{\code{iterations_run}}{Integer indicating how many outer iterations were
       completed before convergence or reaching max_iter.}
-    \item{\code{ncomp_block}}{Integer vector of length S containing the effective
-      number of components extracted for each block (may differ from `ncomp` for
-      blocks with fewer clusters).}
+    \item{\code{requested_ncomp, effective_rank, rank_action, rank_tol}}{Requested
+      common rank, each preprocessed block's numerical rank, and rank policy.}
+    \item{\code{ncomp_block}}{Integer vector of length S containing the common
+      resolved number of components, repeated for every block.}
   }
 }
 \description{
@@ -188,7 +200,7 @@ via a graph Laplacian penalty.
 
 For \eqn{S} subjects/blocks with data matrices \eqn{\mathbf{X}_s \in \mathbb{R}^{n_s \times k_s}}
 (where \eqn{k_s} is the number of clusters for subject \eqn{s}), we estimate
-orthonormal loading matrices \eqn{\mathbf{V}_s \in \mathbb{R}^{k_s \times r_s}}
+orthonormal loading matrices \eqn{\mathbf{V}_s \in \mathbb{R}^{k_s \times K}}
 by minimizing:
 
 \deqn{
@@ -241,7 +253,10 @@ The spatial adjacency graph is built using k-nearest neighbors (k-NN) in 3D spac
   \item Symmetrize the adjacency matrix
 }
 
-The number of neighbors can be controlled via `adjacency_opts = list(k_nn = k)`.
+The neighbor count can be controlled via `adjacency_opts = list(k_nn = k)`.
+Graphs pool features across coordinate blocks and symmetrize by union. The
+count is capped at available non-self vertices; zero creates no edges and
+boundary ties are all included, so degree can exceed the requested count.
 
 ## Optimization Algorithm
 
@@ -270,11 +285,16 @@ this tradeoff:
     at the cost of computation time
 }
 
-## Variable-Rank Loadings
+## Common-Rank Contract
 
-When subjects have different numbers of clusters, each block can have a different
-effective rank. The algorithm automatically sets \eqn{r_s = \min(\text{ncomp}, k_s)}
-for each block and pads the concatenated loading matrix with zeros for consistency.
+Every block uses the same component count K. K cannot exceed the smallest
+feature count or the minimum numerical rank after preprocessing. Unsupported
+requests error by default. `rank_action = "reduce"` explicitly reduces all
+blocks together and records the requested and supported ranks; no unsupported
+directions are padded or initialized randomly.
+
+Positive-lambda spatial fits remain experimental. Correct graph construction
+and dimensions do not establish optimizer stationarity or inferential validity.
 
 ## Preprocessing
 
@@ -452,7 +472,7 @@ coords_var <- list(
 
 res_var <- pmfa_cluster(
   data_var, coords_var,
-  ncomp = 8,  # Will be capped at 10 (smallest block)
+  ncomp = 8,  # Common rank below the smallest block's feature count (10)
   lambda = 1,
   verbose = TRUE
 )

@@ -1,0 +1,115 @@
+During startup - Warning messages:
+1: Setting LC_CTYPE failed, using "C" 
+2: Setting LC_COLLATE failed, using "C" 
+3: Setting LC_TIME failed, using "C" 
+4: Setting LC_MESSAGES failed, using "C" 
+5: Setting LC_MONETARY failed, using "C" 
+Warning message:
+package 'testthat' was built under R version 4.5.2 
+component-retention-contract: 1234567...89a
+
+== Failed ======================================================================
+-- 1. Failure ('test-component-retention-contract.R:12:3'): heterogeneous loadin
+Expected `all(is.na(result$icc))` to be TRUE.
+Differences:
+`actual`:   FALSE
+`expected`: TRUE 
+
+
+-- 2. Failure ('test-component-retention-contract.R:13:3'): heterogeneous loadin
+Expected `all(is.na(result$icc_pvalue))` to be TRUE.
+Differences:
+`actual`:   FALSE
+`expected`: TRUE 
+
+
+-- 3. Failure ('test-component-retention-contract.R:14:3'): heterogeneous loadin
+Expected `result$icc_status` to be identical to "disabled".
+Differences:
+target is NULL, current is character
+
+-- 4. Failure ('test-component-retention-contract.R:15:3'): heterogeneous loadin
+`significant_components(...)` threw an error with unexpected message.
+Expected match: "common feature domain"
+Actual message: "unused arguments (check_icc = TRUE, common_features = paste0(\"f\", 1:3))"
+Backtrace:
+    x
+ 1. \-testthat::expect_error(...) at test-component-retention-contract.R:15:3
+ 2.   \-testthat:::quasi_capture(...)
+ 3.     +-testthat (local) .capture(...)
+ 4.     | \-base::withCallingHandlers(...)
+ 5.     \-rlang::eval_bare(quo_get_expr(.quo), quo_get_env(.quo))
+
+-- 5. Failure ('test-component-retention-contract.R:22:3'): ICC requires an expl
+`significant_components(fit, n = 20, check_icc = TRUE)` threw an error with unexpected message.
+Expected match: "common_features"
+Actual message: "unused argument (check_icc = TRUE)"
+Backtrace:
+    x
+ 1. \-testthat::expect_error(...) at test-component-retention-contract.R:22:3
+ 2.   \-testthat:::quasi_capture(...)
+ 3.     +-testthat (local) .capture(...)
+ 4.     | \-base::withCallingHandlers(...)
+ 5.     \-rlang::eval_bare(quo_get_expr(.quo), quo_get_env(.quo))
+
+-- 6. Failure ('test-component-retention-contract.R:25:3'): ICC requires an expl
+`significant_components(fit, n = 20, check_icc = TRUE, common_features = ids)` threw an error with unexpected message.
+Expected match: "common feature domain"
+Actual message: "unused arguments (check_icc = TRUE, common_features = ids)"
+Backtrace:
+    x
+ 1. \-testthat::expect_error(...) at test-component-retention-contract.R:25:3
+ 2.   \-testthat:::quasi_capture(...)
+ 3.     +-testthat (local) .capture(...)
+ 4.     | \-base::withCallingHandlers(...)
+ 5.     \-rlang::eval_bare(quo_get_expr(.quo), quo_get_env(.quo))
+
+-- 7. Error ('test-component-retention-contract.R:32:3'): matched ICC has analyt
+Error in `significant_components(fit, n = 20, check_rmt = FALSE, check_icc = TRUE, common_features = ids)`: unused arguments (check_icc = TRUE, common_features = ids)
+Backtrace:
+    x
+ 1. \-base::suppressMessages(...) at test-component-retention-contract.R:32:3
+ 2.   \-base::withCallingHandlers(...)
+
+-- 8. Failure ('test-component-retention-contract.R:56:3'): invalid common space
+`significant_components(fit, n = 20, check_icc = TRUE, common_features = ids)` threw an error with unexpected message.
+Expected match: "common feature domain"
+Actual message: "unused arguments (check_icc = TRUE, common_features = ids)"
+Backtrace:
+    x
+ 1. \-testthat::expect_error(...) at test-component-retention-contract.R:56:3
+ 2.   \-testthat:::quasi_capture(...)
+ 3.     +-testthat (local) .capture(...)
+ 4.     | \-base::withCallingHandlers(...)
+ 5.     \-rlang::eval_bare(quo_get_expr(.quo), quo_get_env(.quo))
+
+-- 9. Failure ('test-component-retention-contract.R:60:3'): invalid common space
+`significant_components(fit, n = 20, check_icc = TRUE, common_features = ids)` threw an error with unexpected message.
+Expected match: "zero.norm"
+Actual message: "unused arguments (check_icc = TRUE, common_features = ids)"
+Backtrace:
+    x
+ 1. \-testthat::expect_error(...) at test-component-retention-contract.R:60:3
+ 2.   \-testthat:::quasi_capture(...)
+ 3.     +-testthat (local) .capture(...)
+ 4.     | \-base::withCallingHandlers(...)
+ 5.     \-rlang::eval_bare(quo_get_expr(.quo), quo_get_env(.quo))
+
+-- 10. Failure ('test-component-retention-contract.R:63:3'): invalid common spac
+`significant_components(fit, n = 20, check_icc = TRUE, common_features = ids)` threw an error with unexpected message.
+Expected match: "finite"
+Actual message: "unused arguments (check_icc = TRUE, common_features = ids)"
+Backtrace:
+    x
+ 1. \-testthat::expect_error(...) at test-component-retention-contract.R:63:3
+ 2.   \-testthat:::quasi_capture(...)
+ 3.     +-testthat (local) .capture(...)
+ 4.     | \-base::withCallingHandlers(...)
+ 5.     \-rlang::eval_bare(quo_get_expr(.quo), quo_get_env(.quo))
+
+Maximum number of 10 failures reached, some test results may be missing.
+
+== DONE ========================================================================
+Error:
+! Test failures.
+Execution halted

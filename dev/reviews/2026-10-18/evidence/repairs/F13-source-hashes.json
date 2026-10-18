@@ -1,0 +1,5 @@
+{
+  "R/penalized_mfa.R": "6d0f3de492ebec9bce709bbc567d52fb1d673dc77751fd273825e350f9bcfa60",
+  "tests/testthat/test-penalized-mfa.R": "9792cfce057c9c58afdb137a0884edd4c751ea32a20f16b0e41d025f6d580506",
+  "man/penalized_mfa.Rd": "5ae31f02727e10c0b596a3b488780dccaa57b90fad4d71b7a29e82e94173791c"
+}

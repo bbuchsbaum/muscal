@@ -160,47 +160,71 @@ prepare_block_preprocessors <- function(data_list, preproc_arg, check_consistent
 
 #' Identify Significant Components via RMT and Inter-block Coherence Tests
 #'
-#' This function determines which components from a multi-block analysis (e.g.,
-#' penalized MFA) are statistically significant. It combines two complementary
-
-#' tests: a Random Matrix Theory (RMT) test based on the Marchenko-Pastur
-#' distribution, and an Inter-block Coherence (ICC) test that assesses whether
-#' loadings are consistent across blocks.
+#' Assess declared supplied-noise spectral edges and optional common-feature
+#' loading coherence. Arbitrary multiblock loadings are not assumed to share a
+#' feature space, and an asymptotic support edge is not a calibrated p-value.
 #'
 #' @param fit A fitted multi-block model object containing at minimum a `V_list`
 #'   attribute (list of loading matrices) and optionally `sdev` (singular values).
 #' @param n Integer; the number of observations (rows) used to fit the model.
 #' @param k_vec Optional integer vector of block dimensions (number of columns
-#'   per block). If NULL, inferred from `fit` via `block_indices` or `V_list`.
-#' @param alpha Numeric; significance level for hypothesis tests (default 0.05).
+#'   per original data block). If NULL, inferred from loading-matrix row counts.
+#'   Supplied counts and block-index metadata must agree with those fitted feature
+#'   counts, including any preprocessing that changes the feature dimension.
+#' @param alpha Finite probability strictly between 0 and 1; the threshold for
+#'   explicitly enabled experimental ICC (default 0.05). Explicit alpha without
+#'   ICC warns that it is inapplicable; an MP support edge is not alpha-level.
 #' @param check_rmt Logical; if TRUE (default), performs the Marchenko-Pastur
 #'   edge test to check if eigenvalues exceed the noise threshold.
-#' @param tail_frac Numeric; fraction of smallest eigenvalues used to estimate
-#'   noise variance for the RMT test (default 0.3).
+#' @param tail_frac Retained for compatibility. Automatic noise estimation from
+#'   truncated fitted spectra is unavailable; this argument does not estimate noise.
+#' @param noise_variance Positive finite noise variance, supplied independently
+#'   in covariance-eigenvalue units. No automatic estimate is assumed.
+#' @param spectrum Spectral units: `"covariance"` means `sdev^2` are covariance
+#'   eigenvalues; `"singular"` means raw singular values, divided by `n_eff`
+#'   after squaring. The default `"unknown"` leaves RMT unavailable.
+#' @param noise_model `"isotropic"` explicitly declares the IID isotropic noise
+#'   model. The default `"unknown"` leaves RMT unavailable, including for
+#'   arbitrary weighted MFA compromise spectra.
+#' @param n_eff Positive effective degrees of freedom of the covariance
+#'   normalization, at most `n`; defaults to `n` for an uncentered model.
+#'   For a centered unweighted sample covariance, supply `n - 1`.
+#' @param check_icc Logical; explicitly request the experimental common-feature
+#'   coherence criterion (default FALSE). It is independent of RMT applicability.
+#' @param common_features Unique character feature identities declaring a common
+#'   coordinate domain for ICC. Every loading matrix must have exactly these row
+#'   identities; rows are matched by identity before comparison. Equal widths
+#'   alone do not establish a common space.
 #'
 #' @return A list with the following elements:
 #'   \describe{
-#'     \item{keep}{Integer vector of component indices that pass both tests.}
-#'     \item{rmt_pass}{Logical vector indicating which components pass the RMT test.}
-#'     \item{icc_pass}{Logical vector indicating which components pass the ICC test.}
+#'     \item{keep}{Component indices passing all enabled criteria. A requested
+#'       unavailable criterion cannot retain components. With both disabled,
+#'       no components are declared retained.}
+#'     \item{rmt_pass}{Logical edge decisions, or NA if RMT is unavailable/disabled.}
+#'     \item{icc_pass}{Experimental ICC decisions, or NA when disabled.}
 #'     \item{icc}{Numeric vector of inter-block coherence values per component.}
 #'     \item{icc_pvalue}{Numeric vector of p-values for the ICC test.}
 #'     \item{mp_edge}{The Marchenko-Pastur edge threshold (NA if RMT skipped).}
-#'     \item{sigma2_est}{Estimated noise variance (NA if RMT skipped).}
+#'     \item{sigma2_est}{Supplied noise variance (legacy field name; NA if unavailable).}
 #'     \item{lambda}{Eigenvalues (squared singular values).}
 #'     \item{n, k_vec, alpha}{Input parameters echoed back.}
+#'     \item{rmt_status, rmt_reason}{Whether the requested edge was evaluated,
+#'       unavailable, or explicitly disabled, and why. Unavailable is never a pass.}
+#'     \item{gamma, n_eff, spectrum, noise_model}{Resolved aspect ratio and declared units/model.}
+#'     \item{icc_status}{`"disabled"` or `"evaluated_experimental"`.}
 #'   }
 #'
 #' @details
-#' The RMT test uses the Marchenko-Pastur distribution to identify eigenvalues
-#' that exceed the expected bulk edge under the null hypothesis of pure noise.
-#' Noise variance is estimated robustly from the tail of the eigenvalue
-#' distribution.
+#' The supplied-noise RMT criterion uses the asymptotic Marchenko-Pastur upper
+#' support edge. This is not an alpha-level finite-sample significance test.
+#' Its isotropic covariance representation must be declared explicitly; no
+#' noise variance is inferred from a few retained fitted components.
 #'
 #' The ICC test measures the squared cosine similarity of loading vectors
-#' across all pairs of blocks. Under the null hypothesis of random loadings,
-#' the expected value is 1/k (where k is the harmonic mean of block dimensions).
-#' A z-test with Bonferroni correction is applied.
+#' across pairs of explicitly matched common-feature blocks. Its Gaussian null
+#' approximation with Bonferroni correction remains experimental; feature-domain
+#' validation does not establish statistical calibration.
 #'
 #' @importFrom stats median quantile pnorm p.adjust
 #' @importFrom multivarious block_indices
@@ -208,8 +232,27 @@ prepare_block_preprocessors <- function(data_list, preproc_arg, check_consistent
 significant_components <- function(fit, n, k_vec = NULL,
                                    alpha = 0.05, 
                                    check_rmt = TRUE, 
-                                   tail_frac = 0.3) {
+                                   tail_frac = 0.3,
+                                   noise_variance = NULL,
+                                   spectrum = c("unknown", "covariance", "singular"),
+                                   noise_model = c("unknown", "isotropic"),
+                                   n_eff = n,
+                                   check_icc = FALSE,
+                                   common_features = NULL) {
   
+  spectrum <- match.arg(spectrum)
+  noise_model <- match.arg(noise_model)
+  chk::chk_flag(check_rmt)
+  chk::chk_flag(check_icc)
+  if (!is.numeric(alpha) || length(alpha) != 1L || !is.finite(alpha) ||
+      alpha <= 0 || alpha >= 1) {
+    stop("`alpha` must be a finite scalar strictly between 0 and 1.", call. = FALSE)
+  }
+  if (!missing(alpha) && !check_icc) {
+    warning("`alpha` applies only to explicitly enabled ICC; a support edge is not an alpha-level test.",
+            call. = FALSE)
+  }
+
   # ---- 0. Input Extraction and Validation -----------------------------
   
   # Extract V_list (essential for ICC)
@@ -223,29 +266,24 @@ significant_components <- function(fit, n, k_vec = NULL,
       stop("Could not extract a valid V_list (list of loading matrices) from the fit object.")
   }
   S <- length(V_list)
+  if (any(!vapply(V_list, function(V) is.matrix(V) && is.numeric(V) &&
+                  nrow(V) > 0L && ncol(V) > 0L && all(is.finite(V)), logical(1)))) {
+    stop("V_list must contain nonempty finite numeric loading matrices.", call. = FALSE)
+  }
   
-  # Extract or derive k_vec (block column counts)
-  if (is.null(k_vec)) {
-      if (inherits(fit, "multiblock_projector")) {
-          k_vec <- sapply(multivarious::block_indices(fit), length)
-      } else {
-          # Try deriving from V_list dimensions (number of rows)
-          k_vec_derived <- sapply(V_list, nrow)
-          if (all(k_vec_derived > 0)) { # Check if all blocks have rows
-              k_vec <- k_vec_derived
-          } else {
-              stop("Could not derive k_vec (block column counts). Please provide it explicitly.")
-          }
-      }
+  feature_counts <- vapply(V_list, nrow, integer(1))
+  if (!is.null(fit$block_indices) &&
+      (!is.list(fit$block_indices) ||
+       !identical(unname(lengths(fit$block_indices)), unname(feature_counts)))) {
+    stop("Stored block indices disagree with loading feature counts.", call. = FALSE)
   }
+  if (is.null(k_vec)) k_vec <- feature_counts
   if (length(k_vec) != S) {
-       stop(sprintf("Length of k_vec (%d) does not match the number of blocks in V_list (%d).",
-                     length(k_vec), S))
+    stop("Length of k_vec does not match the number of blocks in V_list.", call. = FALSE)
   }
-  # Ensure k_vec contains valid dimensions (e.g. > 0 for ICC calculation)
-  if (any(k_vec <= 1)) {
-       warning("Some blocks have k <= 1 features. ICC calculation might be unstable or meaningless for these blocks.", call.=FALSE)
-       # Proceed, but user should be aware. Null distribution assumes k > 1.
+  if (!is.numeric(k_vec) || any(!is.finite(k_vec)) || any(k_vec <= 0) ||
+      any(k_vec != feature_counts)) {
+    stop("k_vec must match the positive loading feature counts.", call. = FALSE)
   }
 
   # Extract sdev (singular values, optional for RMT)
@@ -258,7 +296,7 @@ significant_components <- function(fit, n, k_vec = NULL,
       }
       if (is.null(sdev)) {
            warning("Singular values (sdev) not found in fit object. Skipping RMT test.", call.=FALSE)
-           check_rmt <- FALSE # Disable RMT check if sdev not found
+           # Keep the requested criterion unavailable; missing data is not a pass.
       }
   }
   
@@ -271,132 +309,87 @@ significant_components <- function(fit, n, k_vec = NULL,
   # Validate n
   chk::chk_number(n)
   chk::chk_gt(n, 1)
-
-  # ---- 1. RMT Test (Conditional) --------------------------------------
-  pass_rmt <- rep(TRUE, r) # Default to TRUE if RMT is skipped
-  mp_edge <- NA
-  sigma2_est <- NA
-  lambda <- numeric(0) # Initialize lambda
-  
-  if (check_rmt) {
-      lambda <- sdev^2                    # compromise eigenvalues
-      if (length(lambda) != r) {
-          warning(sprintf("Length of sdev^2 (%d) does not match number of components (%d). Skipping RMT test.", 
-                          length(lambda), r), call.=FALSE)
-          check_rmt <- FALSE
-          pass_rmt <- rep(TRUE, r)
-      } else {
-          k_tot  <- sum(k_vec)
-          gamma  <- k_tot / n
-          if (gamma > 1) {
-              warning("Aspect ratio k_tot/n > 1. Marchenko-Pastur edge calculation assumes n >= k_tot. Skipping RMT test.", call.=FALSE)
-              check_rmt <- FALSE
-              pass_rmt <- rep(TRUE, r)
-          } else {
-              # Robust noise variance estimation from the tail
-              tail_indices <- seq_len(r)[lambda <= stats::quantile(lambda, 1 - tail_frac, na.rm=TRUE)]
-              # Ensure there are enough values in the tail for median
-              if (length(tail_indices) < 3) { # Need at least a few points for robust median
-                   warning("Not enough eigenvalues in the specified tail quantile for robust noise estimation. Using overall median. RMT results may be less reliable.", call.=FALSE)
-                   sigma2_est <- stats::median(lambda, na.rm=TRUE) / (1 + sqrt(gamma))^2 # Less robust fallback
-              } else {
-                  sigma2_est <- stats::median(lambda[tail_indices], na.rm=TRUE) / (1 + sqrt(gamma))^2
-              }
-              
-              if (!is.finite(sigma2_est) || sigma2_est <= 0) {
-                  warning("Estimated noise variance (sigma2) is not positive and finite. Skipping RMT test.", call.=FALSE)
-                  check_rmt <- FALSE
-                  pass_rmt <- rep(TRUE, r)
-              } else {
-                  mp_edge <- sigma2_est * (1 + sqrt(gamma))^2
-                  pass_rmt <- lambda > mp_edge
-              }
-          }
-      }
-  } else {
-      message("RMT check skipped.")
+  if (!is.numeric(n_eff) || length(n_eff) != 1L || !is.finite(n_eff) ||
+      n_eff <= 0 || n_eff > n) {
+    stop("`n_eff` must be positive, finite and no greater than n.", call. = FALSE)
   }
 
-  # ---- 2. Inter-block Coherence (ICC) Test --------------------------
-  # Calculate harmonic mean of block sizes (use k_vec > 1 for stability)
-  k_vec_valid <- k_vec[k_vec > 1]
-  if (length(k_vec_valid) == 0) {
-      warning("No blocks have k > 1 features. Cannot compute meaningful ICC. Skipping ICC test.")
-      pass_icc <- rep(TRUE, r) # Default to pass if test cannot be run
-      icc <- rep(NA, r)
-      pval <- rep(NA, r)
-  } else {
-      kbar <- 1 / mean(1 / k_vec_valid)
-      icc <- numeric(r)
-      valid_comparisons <- 0
-      
-      # Check if we have at least 2 blocks for comparison
-      if (S < 2) {
-           warning("Only one block found. Cannot compute ICC. Skipping ICC test.")
-           pass_icc <- rep(TRUE, r)
-           icc <- rep(NA, r)
-           pval <- rep(NA, r)
-      } else {
-          for (c in seq_len(r)) {
-            num <- 0
-            comparisons_c <- 0
-            for (s in seq_len(S - 1)) {
-              for (t in (s + 1):S) {
-                # Only compare if both blocks have > 1 feature for stable norm calc
-                if (k_vec[s] > 0 && k_vec[t] > 0) { 
-                    vsc <- V_list[[s]][, c]
-                    vtc <- V_list[[t]][, c]
-                    norm_s_sq <- sum(vsc^2)
-                    norm_t_sq <- sum(vtc^2)
-                    # Avoid division by zero if a loading vector is somehow zero
-                    if (norm_s_sq > 1e-12 && norm_t_sq > 1e-12) {
-                        cos_sq <- (sum(vsc * vtc)^2) / (norm_s_sq * norm_t_sq)
-                        num <- num + cos_sq
-                        comparisons_c <- comparisons_c + 1
-                    }
-                }
-              }
-            }
-            # Average over the number of valid comparisons made for this component
-            if (comparisons_c > 0) {
-               icc[c] <- num / comparisons_c
-            } else {
-               icc[c] <- NA # Should not happen if S >= 2 and k_vec > 0
-            }
-          }
-          valid_comparisons <- comparisons_c # Total pairs compared
-          
-          # Calculate Z-score and p-value where ICC is not NA
-          z <- rep(NA, r)
-          pval <- rep(NA, r)
-          not_na_icc <- !is.na(icc)
-          if (any(not_na_icc)) {
-              # Use kbar derived from blocks with k > 1 for null expectation
-              # Variance term assumes independence and large k approx.
-              # Denominator: sqrt(Var(ICC)) = sqrt( Var( sum(cos^2)/(N) ) ) approx sqrt( (1/N^2) * N * Var(cos^2) ) 
-              # Var(cos^2) approx Var(chi^2_1 / (k-1)) approx 2/(k-1)^2 -> use kbar? 
-              # The provided formula might be simplified; let's use it for now.
-              # Need N = S*(S-1)/2 pairs used in the sum for variance? No, the variance is of the mean value.
-              # Let's stick to the provided formula's structure, assuming it accounts for averaging. Need S*(S-1)/2 comparisons? valid_comparisons handles this.
-              z_denom <- sqrt(2 / (valid_comparisons * kbar^2)) # Using valid_comparisons instead of S*(S-1)/2 if some pairs were skipped?
-              if (is.finite(z_denom) && z_denom > 1e-12) {
-                 z[not_na_icc] <- (icc[not_na_icc] - 1 / kbar) / z_denom
-                 pval[not_na_icc] <- 1 - stats::pnorm(z[not_na_icc])
-              } else {
-                   warning("Could not compute valid Z-score denominator for ICC test. Skipping.", call.=FALSE)
-              }
-          }
-          # Apply Bonferroni correction where p-value is valid
-          pass_icc <- rep(FALSE, r)
-          valid_pval <- !is.na(pval)
-          if (any(valid_pval)) {
-             pass_icc[valid_pval] <- stats::p.adjust(pval[valid_pval], method = "bonferroni") < alpha
-          }
-      }
+  # A supplied-noise edge is evaluated only for declared spectral units/model.
+  # Automatic noise estimation from truncated fitted roots is not qualified.
+  pass_rmt <- rep(NA, r)
+  mp_edge <- sigma2_est <- NA_real_
+  lambda <- numeric(0)
+  gamma <- sum(k_vec) / n_eff
+  rmt_status <- if (check_rmt) "unavailable" else "disabled"
+  rmt_reason <- if (check_rmt) {
+    "RMT requires supplied noise variance, declared spectral units and isotropic noise."
+  } else "RMT was explicitly disabled."
+  if (check_rmt && !is.null(sdev)) {
+    if (!is.numeric(sdev) || length(sdev) != r || any(!is.finite(sdev)) || any(sdev < 0)) {
+      stop("RMT requires one finite nonnegative sdev per component.", call. = FALSE)
+    }
+    if (!is.null(noise_variance) &&
+        (!is.numeric(noise_variance) || length(noise_variance) != 1L ||
+         !is.finite(noise_variance) || noise_variance <= 0)) {
+      stop("`noise_variance` must be a positive finite scalar.", call. = FALSE)
+    }
+    lambda <- sdev^2
+    if (spectrum == "singular") lambda <- lambda / n_eff
+    if (any(!is.finite(lambda))) {
+      stop("Squared spectral values must be finite; rescale the input.", call. = FALSE)
+    }
+    if (!is.null(noise_variance) && spectrum != "unknown" && noise_model == "isotropic") {
+      mp_edge <- noise_variance * (1 + sqrt(gamma))^2
+      if (!is.finite(mp_edge)) stop("MP edge is not finite; rescale the input.", call. = FALSE)
+      sigma2_est <- noise_variance
+      pass_rmt <- lambda > mp_edge
+      rmt_status <- "evaluated"
+      rmt_reason <- "Supplied-noise asymptotic support edge; not a finite-sample p-value."
+    }
+  } else if (!check_rmt) {
+    message("RMT check skipped.")
   }
-  
+
+  icc <- pval <- rep(NA_real_, r)
+  pass_icc <- rep(NA, r)
+  icc_status <- "disabled"
+  if (check_icc) {
+    if (!is.character(common_features) || length(common_features) < 2L ||
+        anyNA(common_features) || any(common_features == "") || anyDuplicated(common_features)) {
+      stop("ICC requires unique nonempty `common_features` identities for at least two features.", call. = FALSE)
+    }
+    if (S < 2L) stop("ICC requires at least two blocks in a common feature domain.", call. = FALSE)
+    common <- lapply(V_list, function(V) {
+      ids <- rownames(V)
+      if (is.null(ids) || anyNA(ids) || anyDuplicated(ids) ||
+          length(ids) != length(common_features) || !setequal(ids, common_features)) {
+        stop("ICC blocks must declare the same common feature domain using unique row identities.", call. = FALSE)
+      }
+      V <- V[match(common_features, ids), , drop = FALSE]
+      # Normalize without squaring very large/small original magnitudes.
+      amplitude <- apply(abs(V), 2L, max)
+      if (any(amplitude == 0)) stop("ICC cannot compare zero-norm loading directions.", call. = FALSE)
+      V <- sweep(V, 2L, amplitude, "/")
+      sweep(V, 2L, sqrt(colSums(V^2)), "/")
+    })
+    pairs <- utils::combn(seq_len(S), 2L, simplify = FALSE)
+    squared <- lapply(pairs, function(pair) {
+      pmin(1, colSums(common[[pair[[1L]]]] * common[[pair[[2L]]]])^2)
+    })
+    icc <- Reduce(`+`, squared) / length(pairs)
+    p <- length(common_features)
+    z <- (icc - 1 / p) / sqrt(2 / (length(pairs) * p^2))
+    pval <- stats::pnorm(z, lower.tail = FALSE)
+    pass_icc <- stats::p.adjust(pval, method = "bonferroni") < alpha
+    icc_status <- "evaluated_experimental"
+  } else if (!is.null(common_features)) {
+    stop("`common_features` requires `check_icc = TRUE`.", call. = FALSE)
+  }
+
   # ---- 3. Combined Decision ------------------------------------------
-  keep <- which(pass_rmt & pass_icc)
+  rmt_filter <- if (rmt_status == "disabled") rep(TRUE, r) else pass_rmt
+  icc_filter <- if (check_icc) pass_icc else rep(TRUE, r)
+  keep <- if (!check_rmt && !check_icc) integer(0) else which(rmt_filter & icc_filter)
   
   # ---- 4. Return Results --------------------------------------------
   return(list(keep = keep,
@@ -409,7 +402,14 @@ significant_components <- function(fit, n, k_vec = NULL,
               lambda = lambda,
               n = n,
               k_vec = k_vec,
-              alpha = alpha))
+              alpha = alpha,
+              rmt_status = rmt_status,
+              rmt_reason = rmt_reason,
+              gamma = gamma,
+              n_eff = n_eff,
+              spectrum = spectrum,
+              noise_model = noise_model,
+              icc_status = icc_status))
 }
 
 #' @noRd

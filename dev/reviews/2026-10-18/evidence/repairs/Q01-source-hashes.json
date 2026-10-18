@@ -1,0 +1,8 @@
+{
+  "dev/benchmark_qualification.R": "f0abb87a92e97f01c66150cb349ecf6ffa810e6089223b5dff476a4881ba45e2",
+  "dev/benchmark_design_mfa.R": "db3a50650bdebec158958aa4109f025ded3b85007eb0d61000a7cbfd67b15ab5",
+  "dev/run_design_mfa_benchmarks.R": "ee14704b599cb23e651330c95c0265555eda4b2ffbaf96c5ba7547b84fa487c2",
+  "dev/ipca_benchmark_dense_vs_gram.R": "2d7a2ef502c74995d239d95eac924be3cb093609c998a21cded1934a8962e886",
+  "dev/ipca_vs_multiset_synth.R": "f7414feacfc3682f4e875894853f43288e60b20cbf19dd88d68078638d7c2c41",
+  "tests/testthat/test-benchmark-qualification.R": "d40e98708ea48f70a800f08fb12124357a8b4e3d50b64edfc8c071c58243b289"
+}

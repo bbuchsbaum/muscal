@@ -1,0 +1,8 @@
+{
+  "R/components_utils.R": "8ac814be57fcc17bbf41df80aad9ba64681312dae0cd19a81cbe230a382c289d",
+  "R/utils.R": "bf946772a176123886f3d7044df63d873702c28536131a8d2c0cf901eb1f4b8e",
+  "tests/testthat/test-component-retention-contract.R": "8f3cbcd716330a6ec6f5a8d763f3513f325fe7fcaf9c28ceb15eedee74dd8762",
+  "tests/testthat/test-components_utils.R": "a7add6e95541656d4d944fe4975244132b4e4a3131e71c9d2542f76112fe1153",
+  "man/estimate_components.Rd": "b03771f802efd30560cd8373044dc982c4ec8e89ee4eb42116bc90f4d67a756f",
+  "man/significant_components.Rd": "137fc1e2d61f34cc76e41e1d5dcb7d962bedbb5fded41c3bd6d571449583dbe5"
+}

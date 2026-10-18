@@ -173,6 +173,9 @@ NULL
 #'   }
 #'   Adam is generally more robust and converges faster with default settings.
 #' @param preproc A preprocessing specification (default: `multivarious::center()`).
+#'   Data blocks must share equal positive observation counts, and preprocessing
+#'   must preserve the shared observation rows and their order. Blocks may have
+#'   different feature counts where the chosen penalty supports them.
 #'   Can be:
 #'   \itemize{
 #'     \item A single `pre_processor` object applied to all blocks
@@ -325,9 +328,27 @@ penalized_mfa.list <- function(data,
   
   chk::chk_list(data)
   if (length(data) < 2) stop("penalized_mfa requires at least 2 data blocks.")
+
+  n_obs <- vapply(data, function(block) {
+    if (length(dim(block)) != 2L) {
+      stop("penalized_mfa data blocks must be two-dimensional.", call. = FALSE)
+    }
+    nrow(block)
+  }, integer(1))
+  if (any(n_obs < 1L) || any(n_obs != n_obs[[1L]])) {
+    labels <- names(data) %||% paste0("Block_", seq_along(data))
+    stop(sprintf(
+      "penalized_mfa requires shared observations with equal positive row counts; received %s.",
+      paste(paste0(labels, "=", n_obs), collapse = ", ")
+    ), call. = FALSE)
+  }
   
   prep_res <- prepare_block_preprocessors(data, preproc, check_consistent_ncol = FALSE)
   Xp <- prep_res$Xp
+  if (length(Xp) != length(data) ||
+      any(vapply(Xp, nrow, integer(1)) != n_obs)) {
+    stop("Preprocessing must preserve the shared observation rows.", call. = FALSE)
+  }
   proclist <- .muscal_materialize_block_preprocessors(data, prep_res$proclist)
   p_dims <- sapply(Xp, ncol)
   ncomp <- min(ncomp, min(p_dims))

@@ -1,0 +1,6 @@
+{
+  "R/penalized_mfa_clusterwise.R": "c75c5418be16f6d56be0a065090ebe899ec3fbdb1a3455691521edc2b3409627",
+  "tests/testthat/test-clusterwise-graph.R": "40034d475a24409b6d38fb3145c24b1c9962fb5bd68388ef0d82bb0c7d60a881",
+  "man/cluster_graph.Rd": "4a55fc502c4e595cbddd14ceeea2ce831b02fa6679052490e8eb973b325b9146",
+  "man/penalized_mfa_clusterwise.Rd": "5160e32f3ef631d6e7b28d32d6c8de876ed21da5db8a225edf855ed730138788"
+}

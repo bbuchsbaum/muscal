@@ -1,0 +1,36 @@
+During startup - Warning messages:
+1: Setting LC_CTYPE failed, using "C" 
+2: Setting LC_COLLATE failed, using "C" 
+3: Setting LC_TIME failed, using "C" 
+4: Setting LC_MESSAGES failed, using "C" 
+5: Setting LC_MONETARY failed, using "C" 
+Warning message:
+package 'testthat' was built under R version 4.5.2 
+clusterwise-rank: ......1.2..W...
+
+== Warnings ====================================================================
+1. rank and finite-data boundary errors are explicit ('test-clusterwise-rank.R:59:5') - NAs introduced by coercion to integer range
+
+== Failed ======================================================================
+-- 1. Error ('test-clusterwise-rank.R:27:7'): common-rank updates are dimensiona
+Error in `head.default(obj_values, iter + 1)`: invalid 'n' - must contain at least one non-missing element, got none.
+Backtrace:
+    x
+ 1. \-muscal::penalized_mfa_clusterwise(...) at test-clusterwise-rank.R:27:7
+ 2.   +-utils::head(obj_values, iter + 1) at muscal/R/penalized_mfa_clusterwise.R:1080:3
+ 3.   \-utils:::head.default(obj_values, iter + 1)
+ 4.     \-utils::.checkHT(n, dx <- dim(x))
+
+-- 2. Error ('test-clusterwise-rank.R:48:3'): effective rank prevents unsupporte
+Error in `head.default(obj_values, iter + 1)`: invalid 'n' - must contain at least one non-missing element, got none.
+Backtrace:
+    x
+ 1. \-muscal::penalized_mfa_clusterwise(...) at test-clusterwise-rank.R:48:3
+ 2.   +-utils::head(obj_values, iter + 1) at muscal/R/penalized_mfa_clusterwise.R:1080:3
+ 3.   \-utils:::head.default(obj_values, iter + 1)
+ 4.     \-utils::.checkHT(n, dx <- dim(x))
+
+== DONE ========================================================================
+Error:
+! Test failures.
+Execution halted

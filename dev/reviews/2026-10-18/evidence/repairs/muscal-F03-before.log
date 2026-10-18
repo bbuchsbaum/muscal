@@ -1,0 +1,39 @@
+During startup - Warning messages:
+1: Setting LC_CTYPE failed, using "C" 
+2: Setting LC_COLLATE failed, using "C" 
+3: Setting LC_TIME failed, using "C" 
+4: Setting LC_MESSAGES failed, using "C" 
+5: Setting LC_MONETARY failed, using "C" 
+Warning message:
+package 'testthat' was built under R version 4.5.2 
+component-retention-contract: .................12345
+
+== Failed ======================================================================
+-- 1. Error ('test-component-retention-contract.R:70:3'): component retention us
+Error in `estimate_components(fit, noise_variance = 0.1, spectrum = "covariance", noise_model = "isotropic")`: unused arguments (noise_variance = 0.1, spectrum = "covariance", noise_model = "isotropic")
+
+-- 2. Error ('test-component-retention-contract.R:87:3'): heterogeneous feature 
+Error in `estimate_components(fit, noise_variance = 0.1, spectrum = "covariance", noise_model = "isotropic")`: unused arguments (noise_variance = 0.1, spectrum = "covariance", noise_model = "isotropic")
+
+-- 3. Failure ('test-component-retention-contract.R:98:3'): missing RMT informat
+Expected `result$method_used` to be identical to "rmt_unavailable".
+Differences:
+1/1 mismatches
+x[1]: "variance"
+y[1]: "rmt_unavailable"
+
+-- 4. Failure ('test-component-retention-contract.R:99:3'): missing RMT informat
+Expected `all(is.na(result$criterion))` to be TRUE.
+Differences:
+`actual`:   FALSE
+`expected`: TRUE 
+
+
+-- 5. Failure ('test-component-retention-contract.R:100:3'): missing RMT informa
+Expected `result$keep` to have length 0.
+Actual length: 1.
+
+== DONE ========================================================================
+Error:
+! Test failures.
+Execution halted

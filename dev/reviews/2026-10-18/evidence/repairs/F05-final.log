@@ -1,0 +1,36 @@
+During startup - Warning messages:
+1: Setting LC_CTYPE failed, using "C" 
+2: Setting LC_COLLATE failed, using "C" 
+3: Setting LC_TIME failed, using "C" 
+4: Setting LC_MESSAGES failed, using "C" 
+5: Setting LC_MONETARY failed, using "C" 
+Warning message:
+package 'testthat' was built under R version 4.5.2 
+bada-bootstrap-refit: WW...................................
+
+== Warnings ====================================================================
+1. identical-subject bootstrap refits preserve loading units ('test-bada-bootstrap-refit.R:21:3') - package 'future' was built under R version 4.5.2
+
+2. identical-subject bootstrap refits preserve loading units ('test-bada-bootstrap-refit.R:21:3') - package 'purrr' was built under R version 4.5.2
+
+== DONE ========================================================================
+bada-multidesign: ...............WWW............................................................
+
+== Warnings ====================================================================
+1. bada.multidesign with residual components ('test-bada-multidesign.R:79:3') - imaginary parts discarded in coercion
+
+2. bada.multidesign with residual components ('test-bada-multidesign.R:79:3') - imaginary parts discarded in coercion
+
+3. bada.multidesign with residual components ('test-bada-multidesign.R:79:3') - imaginary parts discarded in coercion
+
+== DONE ========================================================================
+Nice code.
+summary-utils: ............
+
+== DONE ========================================================================
+loading-alignment: .............................
+
+== DONE ========================================================================
+infer-muscal: .........................................................................................................................
+
+== DONE ========================================================================

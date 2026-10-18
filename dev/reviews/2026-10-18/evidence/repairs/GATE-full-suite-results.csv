@@ -1,0 +1,558 @@
+"file","context","test","nb","failed","skipped","error","warning","user","system","real","passed"
+"test-aligned-interbattery.R","aligned-interbattery","aligned_interbattery supports nested subject-domain input with missing domains",11,0,FALSE,FALSE,0,0.366,0.017,0.39,11
+"test-aligned-interbattery.R","aligned-interbattery","aligned_interbattery gives equivalent results for nested and flat block layouts",2,0,FALSE,FALSE,0,0.217,0.00700000000000001,0.232,2
+"test-aligned-interbattery.R","aligned-interbattery","aligned_interbattery predicts across sides on synthetic data",4,0,FALSE,FALSE,0,0.042,0.001,0.0430000000000001,4
+"test-aligned-interbattery.R","aligned-interbattery","aligned_interbattery supports subject-wise row graphs and orientation-invariant prediction",3,0,FALSE,FALSE,0,0.0699999999999998,0.003,0.0739999999999998,3
+"test-aligned-interbattery.R","aligned-interbattery","aligned_interbattery projects and predicts from multi-block side bundles",6,0,FALSE,FALSE,0,0.05,0.00199999999999997,0.052,6
+"test-aligned-interbattery.R","aligned-interbattery","aligned_interbattery supports joint completion from both sides",12,0,FALSE,FALSE,0,0.069,0.005,0.0750000000000002,12
+"test-aligned-interbattery.R","aligned-interbattery","aligned_interbattery decorrelate penalty reduces within-side score covariance",4,0,FALSE,FALSE,0,0.165,0.00900000000000001,0.186,4
+"test-aligned-interbattery.R","aligned-interbattery","aligned_interbattery supports whitening-based decorrelation with coherent orientation",7,0,FALSE,FALSE,0,0.0510000000000002,0.002,0.0539999999999998,7
+"test-aligned-interbattery.R","aligned-interbattery","aligned_interbattery supports out-of-sample row maps for partial bundles",7,0,FALSE,FALSE,0,0.0430000000000001,0.002,0.044,7
+"test-aligned-interbattery.R","aligned-interbattery","aligned_interbattery reconstruction from both returns only observed sides",3,0,FALSE,FALSE,0,0.0429999999999997,0.002,0.0450000000000004,3
+"test-aligned-interbattery.R","aligned-interbattery","aligned_interbattery accepts precomputed normalized Laplacians",2,0,FALSE,FALSE,0,0.0800000000000001,0.002,0.0819999999999999,2
+"test-aligned-mcca.R","aligned-mcca","aligned_mcca validates row_index and returns expected structure",19,0,FALSE,FALSE,0,0.0960000000000001,0.002,0.0990000000000002,19
+"test-aligned-mcca.R","aligned-mcca","aligned_mcca infers N when not supplied",3,0,FALSE,FALSE,0,0.032,0.001,0.0329999999999999,3
+"test-aligned-mcca.R","aligned-mcca","aligned_mcca supports per-block preproc lists and validates ncomp",2,0,FALSE,FALSE,0,0.00800000000000001,0,0.00800000000000001,2
+"test-aligned-mcca.R","aligned-mcca","aligned_mcca with normalization='None' agrees with mcca when all blocks share rows",1,0,FALSE,FALSE,0,0.00700000000000012,0.001,0.00800000000000001,1
+"test-aligned-mcca.R","aligned-mcca","aligned_mcca custom alpha can drop a block cleanly",2,0,FALSE,FALSE,0,0.00299999999999967,0,0.00300000000000011,2
+"test-aligned-mcca.R","aligned-mcca","aligned_mcca block_weights argument is deprecated but still works",4,0,FALSE,FALSE,0,0.00600000000000023,0.001,0.00599999999999978,4
+"test-aligned-mcca.R","aligned-mcca","aligned_mcca uses eigen() fallback when ncomp == N",1,0,FALSE,FALSE,0,0.00300000000000011,0,0.00300000000000011,1
+"test-aligned-mcca.R","aligned-mcca","aligned_mcca passes mathematical sanity checks on synthetic aligned low-rank data",9,0,FALSE,FALSE,0,0.0089999999999999,0.001,0.00900000000000034,9
+"test-aligned-mcca.R","aligned-mcca","aligned_mcca handles p > n blocks without error",2,0,FALSE,FALSE,0,0.00499999999999989,0,0.004,2
+"test-aligned-mcca.R","aligned-mcca","aligned_mcca ridge=0 warns and still returns a fit for rank-deficient blocks",2,0,FALSE,FALSE,0,0.004,0.001,0.00499999999999989,2
+"test-aligned-mcca.R","aligned-mcca","anchored_mcca with normalization='None' matches aligned_mcca with Y included",4,0,FALSE,FALSE,0,0.00600000000000023,0,0.00700000000000012,4
+"test-aligned-mcca.R","aligned-mcca","anchored_mcca default normalization is 'MFA' and matches anchored_mfa interface",8,0,FALSE,FALSE,0,0.0749999999999997,0.00199999999999997,0.077,8
+"test-aligned-mcca.R","aligned-mcca","anchored_mcca adapts alpha for Y and validates names/lengths",6,0,FALSE,FALSE,0,0.012,0,0.012,6
+"test-aligned-mcca.R","aligned-mcca","anchored_mcca block_weights argument is deprecated but still works",4,0,FALSE,FALSE,0,0.00700000000000012,0.001,0.00700000000000012,4
+"test-aligned-mcca.R","aligned-mcca","anchored_mcca assigns default X names and validates row_index values",3,0,FALSE,FALSE,0,0.0089999999999999,0,0.0089999999999999,3
+"test-aligned-mcca.R","aligned-mcca","anchored_mcca 'balanced' mode reduces single-block domination",7,0,FALSE,FALSE,0,0.0170000000000003,0.002,0.0179999999999998,7
+"test-aligned-mcca.R","aligned-mcca","anchored_mcca balanced diagnostics satisfy contribution algebra",5,0,FALSE,FALSE,0,0.0489999999999999,0.001,0.0489999999999999,5
+"test-aligned-mcca.R","aligned-mcca","anchored_mcca balanced optimization trace is monotone per component",4,0,FALSE,FALSE,0,0.0089999999999999,0.002,0.0110000000000001,4
+"test-aligned-mcca.R","aligned-mcca","anchored_mcca exposes a refit contract without retaining fit-time work objects",9,0,FALSE,FALSE,0,0.016,0.001,0.0180000000000002,9
+"test-aligned-mcca.R","aligned-mcca","anchored_mcca 'balanced' prefers shared components over block-specific ones",6,0,FALSE,FALSE,0,0.108,0.005,0.112,6
+"test-aligned-mcca.R","aligned-mcca","anchored_mcca handles p > n blocks under every normalization mode",28,0,FALSE,FALSE,0,0.0349999999999997,0.003,0.0379999999999998,28
+"test-aligned-mcca.R","aligned-mcca","anchored_mcca handles extreme p >> n and rank-deficient blocks with ridge",7,0,FALSE,FALSE,0,0.0170000000000003,0.001,0.0180000000000002,7
+"test-aligned-mcca.R","aligned-mcca","anchored_mcca accepts max_iter/tol/verbose/use_future for interface parity",1,0,FALSE,FALSE,0,0.004,0,0.00499999999999989,1
+"test-aligned-mcca.R","aligned-mcca","aligned_mcca use_future path matches serial",3,0,FALSE,FALSE,2,0.065,0.003,0.0680000000000001,1
+"test-aligned-mcca.R","aligned-mcca","aligned_mcca is invariant to relabeling the reference row space",1,0,FALSE,FALSE,0,0.00700000000000012,0,0.00800000000000001,1
+"test-aligned-mcca.R","aligned-mcca","aligned_mcca loses recovery quality when row_index is randomized",2,0,FALSE,FALSE,0,0.0129999999999999,0.001,0.0129999999999999,2
+"test-aligned-mfa.R","aligned-mfa","aligned_mfa validates row_index and returns expected structure",12,0,FALSE,FALSE,0,0.137,0.002,0.139,12
+"test-aligned-mfa.R","aligned-mfa","aligned_mfa agrees with MFA when all blocks share rows",1,0,FALSE,FALSE,0,0.0659999999999998,0.003,0.077,1
+"test-aligned-mfa.R","aligned-mfa","aligned_mfa handles p > n blocks without error",2,0,FALSE,FALSE,0,0.0180000000000002,0.001,0.0180000000000002,2
+"test-aligned-mfa.R","aligned-mfa","feature_groups='colnames' shrinks within-group loading differences in aligned_mfa",1,0,FALSE,FALSE,0,0.0779999999999998,0.001,0.081,1
+"test-aligned-mfa.R","aligned-mfa","aligned_mfa exposes a standard out-of-sample contract",8,0,FALSE,FALSE,0,0.0340000000000003,0.001,0.036,8
+"test-aligned-mfa.R","aligned-mfa","aligned_mfa objective trace is finite, non-increasing, and invariant to reference relabeling",4,0,FALSE,FALSE,0,0.0779999999999998,0.003,0.081,4
+"test-aligned-mfa.R","aligned-mfa","aligned_mfa supports orthonormal score constraint",2,0,FALSE,FALSE,0,0.112,0.00599999999999998,0.118,2
+"test-aligned-models-synthetic.R","aligned-models-synthetic","anchored_mfa matches row_index by names, not list position",2,0,FALSE,FALSE,0,0.206,0.004,0.211,2
+"test-aligned-models-synthetic.R","aligned-models-synthetic","aligned_mfa matches row_index by names, not list position",2,0,FALSE,FALSE,0,0.028,0.001,0.0289999999999999,2
+"test-aligned-models-synthetic.R","aligned-models-synthetic","aligned_mcca matches row_index by names, not list position",2,0,FALSE,FALSE,0,0.012,0.001,0.0129999999999999,2
+"test-aligned-models-synthetic.R","aligned-models-synthetic","zero-weight blocks do not influence weighted blocks through feature priors",4,0,FALSE,FALSE,0,0.194,0.004,0.199000000000001,4
+"test-aligned-models-synthetic.R","aligned-models-synthetic","aligned_mfa does not force ncomp down to the narrowest block width",1,0,FALSE,FALSE,0,0.0129999999999999,0.001,0.0139999999999993,1
+"test-aligned-models-synthetic.R","aligned-models-synthetic","aligned_mcca rejects all-zero block weights",1,0,FALSE,FALSE,0,0.0110000000000001,0,0.0120000000000005,1
+"test-aligned-models-synthetic.R","aligned-models-synthetic","aligned_mcca recovers a meaningful shared row space on synthetic aligned data",2,0,FALSE,FALSE,0,0.00499999999999989,0.001,0.00600000000000023,2
+"test-aligned-models-synthetic.R","aligned-models-synthetic","linked_mfa remains an exact anchored_mfa alias",2,0,FALSE,FALSE,0,0.0140000000000002,0,0.0139999999999993,2
+"test-aligned-models-synthetic.R","aligned-models-synthetic","aligned_mfa recovers synthetic shared scores without an anchor",2,0,FALSE,FALSE,0,0.00800000000000001,0.001,0.00899999999999945,2
+"test-aligned-models-synthetic.R","aligned-models-synthetic","anchored and aligned MCCA agree under identical normalization",1,0,FALSE,FALSE,0,0.0110000000000001,0.001,0.0120000000000005,1
+"test-aligned-rrr.R","aligned-rrr","aligned_rrr validates inputs and exposes the standard contract",14,0,FALSE,FALSE,0,0.0880000000000001,0.002,0.0910000000000002,14
+"test-aligned-rrr.R","aligned-rrr","aligned_rrr recovers a shared reduced-rank response model",3,0,FALSE,FALSE,0,0.0180000000000007,0,0.0190000000000001,3
+"test-aligned-rrr.R","aligned-rrr","aligned_rrr predict() and project() follow the shared score contract",4,0,FALSE,FALSE,0,0.0129999999999999,0.001,0.0139999999999993,4
+"test-aligned-rrr.R","aligned-rrr","aligned_rrr reduces to weighted least squares when ncomp spans the response",7,0,FALSE,FALSE,0,0.00899999999999945,0.002,0.0100000000000007,7
+"test-aligned-rrr.R","aligned-rrr","aligned_rrr ignores blocks with zero effective response weight",3,0,FALSE,FALSE,0,0.0129999999999999,0,0.0140000000000002,3
+"test-aligned-rrr.R","aligned-rrr","aligned_rrr is invariant to block order and within-block row permutations",12,0,FALSE,FALSE,0,0.0190000000000001,0.001,0.0200000000000005,12
+"test-aligned-rrr.R","aligned-rrr","aligned_rrr remains finite for nearly singular predictors and extreme row weights",9,0,FALSE,FALSE,0,0.0149999999999997,0.003,0.0169999999999995,9
+"test-aligned-rrr.R","aligned-rrr","aligned_rrr stores parsed row weights and exposes deterministic refits",7,0,FALSE,FALSE,0,0.00999999999999979,0.001,0.00999999999999979,7
+"test-aligned-rrr.R","aligned-rrr","aligned_rrr prepares an opaque predictive multifer payload",5,0,FALSE,FALSE,0,0.0450000000000008,0.001,0.0459999999999994,5
+"test-aligned-rrr.R","aligned-rrr","aligned_rrr multifer adapter declares predictive and stability capabilities",7,0,FALSE,FALSE,0,0.0219999999999994,0.00399999999999998,0.0280000000000005,7
+"test-aligned-rrr.R","aligned-rrr","aligned_rrr multifer predictive roots match weighted SSE oracle",2,0,FALSE,FALSE,0,0.0350000000000001,0,0.0369999999999999,2
+"test-aligned-rrr.R","aligned-rrr","aligned_rrr multifer null/bootstrap/residual payloads preserve contracts",8,0,FALSE,FALSE,0,0.00999999999999979,0.002,0.0119999999999996,8
+"test-aligned-rrr.R","aligned-rrr","aligned_rrr multifer payload alignment is invariant to named block order",2,0,FALSE,FALSE,0,0.00600000000000023,0,0.00600000000000023,2
+"test-aligned-rrr.R","aligned-rrr","aligned_rrr multifer payload validation rejects invalid weights and shapes",3,0,FALSE,FALSE,0,0.00599999999999934,0.001,0.00800000000000001,3
+"test-aligned-rrr.R","aligned-rrr","infer_aligned_rrr delegates predictive component tests to multifer",5,0,FALSE,FALSE,0,0.0280000000000005,0.002,0.0289999999999999,5
+"test-aligned-rrr.R","aligned-rrr","infer_aligned_rrr uses adapter-owned bootstrap projections for stability",9,0,FALSE,FALSE,0,0.0389999999999997,0.004,0.048,9
+"test-bada-bootstrap-refit.R","bada-bootstrap-refit","identical-subject bootstrap refits preserve loading units",2,0,FALSE,FALSE,0,0.241,0.002,0.244000000000001,2
+"test-bada-bootstrap-refit.R","bada-bootstrap-refit","BaDA bootstrap refits match independent class-mean SVD oracles",18,0,FALSE,FALSE,0,0.29,0.006,0.319,18
+"test-bada-bootstrap-refit.R","bada-bootstrap-refit","BaDA bootstrap validates targets and records degenerate refits",6,0,FALSE,FALSE,0,0.285,0.002,0.287999999999999,6
+"test-bada-bootstrap-refit.R","bada-bootstrap-refit","BaDA seeded bootstrap and subject identities are reproducible",3,0,FALSE,FALSE,0,0.372999999999999,0.004,0.379,3
+"test-bada-bootstrap-refit.R","bada-bootstrap-refit","BaDA scalar and tied-root refits report appropriate coordinate summaries",6,0,FALSE,FALSE,0,0.37,0.004,0.375,6
+"test-bada-multidesign.R","bada-multidesign","bada.multidesign works with basic splitting",5,0,FALSE,FALSE,0,0.0149999999999997,0.001,0.0150000000000006,5
+"test-bada-multidesign.R","bada-multidesign","bada.multidesign produces valid projector",6,0,FALSE,FALSE,0,0.0150000000000006,0.002,0.016,6
+"test-bada-multidesign.R","bada-multidesign","bada.multidesign with multiple classes",4,0,FALSE,FALSE,0,0.0169999999999995,0,0.0179999999999998,4
+"test-bada-multidesign.R","bada-multidesign","bada.multidesign with residual components",4,0,FALSE,FALSE,0,0.016,0.001,0.0180000000000007,4
+"test-bada-multidesign.R","bada-multidesign","reprocess.bada with no block applies averaged preprocessing",3,0,FALSE,FALSE,0,0.0130000000000008,0.001,0.0139999999999993,3
+"test-bada-multidesign.R","bada-multidesign","reprocess.bada with block uses block-specific preprocessing",2,0,FALSE,FALSE,0,0.0139999999999993,0.001,0.0140000000000002,2
+"test-bada-multidesign.R","bada-multidesign","reprocess.bada validates block name",1,0,FALSE,FALSE,0,0.132000000000001,0.002,0.135,1
+"test-bada-multidesign.R","bada-multidesign","reprocess.bada validates data dimensions",1,0,FALSE,FALSE,0,0.0129999999999999,0,0.0140000000000002,1
+"test-bada-multidesign.R","bada-multidesign","project.bada projects new data",3,0,FALSE,FALSE,0,0.0140000000000002,0.001,0.0150000000000006,3
+"test-bada-multidesign.R","bada-multidesign","project.bada with block parameter",3,0,FALSE,FALSE,0,0.0129999999999999,0.001,0.0139999999999993,3
+"test-bada-multidesign.R","bada-multidesign","summarize_boot computes correct statistics",6,0,FALSE,FALSE,0,0.00600000000000023,0.001,0.00800000000000001,6
+"test-bada-multidesign.R","bada-multidesign","summarize_matrix applies function across matrices",1,0,FALSE,FALSE,0,0.00100000000000033,0,0.00200000000000067,1
+"test-bada-multidesign.R","bada-multidesign","summarize_matrix with sd function",2,0,FALSE,FALSE,0,0.00200000000000067,0.001,0.00300000000000011,2
+"test-bada-multidesign.R","bada-multidesign","bootstrap.bada requires data argument",1,0,FALSE,FALSE,0,0.0129999999999999,0,0.0139999999999993,1
+"test-bada-multidesign.R","bada-multidesign","BaDA reconstructs subject barycenter blocks for multifer",5,0,FALSE,FALSE,0,0.0329999999999995,0.001,0.0340000000000007,5
+"test-bada-multidesign.R","bada-multidesign","infer_bada delegates BaDA inference to multifer multiblock hooks",5,0,FALSE,FALSE,0,0.0600000000000005,0.001,0.0609999999999999,5
+"test-bada-multidesign.R","bada-multidesign","BaDA multifer adapter declares and enforces its hook contract",6,0,FALSE,FALSE,0,0.0490000000000004,0.001,0.0510000000000002,6
+"test-bada-multidesign.R","bada-multidesign","BaDA multifer statistic matches the barycenter SVD oracle",4,0,FALSE,FALSE,0,0.0330000000000004,0.002,0.0339999999999998,4
+"test-bada-multidesign.R","bada-multidesign","BaDA multifer residual and null actions preserve payload validity",6,0,FALSE,FALSE,0,0.0409999999999995,0.001,0.0430000000000001,6
+"test-bada-multidesign.R","bada-multidesign","BaDA multifer leading statistic is invariant to subject-block order",1,0,FALSE,FALSE,0,0.0310000000000006,0.001,0.0309999999999997,1
+"test-bada-multidesign.R","bada-multidesign","BaDA multifer bootstrap uses subject-block resampling and projected scores",5,0,FALSE,FALSE,0,0.0369999999999999,0.000999999999999945,0.0390000000000006,5
+"test-bada-multidesign.R","bada-multidesign","infer_bada refuses residual BaDA components for now",1,0,FALSE,FALSE,0,0.0260000000000007,0,0.0270000000000001,1
+"test-bamfa-recon.R","BaMFA reconstruction","BaMFA reconstructs blocks with low error",2,0,FALSE,FALSE,0,0.0250000000000004,0,0.0249999999999995,2
+"test-bamfa-recon.R","BaMFA reconstruction","BaMFA reconstruction error is low for a known structure",1,0,FALSE,FALSE,0,0.0329999999999995,0,0.0339999999999998,1
+"test-bamfa.R","bamfa","bamfa.list assigns default block names",1,0,FALSE,FALSE,0,0.00199999999999978,0,0.00300000000000011,1
+"test-bamfa.R","bamfa","bamfa.multiblock checks row consistency",1,0,FALSE,FALSE,0,0.00300000000000011,0.001,0.00300000000000011,1
+"test-bamfa.R","bamfa","bamfa.multidesign requires subject argument",1,0,FALSE,FALSE,0,0.00300000000000011,0,0.00399999999999956,1
+"test-bamfa.R","bamfa","bamfa.list returns projector with expected structure",6,0,FALSE,FALSE,0,0.00399999999999956,0,0.00500000000000078,6
+"test-benchmark-qualification.R","benchmark-qualification","benchmark summaries retain failure and convergence accounting",4,0,FALSE,FALSE,0,0.0120000000000005,0,0.0129999999999999,4
+"test-benchmark-qualification.R","benchmark-qualification","paired benchmarks use joint eligible identities with explicit exclusions",6,0,FALSE,FALSE,0,0.0130000000000008,0.001,0.0149999999999997,6
+"test-benchmark-qualification.R","benchmark-qualification","benchmark receipts bind the loaded checkout and source hashes",4,0,FALSE,FALSE,0,0.0189999999999992,0.01,0.12,4
+"test-benchmark-qualification.R","benchmark-qualification","Design-MFA profiling retains engine failures as raw rows",4,0,FALSE,FALSE,0,0.244,0.004,0.25,4
+"test-bilinear-mixed.R","bilinear-mixed","bilinear_mixed seed_axis fit returns expected structure",10,0,FALSE,FALSE,0,0.0140000000000002,0.002,0.0149999999999997,10
+"test-bilinear-mixed.R","bilinear-mixed","bilinear_mixed seed_repeat fit includes seed effects and interactions",9,0,FALSE,FALSE,0,0.152,0.003,0.156,9
+"test-bilinear-mixed.R","bilinear-mixed","bilinear_mixed both mode fits both heads with shared ROI basis",4,0,FALSE,FALSE,0,0.0249999999999995,0.001,0.0260000000000007,4
+"test-bilinear-mixed.R","bilinear-mixed","bilinear_mixed supports symmetric n x n connectivity with row covariates",9,0,FALSE,FALSE,0,0.0190000000000001,0.001,0.0199999999999996,9
+"test-bilinear-mixed.R","bilinear-mixed","bilinear_mixed_recommend returns usable defaults",7,0,FALSE,FALSE,0,0.0129999999999999,0.003,0.0149999999999997,7
+"test-bilinear-mixed.R","bilinear-mixed","bilinear_mixed_easy fits with compact API",3,0,FALSE,FALSE,0,0.0410000000000004,0.001,0.0419999999999998,3
+"test-bilinear-mixed.R","bilinear-mixed","bilinear_mixed_tune returns selection table and refit",5,0,FALSE,FALSE,0,0.0620000000000003,0.001,0.0630000000000006,5
+"test-bilinear-mixed.R","bilinear-mixed","bilinear_mixed complexity shortcut sets adaptive defaults",5,0,FALSE,FALSE,0,0.0120000000000005,0.001,0.0129999999999999,5
+"test-bilinear-mixed.R","bilinear-mixed","print.bilinear_mixed_tuning shows compact summary",2,0,FALSE,FALSE,0,0.103,0.002,0.103999999999999,2
+"test-clusterwise-graph.R","clusterwise-graph","clusterwise neighbors have explicit zero and singleton semantics",42,0,FALSE,FALSE,0,0.0590000000000002,0.005,0.0640000000000001,42
+"test-clusterwise-graph.R","clusterwise-graph","clusterwise graphs reject invalid neighbor counts",5,0,FALSE,FALSE,0,0.0149999999999997,0.001,0.016,5
+"test-clusterwise-graph.R","clusterwise-graph","clusterwise public defaults fit fewer than seven pooled features",5,0,FALSE,FALSE,0,0.100000000000001,0.001,0.102,5
+"test-clusterwise-graph.R","clusterwise-graph","clusterwise union graph retains lower-only neighbors and the correct penalty",4,0,FALSE,FALSE,0,0.00899999999999945,0,0.00900000000000034,4
+"test-clusterwise-graph.R","clusterwise-graph","clusterwise boundary ties include every tied neighbor without self edges",4,0,FALSE,FALSE,0,0.0100000000000007,0.001,0.0109999999999992,4
+"test-clusterwise-graph.R","clusterwise-graph","clusterwise neighbor membership is invariant to coordinate units",4,0,FALSE,FALSE,0,0.00800000000000001,0,0.00900000000000034,4
+"test-clusterwise-graph.R","clusterwise-graph","normalized Laplacians agree with the analytic path and isolated-vertex oracle",8,0,FALSE,FALSE,0,0.016,0.001,0.0180000000000007,8
+"test-clusterwise-graph.R","clusterwise-graph","public clusterwise normalization uses retained adjacency degrees",5,0,FALSE,FALSE,0,0.00899999999999945,0.001,0.00999999999999979,5
+"test-clusterwise-projection.R","clusterwise-projection","clusterwise projections apply fitted training preprocessing exactly once",16,0,FALSE,FALSE,0,0.0430000000000001,0.001,0.0429999999999993,16
+"test-clusterwise-projection.R","clusterwise-projection","clusterwise reconstruction uses fitted inverse transforms and survives serialization",3,0,FALSE,FALSE,0,0.069,0.002,0.0709999999999997,3
+"test-clusterwise-projection.R","clusterwise-projection","clusterwise projection refuses ambiguous blocks and feature schemas",5,0,FALSE,FALSE,0,0.0149999999999997,0,0.016,5
+"test-clusterwise-rank.R","clusterwise-rank","clusterwise common rank is checked before preprocessing or gradients",6,0,FALSE,FALSE,0,0.0349999999999993,0.001,0.0370000000000008,6
+"test-clusterwise-rank.R","clusterwise-rank","common-rank updates are dimensionally coherent for both optimizers",20,0,FALSE,FALSE,0,0.0389999999999997,0.002,0.0419999999999998,20
+"test-clusterwise-rank.R","clusterwise-rank","effective rank prevents unsupported and random components",3,0,FALSE,FALSE,0,0.0120000000000005,0.001,0.0120000000000005,3
+"test-clusterwise-rank.R","clusterwise-rank","rank and finite-data boundary errors are explicit",5,0,FALSE,FALSE,0,0.0110000000000001,0,0.011000000000001,5
+"test-component-retention-contract.R","component-retention-contract","heterogeneous loadings cannot produce cross-space coherence evidence",4,0,FALSE,FALSE,0,0.0470000000000006,0.001,0.048,4
+"test-component-retention-contract.R","component-retention-contract","ICC requires an explicit common feature identity contract",2,0,FALSE,FALSE,0,0.00399999999999956,0,0.00500000000000078,2
+"test-component-retention-contract.R","component-retention-contract","matched ICC has analytic cosines and is feature-order invariant",5,0,FALSE,FALSE,0,0.00300000000000011,0,0.00399999999999956,5
+"test-component-retention-contract.R","component-retention-contract","invalid common spaces cannot be coerced into coherence results",6,0,FALSE,FALSE,0,0.0129999999999999,0.001,0.0129999999999999,6
+"test-component-retention-contract.R","component-retention-contract","component retention uses feature rows independently of retained component count",6,0,FALSE,FALSE,0,0.016,0,0.0170000000000012,6
+"test-component-retention-contract.R","component-retention-contract","heterogeneous feature dimensions are retained without implicit ICC",3,0,FALSE,FALSE,0,0.00499999999999989,0.001,0.0179999999999989,3
+"test-component-retention-contract.R","component-retention-contract","missing RMT information never silently selects the variance method",3,0,FALSE,FALSE,0,0.00199999999999978,0.001,0.00600000000000023,3
+"test-component-retention-contract.R","component-retention-contract","retention wrapper passes feature rows across the criterion boundary",1,0,FALSE,FALSE,0,0.000999999999999446,0,0.00200000000000067,1
+"test-component-retention-contract.R","component-retention-contract","retention alpha controls explicitly requested common-feature ICC",8,0,FALSE,FALSE,0,0.00500000000000078,0,0.004999999999999,8
+"test-component-retention-contract.R","component-retention-contract","invalid or irrelevant retention alpha cannot silently govern an edge",16,0,FALSE,FALSE,0,0.0259999999999989,0.002,0.0269999999999992,16
+"test-components_utils.R","components_utils","estimate_components with variance method keeps positive singular values",6,0,FALSE,FALSE,0,0.0530000000000008,0.001,0.0549999999999997,6
+"test-components_utils.R","components_utils","estimate_components falls back to variance when n not available",1,0,FALSE,FALSE,0,0.004999999999999,0,0.004999999999999,1
+"test-components_utils.R","components_utils","estimate_components errors when no sdev available",1,0,FALSE,FALSE,0,0.00300000000000011,0.001,0.00300000000000011,1
+"test-components_utils.R","components_utils","estimate_components respects explicitly passed sdev",2,0,FALSE,FALSE,0,0.00500000000000078,0,0.004999999999999,2
+"test-components_utils.R","components_utils","estimate_components with rmt method uses significant_components",4,0,FALSE,FALSE,0,0.00799999999999912,0.001,0.00900000000000034,4
+"test-components_utils.R","components_utils","loading_reliability requires boot_loadings",3,0,FALSE,FALSE,0,0.0100000000000016,0,0.00999999999999979,3
+"test-components_utils.R","components_utils","loading_reliability computes bootstrap statistics",10,0,FALSE,FALSE,0,0.0139999999999993,0.00199999999999995,0.0149999999999988,10
+"test-components_utils.R","components_utils","loading_reliability with alpha parameter affects quantiles",1,0,FALSE,FALSE,0,0.0139999999999993,0,0.0150000000000006,1
+"test-components_utils.R","components_utils","loading_reliability errors on unknown method",1,0,FALSE,FALSE,0,0.00599999999999845,0.001,0.00699999999999967,1
+"test-components_utils.R","components_utils",".extract_V_list extracts from V_list attribute",1,0,FALSE,FALSE,0,0.00100000000000122,0,0.00100000000000122,1
+"test-components_utils.R","components_utils",".extract_V_list extracts from fit$V_list",1,0,FALSE,FALSE,0,0.000999999999999446,0,0.000999999999999446,1
+"test-components_utils.R","components_utils",".extract_V_list extracts from fit$v with block_indices",3,0,FALSE,FALSE,0,0.00200000000000067,0.001,0.00200000000000067,3
+"test-components_utils.R","components_utils",".extract_V_list errors when V_list cannot be extracted",1,0,FALSE,FALSE,0,0.00300000000000011,0,0.00399999999999956,1
+"test-components_utils.R","components_utils",".infer_n extracts from fit$s",1,0,FALSE,FALSE,0,0.000999999999999446,0,0.000999999999999446,1
+"test-components_utils.R","components_utils",".infer_n extracts from fit$roi_scores",1,0,FALSE,FALSE,0,0.00100000000000122,0,0.000999999999999446,1
+"test-components_utils.R","components_utils",".infer_n extracts from fit$subject_scores",1,0,FALSE,FALSE,0,0.00199999999999889,0.001,0.000999999999999446,1
+"test-components_utils.R","components_utils",".infer_n returns NULL when n cannot be inferred",1,0,FALSE,FALSE,0,0.000999999999999446,0,0.00200000000000067,1
+"test-coupled-graph-anchored-mfa.R","coupled-graph-anchored-mfa","coupled_graph_anchored_mfa returns the expected fitted structure",13,0,FALSE,FALSE,0,0.077,0.003,0.0790000000000006,13
+"test-coupled-graph-anchored-mfa.R","coupled-graph-anchored-mfa","larger coupling_lambda pulls block scores toward shared anchor scores",1,0,FALSE,FALSE,0,0.226000000000001,0.003,0.23,1
+"test-coupled-graph-anchored-mfa.R","coupled-graph-anchored-mfa","on noiseless misspecified-shared data, the coupled model dramatically outperforms the shared model",1,0,FALSE,FALSE,0,0.0899999999999999,0.002,0.0919999999999987,1
+"test-coupled-graph-anchored-mfa.R","coupled-graph-anchored-mfa","coupled model improves block reconstruction when blocks deviate from the shared stimulus scores",1,0,FALSE,FALSE,0,0.145,0.002,0.148,1
+"test-coupled-graph-anchored-mfa.R","coupled-graph-anchored-mfa","when there are no block-specific deviations, coupled and shared models agree closely",2,0,FALSE,FALSE,0,0.0239999999999991,0.001,0.0250000000000004,2
+"test-coupled-graph-anchored-mfa.R","coupled-graph-anchored-mfa","correct score graph improves smooth shared-score recovery in the coupled model",2,0,FALSE,FALSE,0,0.366000000000001,0.01,0.378,2
+"test-coupled-graph-anchored-mfa.R","coupled-graph-anchored-mfa","correct feature graph aligns matched loadings in the coupled model",1,0,FALSE,FALSE,0,0.187999999999999,0.002,0.193,1
+"test-coupled-graph-anchored-mfa.R","coupled-graph-anchored-mfa","coupled fit is invariant to block-list order after name alignment",4,0,FALSE,FALSE,0,0.0810000000000013,0.002,0.0830000000000002,4
+"test-coupled-graph-anchored-mfa.R","coupled-graph-anchored-mfa","coupled objective trace is non-increasing up to numerical tolerance",3,0,FALSE,FALSE,0,0.263,0.015,0.353999999999999,3
+"test-coupled-graph-anchored-mfa.R","coupled-graph-anchored-mfa","predict.coupled_graph_anchored_mfa returns scores, reconstructions, and responses",3,0,FALSE,FALSE,0,0.0609999999999999,0.003,0.0640000000000001,3
+"test-coupled-graph-anchored-mfa.R","coupled-graph-anchored-mfa","coupled_graph_anchored_mfa supports orthonormal score constraint",2,0,FALSE,FALSE,0,0.077,0.002,0.0800000000000001,2
+"test-coupled-graph-anchored-mfa.R","coupled-graph-anchored-mfa","coupled_graph_anchored_mfa orthonormal path has a small projected gradient residual",2,0,FALSE,FALSE,0,0.343,0.013,0.359999999999999,2
+"test-covstatis-scalar.R","covstatis-scalar","one-axis COVSTATIS preserves rank-one geometry across units and normalization",48,0,FALSE,FALSE,0,0.0510000000000002,0.00499999999999995,0.0559999999999992,48
+"test-covstatis-scalar.R","covstatis-scalar","COVSTATIS scalar-axis repair preserves multi-axis and zero-rank contracts",3,0,FALSE,FALSE,0,0.00399999999999956,0,0.00400000000000134,3
+"test-covstatis.R","covstatis: helper functions","double_center works correctly",3,0,FALSE,FALSE,0,0.00300000000000011,0.001,0.00399999999999956,3
+"test-covstatis.R","covstatis: helper functions","norm_crossprod normalizes to unit Frobenius norm",1,0,FALSE,FALSE,0,0.00200000000000067,0,0.000999999999999446,1
+"test-covstatis.R","covstatis: helper functions","compute_prodmat is correct",3,0,FALSE,FALSE,0,0.00600000000000023,0.001,0.00600000000000023,3
+"test-covstatis.R","covstatis: main function and properties","covstatis model output has correct structure and properties",10,0,FALSE,FALSE,0,0.00500000000000078,0,0.00600000000000023,10
+"test-covstatis.R","covstatis: main function and properties","covstatis recovers the ground truth structure with low noise",1,0,FALSE,FALSE,0,0.00199999999999889,0.001,0.00300000000000011,1
+"test-covstatis.R","covstatis: main function and properties","dcenter=TRUE makes results invariant to constant shifts",4,0,FALSE,FALSE,0,0.004999999999999,0,0.00500000000000078,4
+"test-covstatis.R","covstatis: main function and properties","default subject scores use nondegenerate RV-space coordinates",2,0,FALSE,FALSE,0,0.00300000000000011,0.001,0.00399999999999956,2
+"test-covstatis.R","covstatis: projection and summary methods","project_subjects works correctly for known cases",7,0,FALSE,FALSE,0,0.0200000000000014,0.001,0.0210000000000008,7
+"test-covstatis.R","covstatis: projection and summary methods","project_table_covariate uses table scores that remain informative with double centering",2,0,FALSE,FALSE,0,0.00299999999999834,0,0.00300000000000011,2
+"test-covstatis.R","covstatis: projection and summary methods","project_feature_covariate aligns with feature-space scores",2,0,FALSE,FALSE,0,0.0180000000000007,0.001,0.0189999999999984,2
+"test-covstatis.R","covstatis: projection and summary methods","project_covariate remains backward compatible for table-side input",2,0,FALSE,FALSE,0,0.00300000000000011,0.001,0.00300000000000011,2
+"test-covstatis.R","covstatis: projection and summary methods","project_subjects round-trips subject scores under default preprocessing",2,0,FALSE,FALSE,0,0.00300000000000011,0,0.00399999999999956,2
+"test-covstatis.R","covstatis: multifer component tests","COVSTATIS multifer payload preserves processed table shape",4,0,FALSE,FALSE,0,0.00600000000000023,0.001,0.00699999999999967,4
+"test-covstatis.R","covstatis: multifer component tests","COVSTATIS multifer adapters declare the expected component contract",6,0,FALSE,FALSE,0,0.0150000000000006,0.001,0.0169999999999995,6
+"test-covstatis.R","covstatis: multifer component tests","COVSTATIS multifer statistics match adapter-fit root ratios",6,0,FALSE,FALSE,0,0.0269999999999992,0.002,0.0289999999999999,6
+"test-covstatis.R","covstatis: multifer component tests","COVSTATIS multifer null and residual payloads remain valid",8,0,FALSE,FALSE,0,0.0299999999999994,0.003,0.0330000000000013,8
+"test-covstatis.R","covstatis: multifer component tests","COVSTATIS multifer statistics are invariant to table order",2,0,FALSE,FALSE,0,0.00900000000000034,0,0.00900000000000034,2
+"test-covstatis.R","covstatis: multifer component tests","COVSTATIS multifer payload validation rejects contaminated tables",2,0,FALSE,FALSE,0,0.00600000000000023,0.001,0.00799999999999912,2
+"test-covstatis.R","covstatis: multifer component tests","infer_covstatis tests compromise ROI eigencomponents with multifer",4,0,FALSE,FALSE,0,0.0180000000000007,0.001,0.0180000000000007,4
+"test-covstatis.R","covstatis: multifer component tests","infer_covstatis tests interstructure RV axes with multifer",3,0,FALSE,FALSE,0,0.020999999999999,0.001,0.0229999999999997,3
+"test-covstatis.R","covstatis: multifer component tests","infer_covstatis can return both COVSTATIS significance families",4,0,FALSE,FALSE,0,0.0330000000000013,0.001,0.0340000000000007,4
+"test-cv-muscal.R","cv-muscal","cv_muscal supports explicit row holdout for reconstruction tasks",6,0,FALSE,FALSE,0,0.0329999999999995,0.002,0.0350000000000001,6
+"test-cv-muscal.R","cv-muscal","cv_muscal supports grouped holdout for reconstruction tasks",3,0,FALSE,FALSE,0,0.0300000000000011,0.001,0.0309999999999988,3
+"test-cv-muscal.R","cv-muscal","cv_muscal supports synchronized hyperdesign row holdout for anchored prediction",4,0,FALSE,FALSE,0,0.0670000000000002,0.002,0.0700000000000003,4
+"test-cv-muscal.R","cv-muscal","cv_muscal infers the task from the fitted model and matches manual fold scoring",4,0,FALSE,FALSE,0,0.0259999999999998,0.001,0.0259999999999998,4
+"test-cv-muscal.R","cv-muscal","cv_muscal errors when task cannot be resolved",1,0,FALSE,FALSE,0,0.004999999999999,0,0.00600000000000023,1
+"test-design-mfa-contract.R","design-mfa-contract","design_mfa validates shared-grid and design contracts",8,0,FALSE,FALSE,0,0.192,0.001,0.194000000000001,8
+"test-design-mfa-contract.R","design-mfa-contract","equal-subject weighting is explicit and insensitive to trial counts",7,0,FALSE,FALSE,0,0.118,0.001,0.119,7
+"test-design-mfa-contract.R","design-mfa-contract","design_mfa records nonestimable missing-cell interactions",4,0,FALSE,FALSE,0,0.0410000000000004,0.002,0.0440000000000005,4
+"test-design-mfa-contract.R","design-mfa-contract","between-subject aliases do not suppress within-subject effects",10,0,FALSE,FALSE,0,0.0310000000000006,0.003,0.0410000000000004,10
+"test-design-mfa-contract.R","design-mfa-contract","aliased nuisance scaling leaves the exact term functional invariant",41,0,FALSE,FALSE,0,0.0539999999999985,0.003,0.0609999999999999,41
+"test-design-mfa-contract.R","design-mfa-contract","WLS sufficient-statistic solver never derives SSE by subtraction",1,0,FALSE,FALSE,0,0.00300000000000011,0.001,0.00300000000000011,1
+"test-design-mfa-contract.R","design-mfa-contract","default plot selects the first retained estimable effect",4,0,FALSE,FALSE,0,0.020999999999999,0.001,0.0220000000000002,4
+"test-design-mfa-contract.R","design-mfa-contract","control and edge arguments fail at the API boundary",6,0,FALSE,FALSE,0,0.0210000000000008,0.001,0.0220000000000002,6
+"test-design-mfa-contract.R","design-mfa-contract","multidesign inputs adapt to the same list engine",2,0,FALSE,FALSE,0,0.0109999999999992,0,0.0119999999999987,2
+"test-design-mfa-contract.R","design-mfa-contract","generated documentation pins estimability and method terminology",6,0,FALSE,FALSE,0,0.00600000000000023,0.001,0.00700000000000145,6
+"test-design-mfa-contract.R","design-mfa-contract","sequential prediction estimability uses the global model",9,0,FALSE,FALSE,0,0.0150000000000006,0.001,0.016,9
+"test-design-mfa-contract.R","design-mfa-contract","stored fit drops dead sufficient statistics and isolates the refit closure",9,0,FALSE,FALSE,0,0.016,0.002,0.0169999999999995,9
+"test-design-mfa-contract.R","design-mfa-contract","declared xlev levels appear on the default reference grid",6,0,FALSE,FALSE,0,0.00699999999999967,0.001,0.00700000000000145,6
+"test-design-mfa-coordinate-maps.R","design-mfa-coordinate-maps","exact coordinate matches produce an identity sparse map",5,0,FALSE,FALSE,0,0.00400000000000134,0,0.00399999999999956,5
+"test-design-mfa-coordinate-maps.R","design-mfa-coordinate-maps","Gaussian coordinate maps agree with a dense distance oracle",2,0,FALSE,FALSE,0,0.0309999999999988,0.001,0.032,2
+"test-design-mfa-coordinate-maps.R","design-mfa-coordinate-maps","coordinate maps are equivariant to rigid transforms and storage order",2,0,FALSE,FALSE,0,0.00399999999999956,0,0.00400000000000134,2
+"test-design-mfa-coordinate-maps.R","design-mfa-coordinate-maps","coordinate-derived maps restore permuted subject fields",3,0,FALSE,FALSE,0,0.0740000000000016,0.001,0.0739999999999998,3
+"test-design-mfa-coordinate-maps.R","design-mfa-coordinate-maps","coordinate map validation exposes unsupported geometry",9,0,FALSE,FALSE,0,0.0289999999999999,0.001,0.0299999999999994,9
+"test-design-mfa-coordinate-maps.R","design-mfa-coordinate-maps","coordinate mapping remains sparse at representative scale",3,0,FALSE,FALSE,0,0.016,0.001,0.0170000000000012,3
+"test-design-mfa-inference.R","design-mfa-inference","design_mfa bootstrap resamples intact subjects and is reproducible",9,0,FALSE,FALSE,0,0.178999999999998,0.001,0.182,9
+"test-design-mfa-inference.R","design-mfa-inference","optional bootstrap loading summaries respect the reference shape",3,0,FALSE,FALSE,0,0.0250000000000004,0.001,0.0259999999999998,3
+"test-design-mfa-inference.R","design-mfa-inference","permutation inference requires and records explicit exchangeability",6,0,FALSE,FALSE,0,0.0340000000000007,0.001,0.0350000000000001,6
+"test-design-mfa-inference.R","design-mfa-inference","bootstrap refits freeze discriminating observed-cell weights",6,0,FALSE,FALSE,0,0.0169999999999995,0.001,0.0189999999999984,6
+"test-design-mfa-inference.R","design-mfa-inference","generic infer_muscal can use the subject refit contract for scalar effects",3,0,FALSE,FALSE,0,0.0289999999999999,0.001,0.0280000000000005,3
+"test-design-mfa-inference.R","design-mfa-inference","subspace distance uses small metric-aware cross-products",3,0,FALSE,FALSE,0,0.00200000000000067,0,0.00199999999999889,3
+"test-design-mfa-inference.R","design-mfa-inference","seeded inference restores present and absent RNG state on every exit",10,0,FALSE,FALSE,0,0.0470000000000006,0.002,0.0510000000000002,10
+"test-design-mfa-inference.R","design-mfa-inference","failed inference replicates warn and enter the permutation denominator",9,0,FALSE,FALSE,0,0.0310000000000006,0.001,0.0329999999999995,9
+"test-design-mfa-inference.R","design-mfa-inference","serial inference progress and optional future refits keep the contract",5,0,FALSE,FALSE,0,0.0570000000000004,0.001,0.0579999999999998,5
+"test-design-mfa-inference.R","design-mfa-inference","refit callbacks must preserve the conditional target and complete schema",6,0,FALSE,FALSE,0,0.0169999999999995,0,0.0180000000000007,6
+"test-design-mfa-metamorphic.R","design-mfa-metamorphic","subject and trial storage order do not change fitted effects",8,0,FALSE,FALSE,0,0.0190000000000001,0.001,0.0200000000000014,8
+"test-design-mfa-metamorphic.R","design-mfa-metamorphic","equivalent contrast bases preserve fitted term subspaces",2,0,FALSE,FALSE,0,0.0080000000000009,0,0.00899999999999856,2
+"test-design-mfa-metamorphic.R","design-mfa-metamorphic","default partial interaction hypotheses are contrast invariant",3,0,FALSE,FALSE,0,0.0150000000000006,0.001,0.016,3
+"test-design-mfa-metamorphic.R","design-mfa-metamorphic","continuous reference grids vary and training transforms are reused",4,0,FALSE,FALSE,0,0.00600000000000023,0,0.00600000000000023,4
+"test-design-mfa-metamorphic.R","design-mfa-metamorphic","duplicating subject trials preserves equal-subject fits",2,0,FALSE,FALSE,0,0.0169999999999995,0.001,0.0180000000000007,2
+"test-design-mfa-metamorphic.R","design-mfa-metamorphic","partial and sequential effects expose their different contracts",8,0,FALSE,FALSE,0,0.016,0.001,0.0169999999999995,8
+"test-design-mfa-metamorphic.R","design-mfa-metamorphic","near-collinear designs remain finite and report numerical rank",3,0,FALSE,FALSE,0,0.0080000000000009,0.000999999999999945,0.00900000000000034,3
+"test-design-mfa-multifer.R","design-mfa-multifer","design_mfa adapter claims effect_significance and not a component ladder",9,0,FALSE,FALSE,0,0.0120000000000005,0.002,0.0139999999999993,9
+"test-design-mfa-multifer.R","design-mfa-multifer","serial permutation uses multifer infer and keeps the public result shape",6,0,FALSE,FALSE,0,0.0250000000000004,0.001,0.0250000000000004,6
+"test-design-mfa-multifer.R","design-mfa-multifer","unchanged permutation draws retain every requested statistic",12,0,FALSE,FALSE,0,0.0679999999999996,0.001,0.0700000000000003,12
+"test-design-mfa-multifer.R","design-mfa-multifer","design_mfa schema plans subject-list bootstrap without bootstrap_action",5,0,FALSE,FALSE,0,0.00799999999999912,0.001,0.00999999999999979,5
+"test-design-mfa-multifer.R","design-mfa-multifer","serial bootstrap uses the statistic_stability sidecar and keeps the public result shape",7,0,FALSE,FALSE,0,0.0259999999999998,0.002,0.0280000000000005,7
+"test-design-mfa-multifer.R","design-mfa-multifer","supported stability capabilities use explicit engine and sidecar formals",4,0,FALSE,FALSE,0,0.00600000000000023,0.001,0.00699999999999967,4
+"test-design-mfa-multifer.R","design-mfa-multifer","live multifer stability handles multiple components and failed attempts",8,0,FALSE,FALSE,0,0.0350000000000001,0.001,0.0359999999999996,8
+"test-design-mfa-multilevel.R","design-mfa-multilevel","ridge subject deviations agree with a dense equality-constrained oracle",5,0,FALSE,FALSE,0,0.0470000000000006,0.001,0.0500000000000007,5
+"test-design-mfa-multilevel.R","design-mfa-multilevel","ridge deviations are centered and improve heterogeneous-subject fit",6,0,FALSE,FALSE,0,0.0180000000000007,0.002,0.0199999999999996,6
+"test-design-mfa-multilevel.R","design-mfa-multilevel","nonconverged partial-pooling fits are refused",1,0,FALSE,FALSE,0,0.00600000000000023,0,0.00699999999999967,1
+"test-design-mfa-multilevel.R","design-mfa-multilevel","the default iteration budget admits convergent weak-pooling fits",4,0,FALSE,FALSE,0,0.0599999999999987,0.001,0.0620000000000012,4
+"test-design-mfa-multilevel.R","design-mfa-multilevel","large subject penalty approaches the fixed-intercept group fit",2,0,FALSE,FALSE,0,0.0120000000000005,0.001,0.0120000000000005,2
+"test-design-mfa-multilevel.R","design-mfa-multilevel","subject storage order preserves the partial-pooling group solution",2,0,FALSE,FALSE,0,0.0180000000000007,0,0.0190000000000001,2
+"test-design-mfa-oracles.R","design-mfa-oracles","shared-grid weighted fit agrees with independent lm.wfit oracles",5,0,FALSE,FALSE,0,0.00900000000000034,0,0.00999999999999979,5
+"test-design-mfa-oracles.R","design-mfa-oracles","subject-streamed sufficient statistics equal the stacked solver",7,0,FALSE,FALSE,0,0.0109999999999992,0.001,0.0120000000000005,7
+"test-design-mfa-oracles.R","design-mfa-oracles","residual SSE is stable under large subject offsets",6,0,FALSE,FALSE,0,0.0120000000000005,0.001,0.0119999999999987,6
+"test-design-mfa-oracles.R","design-mfa-oracles","thin effect SVD agrees with base SVD and reconstructs the effect",4,0,FALSE,FALSE,0,0.00900000000000034,0,0.00999999999999979,4
+"test-design-mfa-oracles.R","design-mfa-oracles","factored thin SVD matches the dense path and stays on an r-by-r gram",12,0,FALSE,FALSE,0,0.0380000000000003,0.001,0.0400000000000009,12
+"test-design-mfa-oracles.R","design-mfa-oracles","noiseless planted saliency field is recovered",3,0,FALSE,FALSE,0,0.00999999999999979,0.001,0.00999999999999979,3
+"test-design-mfa-oracles.R","design-mfa-oracles","rank-truncated explained fractions use total effect energy",2,0,FALSE,FALSE,0,0.00799999999999912,0.001,0.0080000000000009,2
+"test-design-mfa-oracles.R","design-mfa-oracles","full-rank explained energy is complete in Euclidean and spatial metrics",8,0,FALSE,FALSE,0,0.00999999999999979,0.001,0.0109999999999992,8
+"test-design-mfa-oracles.R","design-mfa-oracles","predictions and effect projection follow stored matrix contracts",5,0,FALSE,FALSE,0,0.016,0,0.0170000000000012,5
+"test-design-mfa-spatial-recovery.R","design-mfa-spatial-recovery","fair same-index spatial baseline retains known correspondence",5,0,FALSE,FALSE,0,0.0739999999999998,0,0.0749999999999993,5
+"test-design-mfa-spatial-recovery.R","design-mfa-spatial-recovery","spatial null-energy diagnostics remain finite but are not inferential calibration",2,0,FALSE,FALSE,0,0.135,0.002,0.137,2
+"test-design-mfa-spatial.R","design-mfa-spatial","spatial generalized SVD agrees with a dense whitening oracle",3,0,FALSE,FALSE,0,0.00399999999999956,0,0.004999999999999,3
+"test-design-mfa-spatial.R","design-mfa-spatial","factored spatial SVD matches the dense metric path on a p-by-r solve",6,0,FALSE,FALSE,0,0.00600000000000023,0.001,0.00700000000000145,6
+"test-design-mfa-spatial.R","design-mfa-spatial","shared-grid spatial penalty produces metric-orthonormal smoother maps",3,0,FALSE,FALSE,0,0.036999999999999,0.001,0.0389999999999997,3
+"test-design-mfa-spatial.R","design-mfa-spatial","spatial metric validation rejects invalid Laplacians",4,0,FALSE,FALSE,0,0.0140000000000011,0,0.0139999999999993,4
+"test-design-mfa-spatial.R","design-mfa-spatial","large graph Laplacians use a deterministic sparse PSD certificate",3,0,FALSE,FALSE,0,0.004999999999999,0.001,0.00699999999999967,3
+"test-design-mfa-spatial.R","design-mfa-spatial","named spatial Laplacians are restored to fitted feature order",1,0,FALSE,FALSE,0,0.0119999999999987,0,0.0129999999999999,1
+"test-design-mfa-spatial.R","design-mfa-spatial","identity soft maps reduce to the shared-grid engine",7,0,FALSE,FALSE,0,0.0220000000000002,0.002,0.0229999999999997,7
+"test-design-mfa-spatial.R","design-mfa-spatial","soft residual SSE is stable under large subject offsets",2,0,FALSE,FALSE,0,0.0250000000000004,0,0.032,2
+"test-design-mfa-spatial.R","design-mfa-spatial","soft model comparisons use solver-scale tolerance",2,0,FALSE,FALSE,0,0.00200000000000067,0,0.00199999999999889,2
+"test-design-mfa-spatial.R","design-mfa-spatial","soft-map conjugate gradients agree with a dense Kronecker oracle",8,0,FALSE,FALSE,0,0.147,0.002,0.149000000000001,8
+"test-design-mfa-spatial.R","design-mfa-spatial","subject-feature permutations are absorbed by matching soft maps",2,0,FALSE,FALSE,0,0.016,0,0.0150000000000006,2
+"test-design-mfa-spatial.R","design-mfa-spatial","soft map validation rejects unsupported or malformed references",4,0,FALSE,FALSE,0,0.0259999999999998,0.001,0.0269999999999992,4
+"test-design-mfa-tuning.R","design-mfa-tuning","effect reconstruction honors Euclidean and spatial metrics",2,0,FALSE,FALSE,0,0.00399999999999956,0,0.00399999999999956,2
+"test-design-mfa-tuning.R","design-mfa-tuning","held-out tuning is reproducible and has no subject leakage",25,0,FALSE,FALSE,0,0.275,0.003,0.279,25
+"test-design-mfa-tuning.R","design-mfa-tuning","subject storage order does not change named-fold tuning",3,0,FALSE,FALSE,0,0.0709999999999997,0.001,0.0730000000000004,3
+"test-design-mfa-tuning.R","design-mfa-tuning","assessment responses cannot alter their fold's analysis fit",5,0,FALSE,FALSE,0,0.0600000000000005,0.001,0.0619999999999994,5
+"test-design-mfa-tuning.R","design-mfa-tuning","tuning aligns named trial weights before fold subsetting",2,0,FALSE,FALSE,0,0.0169999999999995,0.001,0.0169999999999995,2
+"test-design-mfa-tuning.R","design-mfa-tuning","tuning rejects malformed subject-keyed arguments before folds",4,0,FALSE,FALSE,0,0.011000000000001,0,0.0109999999999992,4
+"test-design-mfa-tuning.R","design-mfa-tuning","fold subsetting keeps every subject-keyed argument on Y block keys",6,0,FALSE,FALSE,0,0.00399999999999956,0.001,0.00400000000000134,6
+"test-design-mfa-tuning.R","design-mfa-tuning","tuning evaluates spatial and partial-pooling candidates",6,0,FALSE,FALSE,0,0.179,0.002,0.181999999999999,6
+"test-design-mfa-tuning.R","design-mfa-tuning","held-out tuning subsets coordinate maps with their subjects",6,0,FALSE,FALSE,0,0.206,0.002,0.219000000000001,6
+"test-design-mfa-tuning.R","design-mfa-tuning","tuning rejects invalid folds, grids, and unsupported overrides",7,0,FALSE,FALSE,0,0.0170000000000012,0.001,0.0169999999999995,7
+"test-design-mfa-tuning.R","design-mfa-tuning","tuning errors retain candidate and fold diagnostics",1,0,FALSE,FALSE,0,0.00999999999999979,0,0.0109999999999992,1
+"test-design-mfa-tuning.R","design-mfa-tuning","successful tuning warns about excluded candidates and retains errors",9,0,FALSE,FALSE,0,0.115,0.002,0.118,9
+"test-design-mfa-tuning.R","design-mfa-tuning","nested tuning gives reproducible outer-subject evaluation",31,0,FALSE,FALSE,0,0.244,0.005,0.25,31
+"test-design-mfa-tuning.R","design-mfa-tuning","outer assessment responses cannot enter nested analysis or selection",6,0,FALSE,FALSE,0,0.147,0.001,0.148999999999999,6
+"test-design-mfa-tuning.R","design-mfa-tuning","seeded tuning restores present and absent RNG state on success and error",20,0,FALSE,FALSE,0,0.183999999999999,0.003,0.186999999999999,20
+"test-distatis.R","distatis","DISTATIS reproduces the published beer example",19,0,FALSE,FALSE,0,0.0359999999999996,0.001,0.0370000000000008,19
+"test-distatis.R","distatis","nonbinary distances reduce to classical MDS and preserve squared semantics",11,0,FALSE,FALSE,0,0.0549999999999997,0.001,0.0559999999999992,11
+"test-distatis.R","distatis","lists, arrays, and scale or order transformations agree",12,0,FALSE,FALSE,0,0.0540000000000003,0.001,0.0549999999999997,12
+"test-distatis.R","distatis","supplementary training tables reproduce both maps with independent ranks",19,0,FALSE,FALSE,0,0.0399999999999991,0.002,0.0410000000000004,19
+"test-distatis.R","distatis","sorting group names are categorical and degenerate sorts are explicit",12,0,FALSE,FALSE,0,0.0240000000000009,0.001,0.0249999999999986,12
+"test-distatis.R","distatis","DISTATIS rejects invalid geometry, input metadata, and options",34,0,FALSE,FALSE,0,0.0670000000000002,0.002,0.0690000000000008,34
+"test-distatis.R","distatis","covariates and plots respect separate spaces and full inertia",35,0,FALSE,FALSE,0,0.545,0.005,0.555999999999999,35
+"test-distatis.R","distatis","COVSTATIS one-component Gram fits retain the correct geometry",1,0,FALSE,FALSE,0,0.00200000000000067,0,0.00200000000000244,1
+"test-duality.R","Duality in COVSTATIS","duality identity holds on random data",2,0,FALSE,FALSE,0,0.00300000000000011,0.001,0.00400000000000134,2
+"test-duality.R","Duality in COVSTATIS","MFA normalisation preserves duality",1,0,FALSE,FALSE,0,0.00300000000000011,0.001,0.00300000000000011,1
+"test-graph-anchored-mfa-synthetic.R","graph-anchored-mfa-synthetic","graph-off synthetic reconstruction agrees with anchored_mfa",3,0,FALSE,FALSE,0,0.0169999999999995,0.001,0.0169999999999995,3
+"test-graph-anchored-mfa-synthetic.R","graph-anchored-mfa-synthetic","synthetic score graph lowers Dirichlet energy and improves smooth-score recovery",2,0,FALSE,FALSE,0,0.124000000000001,0.004,0.137,2
+"test-graph-anchored-mfa-synthetic.R","graph-anchored-mfa-synthetic","rows sharing the same anchor row have partial scores near the same anchor score",2,0,FALSE,FALSE,0,0.00900000000000034,0,0.00900000000000034,2
+"test-graph-anchored-mfa-synthetic.R","graph-anchored-mfa-synthetic","name-misaligned row_index is reordered by name rather than position",2,0,FALSE,FALSE,0,0.0109999999999992,0.001,0.0110000000000028,2
+"test-graph-anchored-mfa-synthetic.R","graph-anchored-mfa-synthetic","invalid adjacency matrices are rejected clearly",1,0,FALSE,FALSE,0,0.00900000000000034,0,0.00900000000000034,1
+"test-graph-anchored-mfa-synthetic.R","graph-anchored-mfa-synthetic","component count is not forced down by the smallest auxiliary block width",1,0,FALSE,FALSE,0,0.00699999999999967,0.001,0.00700000000000145,1
+"test-graph-anchored-mfa-synthetic.R","graph-anchored-mfa-synthetic","custom anchor weight matches equivalent rescaling of Y",3,0,FALSE,FALSE,0,0.0140000000000011,0,0.0140000000000029,3
+"test-graph-anchored-mfa.R","graph-anchored-mfa","graph_anchored_mfa exactly recovers a noiseless low-rank oracle with a consistent graph",4,0,FALSE,FALSE,0,0.0730000000000004,0,0.0739999999999981,4
+"test-graph-anchored-mfa.R","graph-anchored-mfa","graph_anchored_mfa borrows through the correct graph under sparse noisy coverage",4,0,FALSE,FALSE,0,0.0540000000000003,0.001,0.0539999999999985,4
+"test-graph-anchored-mfa.R","graph-anchored-mfa","score-graph penalty is off-switch equivalent to the baseline graph_anchored_mfa fit",1,0,FALSE,FALSE,0,0.0179999999999989,0.001,0.0180000000000007,1
+"test-graph-anchored-mfa.R","graph-anchored-mfa","score graph pulls similar anchor rows together and improves score recovery under split coverage",2,0,FALSE,FALSE,0,0.048,0.003,0.0519999999999996,2
+"test-graph-anchored-mfa.R","graph-anchored-mfa","larger sparse score-graph weights induce stronger score shrinkage",2,0,FALSE,FALSE,0,0.0340000000000007,0.001,0.0350000000000001,2
+"test-graph-anchored-mfa.R","graph-anchored-mfa","score-graph representations are equivalent across edge and adjacency inputs",1,0,FALSE,FALSE,0,0.0530000000000008,0.002,0.0549999999999997,1
+"test-graph-anchored-mfa.R","graph-anchored-mfa","graph_anchored_mfa accepts symmetric sparse adjacency matrices from Matrix::Matrix()",4,0,FALSE,FALSE,0,0.0649999999999995,0.001,0.0670000000000002,4
+"test-graph-anchored-mfa.R","graph-anchored-mfa","precomputed graph Laplacians match equivalent adjacency-matrix inputs",1,0,FALSE,FALSE,0,0.0600000000000005,0.002,0.0640000000000001,1
+"test-graph-anchored-mfa.R","graph-anchored-mfa","normalized Laplacian matrices match normalized graph construction from edge inputs",1,0,FALSE,FALSE,0,0.052999999999999,0.001,0.0549999999999997,1
+"test-graph-anchored-mfa.R","graph-anchored-mfa","score_graph='knn' builds a weighted sparse similarity graph and returns finite outputs",6,0,FALSE,FALSE,0,0.0459999999999994,0.003,0.0500000000000007,6
+"test-graph-anchored-mfa.R","graph-anchored-mfa","built-in weighted kNN score graph matches adjoin heat-kNN adjacency",3,0,FALSE,FALSE,0,0.125000000000002,0.0089999999999999,0.149000000000001,3
+"test-graph-anchored-mfa.R","graph-anchored-mfa","graph_anchored_mfa reduces to anchored_mfa when graph penalty is off",4,0,FALSE,FALSE,0,0.108000000000001,0.004,0.113,4
+"test-graph-anchored-mfa.R","graph-anchored-mfa","graph_anchored_mfa supports nested subject-domain input with missing domains",6,0,FALSE,FALSE,0,0.0449999999999982,0.002,0.0480000000000018,6
+"test-graph-anchored-mfa.R","graph-anchored-mfa","graph penalty shrinks linked loadings across blocks",1,0,FALSE,FALSE,0,0.172000000000001,0.003,0.183999999999997,1
+"test-graph-anchored-mfa.R","graph-anchored-mfa","graph_anchored_mfa is invariant to equivalent graph representations",2,0,FALSE,FALSE,0,0.185000000000002,0.002,0.189,2
+"test-graph-anchored-mfa.R","graph-anchored-mfa","graph_anchored_mfa gives equivalent results for nested and flat block layouts",1,0,FALSE,FALSE,0,0.0910000000000011,0.003,0.0960000000000001,1
+"test-graph-anchored-mfa.R","graph-anchored-mfa","graph_anchored_mfa objective trace is non-increasing",1,0,FALSE,FALSE,0,0.0640000000000001,0.002,0.0839999999999996,1
+"test-graph-anchored-mfa.R","graph-anchored-mfa","graph_anchored_mfa supports orthonormal score constraint",2,0,FALSE,FALSE,0,0.202999999999999,0.00700000000000001,0.211000000000002,2
+"test-graph-anchored-mfa.R","graph-anchored-mfa","graph_anchored_mfa orthonormal path has a small projected gradient residual",2,0,FALSE,FALSE,0,0.0410000000000004,0.002,0.0429999999999993,2
+"test-graph-anchored-mfa.R","graph-anchored-mfa","graph_anchored_mfa orthonormal objective stays monotone on centered random data",1,0,FALSE,FALSE,0,0.175999999999998,0.00800000000000001,0.186,1
+"test-graph-anchored-mfa.R","graph-anchored-mfa","graph_anchored_mfa objective trace matches the fitted penalized objective",1,0,FALSE,FALSE,0,0.032,0.001,0.0330000000000013,1
+"test-graph-anchored-mfa.R","graph-anchored-mfa","graph_anchored_mfa returns finite outputs for p > n and duplicated-column blocks",4,0,FALSE,FALSE,0,0.097999999999999,0.002,0.125,4
+"test-graph-anchored-mfa.R","graph-anchored-mfa","graph_anchored_mfa matches nested row_index by names, not list position",2,0,FALSE,FALSE,0,0.0720000000000027,0.002,0.0749999999999993,2
+"test-graph-anchored-mfa.R","graph-anchored-mfa","feature_graph='colnames' links across blocks but not within-block duplicates",3,0,FALSE,FALSE,0,0.102999999999998,0.002,0.105,3
+"test-graph-anchored-mfa.R","graph-anchored-mfa","graph_anchored_mfa validates malformed feature-graph inputs",3,0,FALSE,FALSE,0,0.0160000000000018,0,0.0169999999999995,3
+"test-graph-anchored-mfa.R","graph-anchored-mfa","graph_anchored_mfa validates malformed score-graph inputs",2,0,FALSE,FALSE,0,0.0100000000000016,0.001,0.0109999999999992,2
+"test-graph-anchored-mfa.R","graph-anchored-mfa","graph_anchored_mfa projects scores and predicts Y for new rows",14,0,FALSE,FALSE,0,0.0350000000000001,0.002,0.036999999999999,14
+"test-infer-muscal.R","infer-muscal","infer_muscal bootstraps component summaries across method families",28,0,FALSE,FALSE,0,0.465999999999998,0.00700000000000001,0.475999999999999,28
+"test-infer-muscal.R","infer-muscal","infer_muscal can summarize bootstrap loading reliability",4,0,FALSE,FALSE,0,0.027000000000001,0.001,0.0280000000000022,4
+"test-infer-muscal.R","infer-muscal","infer_muscal permutation results are reproducible",4,0,FALSE,FALSE,0,0.0800000000000018,0.001,0.0809999999999995,4
+"test-infer-muscal.R","infer-muscal","infer_muscal permutation distinguishes planted shared signal from null",4,0,FALSE,FALSE,0,0.241999999999997,0.001,0.244,4
+"test-infer-muscal.R","infer-muscal","infer_muscal supports aligned_mfa bootstrap and permutation summaries",6,0,FALSE,FALSE,0,0.0820000000000007,0.001,0.0839999999999996,6
+"test-infer-muscal.R","infer-muscal","infer_muscal supports graph_anchored_mfa bootstrap and permutation summaries",6,0,FALSE,FALSE,0,0.626000000000001,0.00700000000000001,0.643999999999998,6
+"test-infer-muscal.R","infer-muscal","infer_muscal supports response_aligned_mfa with scalar row-weight inputs",6,0,FALSE,FALSE,0,0.538999999999998,0.003,0.544,6
+"test-infer-muscal.R","infer-muscal","infer_muscal supports aligned_rrr bootstrap and permutation summaries",6,0,FALSE,FALSE,0,0.0259999999999998,0.001,0.0280000000000022,6
+"test-infer-muscal.R","infer-muscal","infer_muscal supports ipca bootstrap and permutation summaries",6,0,FALSE,FALSE,0,0.0429999999999993,0.001,0.0449999999999982,6
+"test-infer-muscal.R","infer-muscal","infer_muscal supports mcca bootstrap and permutation summaries",6,0,FALSE,FALSE,0,0.0189999999999984,0.001,0.0210000000000008,6
+"test-infer-muscal.R","infer-muscal","infer_muscal aligned_mfa permutation distinguishes shared signal from null",2,0,FALSE,FALSE,0,1.074,0.003,1.086,2
+"test-infer-muscal.R","infer-muscal","infer_muscal honors explicit refit overrides and records partial failures",4,0,FALSE,FALSE,0,0.0159999999999982,0.001,0.017000000000003,4
+"test-infer-muscal.R","infer-muscal","infer_muscal rejects matrix-valued permutation statistics",1,0,FALSE,FALSE,0,0.00799999999999912,0.001,0.00799999999999912,1
+"test-infer-muscal.R","infer-muscal","infer_muscal rejects invalid observations before sampling",14,0,FALSE,FALSE,0,0.0340000000000025,0.001,0.0360000000000014,14
+"test-infer-muscal.R","infer-muscal","infer_muscal excludes malformed statistics without recycling",7,0,FALSE,FALSE,0,0.00799999999999912,0.001,0.0120000000000005,7
+"test-infer-muscal.R","infer-muscal","infer_muscal validates statistic identities and loading shapes",6,0,FALSE,FALSE,0,0.00799999999999912,0.001,0.00799999999999912,6
+"test-infer-muscal.R","infer-muscal","infer_muscal accounts for sampling failures and insufficient valid draws",6,0,FALSE,FALSE,0,0.0100000000000016,0.001,0.0109999999999992,6
+"test-infer-muscal.R","infer-muscal","infer_muscal keeps scalar permutation dimensions and valid-draw denominators",5,0,FALSE,FALSE,0,0.00600000000000023,0,0.00600000000000023,5
+"test-internal-utils.R","internal-utils",".pre_process_new_cov validates symmetry",1,0,FALSE,FALSE,0,0.00300000000000011,0.001,0.00300000000000011,1
+"test-internal-utils.R","internal-utils",".pre_process_new_cov validates dimensions",1,0,FALSE,FALSE,0,0.00300000000000011,0,0.00300000000000011,1
+"test-internal-utils.R","internal-utils",".pre_process_new_cov checks eigenvalue for MFA normalization",1,0,FALSE,FALSE,0,0.00300000000000011,0.001,0.00400000000000134,1
+"test-internal-utils.R","internal-utils","ls_ridge handles zero predictors and ridge solution",2,0,FALSE,FALSE,0,0.00100000000000122,0,0.00199999999999889,2
+"test-internal-utils.R","internal-utils","project_table_covariate beta scaling matches manual formula",1,0,FALSE,FALSE,0,0.000999999999997669,0,0.00199999999999889,1
+"test-internal-utils.R","internal-utils","project_feature_covariate beta scaling matches manual formula",1,0,FALSE,FALSE,0,0.00100000000000122,0.001,0.00200000000000244,1
+"test-internal-utils.R","internal-utils","project_covariate wrapper dispatches by side",2,0,FALSE,FALSE,0,0.00300000000000011,0,0.00200000000000244,2
+"test-internal-utils.R","internal-utils","project_feature_covariate validates feature length",1,0,FALSE,FALSE,0,0.00299999999999656,0.001,0.004999999999999,1
+"test-ipca.R","ipca","ipca returns expected structure",9,0,FALSE,FALSE,0,0.0289999999999999,0.002,0.0399999999999991,9
+"test-ipca.R","ipca","ipca validates dimensions and lambda",4,0,FALSE,FALSE,0,0.0180000000000007,0.001,0.0229999999999997,4
+"test-ipca.R","ipca","ipca auto method uses gram when p > n",1,0,FALSE,FALSE,0,0.0120000000000005,0.001,0.0160000000000018,1
+"test-ipca.R","ipca","project.ipca supports matrix and list inputs",4,0,FALSE,FALSE,0,0.0440000000000005,0.002,0.0480000000000018,4
+"test-ipca.R","ipca","ipca exposes a standard out-of-sample contract",9,0,FALSE,FALSE,0,0.0180000000000007,0.001,0.0189999999999984,9
+"test-ipca.R","ipca","ipca dense and gram methods agree on score subspace",1,0,FALSE,FALSE,0,0.0190000000000019,0.001,0.0230000000000032,1
+"test-ipca.R","ipca","ipca handles high-dimensional blocks and returns finite outputs",3,0,FALSE,FALSE,0,0.0199999999999996,0.002,0.0219999999999985,3
+"test-ipca.R","ipca","ipca_tune_alpha returns valid selection and fit",8,0,FALSE,FALSE,0,0.199000000000002,0.00900000000000001,0.219000000000001,8
+"test-ipca.R","ipca","ipca_tune_alpha tie schemes produce expected lambdas",2,0,FALSE,FALSE,0,0.120999999999999,0.002,0.125,2
+"test-ipca.R","ipca","ipca_tune_alpha warm start preserves alpha selection",4,0,FALSE,FALSE,0,0.452999999999999,0.012,0.471,4
+"test-ipca.R","ipca","ipca truncated eigensolver matches dense full subspace",2,0,FALSE,FALSE,0,0.0600000000000023,0.001,0.0609999999999999,2
+"test-linked-mfa.R","linked-mfa","anchored_mfa is the primary interface (linked_mfa is an alias)",4,0,FALSE,FALSE,0,0.0500000000000007,0.002,0.0530000000000008,4
+"test-linked-mfa.R","linked-mfa","linked_mfa validates row_index and returns expected structure",15,0,FALSE,FALSE,0,0.036999999999999,0.003,0.0450000000000017,15
+"test-linked-mfa.R","linked-mfa","linked_mfa recovers a strong shared low-rank fit when all blocks share rows",4,0,FALSE,FALSE,0,0.00900000000000034,0.001,0.00999999999999801,4
+"test-linked-mfa.R","linked-mfa","feature_groups='colnames' shrinks within-group loading differences",1,0,FALSE,FALSE,0,0.0799999999999983,0.00299999999999989,0.0839999999999996,1
+"test-linked-mfa.R","linked-mfa","anchored_mfa exposes a standard out-of-sample contract",12,0,FALSE,FALSE,0,0.0340000000000025,0.002,0.0360000000000014,12
+"test-linked-mfa.R","linked-mfa","anchored_mfa accepts preproc = NULL",5,0,FALSE,FALSE,0,0.0269999999999975,0.001,0.0289999999999999,5
+"test-linked-mfa.R","linked-mfa","anchored_mfa refit contract can rebuild from stored training data",4,0,FALSE,FALSE,0,0.054000000000002,0.002,0.0560000000000009,4
+"test-linked-mfa.R","linked-mfa","anchored_mfa refit callback does not retain fit-time work objects",2,0,FALSE,FALSE,0,0.00600000000000023,0.001,0.0069999999999979,2
+"test-linked-mfa.R","linked-mfa","anchored_mfa objective trace is finite and non-increasing",3,0,FALSE,FALSE,0,0.0199999999999996,0.001,0.022000000000002,3
+"test-linked-mfa.R","linked-mfa","anchored_mfa supports orthonormal score constraint",2,0,FALSE,FALSE,0,0.122,0.00800000000000001,0.131999999999998,2
+"test-linked-mfa.R","linked-mfa","orthonormal MM score step decreases the anchored subproblem objective",3,0,FALSE,FALSE,0,0.0289999999999999,0.001,0.0310000000000024,3
+"test-linked-mfa.R","linked-mfa","anchored_mfa uses anchor information rather than arbitrary Y row assignments",2,0,FALSE,FALSE,0,0.0150000000000006,0.001,0.0159999999999982,2
+"test-loading-alignment.R","loading-alignment","loading reliability matches signs and component permutations",5,0,FALSE,FALSE,0,0.00400000000000134,0.001,0.00500000000000256,5
+"test-loading-alignment.R","loading-alignment","assignment maximizes total matching rather than greedy columns",10,0,FALSE,FALSE,0,0.0069999999999979,0,0.00799999999999912,10
+"test-loading-alignment.R","loading-alignment","tied-root rotations have subspace evidence but unavailable coordinate intervals",8,0,FALSE,FALSE,0,0.00799999999999912,0.002,0.00999999999999801,8
+"test-loading-alignment.R","loading-alignment","loading matching rejects invalid bases and reports unknown identifiability",4,0,FALSE,FALSE,0,0.00900000000000034,0.001,0.0100000000000016,4
+"test-loading-alignment.R","loading-alignment","loading alignment matches named feature rows without guessing identities",2,0,FALSE,FALSE,0,0.00500000000000256,0,0.004999999999999,2
+"test-mcca.R","mcca","mcca.list produces expected structure",14,0,FALSE,FALSE,0,0.00900000000000034,0.001,0.0100000000000016,14
+"test-mcca.R","mcca","mcca handles p > n blocks without error",4,0,FALSE,FALSE,0,0.004999999999999,0.001,0.004999999999999,4
+"test-mcca.R","mcca","mcca exposes a standard out-of-sample contract",9,0,FALSE,FALSE,0,0.00900000000000034,0.001,0.0109999999999992,9
+"test-mcca.R","mcca","mcca passes basic mathematical sanity checks on synthetic low-rank data",9,0,FALSE,FALSE,0,0.00900000000000034,0,0.00900000000000034,9
+"test-mcca.R","mcca","mcca is invariant to block rescaling (with scaled ridge)",1,0,FALSE,FALSE,0,0.00600000000000023,0.001,0.00700000000000145,1
+"test-mcca.R","mcca","mcca block_weights can drop a block cleanly",3,0,FALSE,FALSE,0,0.0069999999999979,0,0.0069999999999979,3
+"test-mcca.R","mcca","mcca ridge=0 warns and still returns a fit for centered blocks",2,0,FALSE,FALSE,0,0.00900000000000034,0.001,0.00900000000000034,2
+"test-mcca.R","mcca","mcca use_future path matches serial",1,0,FALSE,FALSE,0,0.0330000000000013,0.001,0.0339999999999989,1
+"test-mcca.R","mcca","mcca covers edge cases (zero/NA blocks, ridge=0 without centering, eigen fallback)",7,0,FALSE,FALSE,0,0.0150000000000006,0,0.0150000000000006,7
+"test-mcca.R","mcca","mcca is invariant to a common row permutation across blocks",1,0,FALSE,FALSE,0,0.004999999999999,0.001,0.00600000000000023,1
+"test-mcca.R","mcca","mcca latent recovery degrades as noise increases",2,0,FALSE,FALSE,0,0.0069999999999979,0.001,0.00900000000000034,2
+"test-mfa.R","mfa","mfa.list produces expected structure",8,0,FALSE,FALSE,0,0.0100000000000016,0.001,0.0100000000000016,8
+"test-mfa.R","mfa","mfa.multiblock validates input",3,0,FALSE,FALSE,0,0.00799999999999912,0.001,0.00900000000000034,3
+"test-mfa.R","mfa","normalization_factors MFA matches svd",2,0,FALSE,FALSE,0,0.00300000000000011,0,0.00300000000000011,2
+"test-mfa.R","mfa","mfa exposes a standard out-of-sample contract",10,0,FALSE,FALSE,0,0.0130000000000017,0.001,0.0139999999999993,10
+"test-mfa.R","mfa","mfa refit contract can refit the stored training data",4,0,FALSE,FALSE,0,0.0109999999999992,0.001,0.0110000000000028,4
+"test-mfa.R","mfa","mfa refuses missing values by default",1,0,FALSE,FALSE,0,0.00399999999999778,0,0.00300000000000011,1
+"test-mfa.R","mfa","mfa missing path is identical when there are no NAs",2,0,FALSE,FALSE,0,0.0150000000000006,0.001,0.0160000000000018,2
+"test-mfa.R","mfa","mfa regularized missing path imputes and preserves observed cells",11,0,FALSE,FALSE,0,0.0710000000000015,0.002,0.0730000000000004,11
+"test-mfa.R","mfa","mfa missing path rejects all-missing variables",1,0,FALSE,FALSE,0,0.00300000000000011,0,0.00300000000000011,1
+"test-mfa.R","mfa","mfa missing controls validate the imputation contract",4,0,FALSE,FALSE,0,0.00900000000000034,0.001,0.0100000000000016,4
+"test-mfa.R","mfa","mfa EM imputation recovers noiseless low-rank held-out entries",6,0,FALSE,FALSE,0,0.114999999999998,0,0.116,6
+"test-mfa.R","mfa","mfa missing imputation is row-permutation equivariant",3,0,FALSE,FALSE,0,0.0509999999999984,0,0.0519999999999996,3
+"test-mfa.R","mfa","mfa regularized missing path is finite across randomized masks",55,0,FALSE,FALSE,0,0.175000000000001,0.01,0.186,55
+"test-mfa.R","mfa","mfa missing paths handle custom positive row weights",28,0,FALSE,FALSE,0,0.481999999999999,0.004,0.487000000000002,28
+"test-mfa.R","mfa","mfa row weights affect missing-data fits instead of being ignored",4,0,FALSE,FALSE,0,0.158000000000001,0,0.159000000000002,4
+"test-mfa.R","mfa","mfa missing path tolerates zero row weights in custom M",8,0,FALSE,FALSE,0,0.0749999999999993,0.002,0.0769999999999982,8
+"test-mfa.R","mfa","mfa exactly recovers noiseless low-rank structure and reconstruction improves with ncomp",3,0,FALSE,FALSE,0,0.0130000000000017,0.001,0.0139999999999993,3
+"test-mfa.R","mfa","mfa latent recovery degrades as noise increases",2,0,FALSE,FALSE,0,0.00900000000000034,0.001,0.00900000000000034,2
+"test-multifer-feature-importance.R","multifer-feature-importance","MCCA-family multifer adapters expose squared-loading feature importance",12,0,FALSE,FALSE,0,0.0769999999999982,0.004,0.0809999999999995,12
+"test-multifer-feature-importance.R","multifer-feature-importance","subspace feature importance is invariant to rotations inside MCCA units",1,0,FALSE,FALSE,0,0.0180000000000007,0.001,0.0189999999999984,1
+"test-multifer-feature-importance.R","multifer-feature-importance","MCCA-family multifer adapters support feature-importance p-values",6,0,FALSE,FALSE,0,0.0459999999999994,0.003,0.049000000000003,6
+"test-multifer-feature-importance.R","multifer-feature-importance","existing muscal multifer adapters expose adapter-owned feature statistics",1,0,FALSE,FALSE,0,0.0410000000000004,0.001,0.041999999999998,1
+"test-native-contracts.R","native-contracts","compiled row systems and graph operators match base-R oracles",5,0,FALSE,FALSE,0,0.00399999999999778,0.001,0.004999999999999,5
+"test-native-contracts.R","native-contracts","compiled row kernels reject malformed data before Eigen indexing",15,0,FALSE,FALSE,0,0.0480000000000018,0.001,0.0500000000000007,15
+"test-native-contracts.R","native-contracts","compiled grouped rows agree with explicit sums and validate integer groups",21,0,FALSE,FALSE,0,0.0529999999999973,0.002,0.0549999999999997,21
+"test-orient-components.R","orient-components","orient_components makes anchored_mfa sign flips coherent and preserves fitted predictions",11,0,FALSE,FALSE,0,0.0190000000000019,0.001,0.0199999999999996,11
+"test-orient-components.R","orient-components","orient_components gives deterministic default orientation for anchored_mfa",3,0,FALSE,FALSE,0,0.0240000000000009,0.001,0.0249999999999986,3
+"test-orient-components.R","orient-components","orient_components updates mfa caches and keeps reconstruction invariant",7,0,FALSE,FALSE,0,0.00900000000000034,0.001,0.0100000000000016,7
+"test-orient-components.R","orient-components","orient_components updates mcca canonical weights coherently",8,0,FALSE,FALSE,0,0.0069999999999979,0,0.00799999999999912,8
+"test-orient-components.R","orient-components","orient_components keeps ipca projection maps consistent",6,0,FALSE,FALSE,0,0.00799999999999912,0.001,0.00799999999999912,6
+"test-orient-components.R","orient-components","orient_components updates penalized_mfa attributes coherently",4,0,FALSE,FALSE,0,0.0120000000000005,0.001,0.0109999999999992,4
+"test-orient-components.R","orient-components","orient_components keeps aligned_rrr predictions invariant",8,0,FALSE,FALSE,0,0.00799999999999912,0,0.00900000000000034,8
+"test-orient-components.R","orient-components","orient_components keeps response_aligned_mfa anchor predictions coherent",11,0,FALSE,FALSE,0,0.054000000000002,0.001,0.0549999999999997,11
+"test-orient-components.R","orient-components","loading_reliability aligns bootstrap loading signs to the reference",3,0,FALSE,FALSE,0,0.00999999999999801,0.001,0.0109999999999992,3
+"test-penalized-mfa-clusterwise.R","penalized-mfa-clusterwise","coords_list column count is validated",1,0,FALSE,FALSE,0,0.00300000000000011,0.001,0.00300000000000011,1
+"test-penalized-mfa-clusterwise.R","penalized-mfa-clusterwise","penalized MFA clusterwise reduces objective",5,0,FALSE,FALSE,0,0.036999999999999,0.001,0.0400000000000027,5
+"test-penalized-mfa-clusterwise.R","penalized-mfa-clusterwise","clusterwise PMFA decreases objective (enhanced test)",3,0,FALSE,FALSE,0,0.032,0.001,0.0330000000000013,3
+"test-penalized-mfa-clusterwise.R","penalized-mfa-clusterwise","penalized MFA clusterwise handles edge cases",2,0,FALSE,FALSE,0,0.0199999999999996,0.001,0.0210000000000008,2
+"test-penalized-mfa-clusterwise.R","penalized-mfa-clusterwise","penalized MFA clusterwise parameter validation works",4,0,FALSE,FALSE,0,0.00900000000000034,0,0.0109999999999992,4
+"test-penalized-mfa-clusterwise.R","penalized-mfa-clusterwise","penalized MFA clusterwise with Adam optimizer",2,0,FALSE,FALSE,0,0.0139999999999993,0.001,0.0159999999999982,2
+"test-penalized-mfa-opts.R","penalized-mfa-opts","Adam vs gradient give similar objective drop in penalized_mfa",3,0,FALSE,FALSE,0,0.0660000000000025,0.001,0.0679999999999978,3
+"test-penalized-mfa-opts.R","penalized-mfa-opts","penalized_mfa projection penalty works",3,0,FALSE,FALSE,0,0.00799999999999912,0,0.00800000000000267,3
+"test-penalized-mfa-opts.R","penalized-mfa-opts","covstatis duality check from test sketch works",1,0,FALSE,FALSE,0,0.00300000000000011,0.001,0.00300000000000011,1
+"test-penalized-mfa.R","penalized-mfa","penalized_mfa.list handles uneven and even blocks correctly",6,0,FALSE,FALSE,0,0.0120000000000005,0.001,0.0129999999999981,6
+"test-penalized-mfa.R","penalized-mfa","penalized_mfa works with multiblock input",2,0,FALSE,FALSE,0,0.004999999999999,0.001,0.00600000000000023,2
+"test-penalized-mfa.R","penalized-mfa","penalized_mfa stops with fewer than 2 blocks",1,0,FALSE,FALSE,0,0.00300000000000011,0,0.00300000000000011,1
+"test-penalized-mfa.R","penalized-mfa","penalized_mfa supports preproc = NULL after shared preprocessing consolidation",2,0,FALSE,FALSE,0,0.00300000000000011,0,0.00400000000000134,2
+"test-penalized-mfa.R","penalized-mfa","penalized_mfa rejects unequal observation counts before preprocessing",5,0,FALSE,FALSE,0,0.00900000000000034,0.001,0.00900000000000034,5
+"test-penalized-mfa.R","penalized-mfa","penalized_mfa delegates shared-row validation from multidesign",1,0,FALSE,FALSE,0,0.00600000000000023,0.001,0.00600000000000023,1
+"test-penalized-mfa.R","penalized-mfa","penalized_mfa rejects preprocessing that changes observation counts",1,0,FALSE,FALSE,0,0.00799999999999912,0,0.00800000000000267,1
+"test-performance-guardrails.R","performance-guardrails","mfa representative fit stays within a soft runtime budget",1,0,FALSE,FALSE,0,0.519000000000002,0.013,0.529999999999998,1
+"test-performance-guardrails.R","performance-guardrails","mfa representative missing-data fit stays within a soft runtime budget",1,0,FALSE,FALSE,0,0.566000000000003,0.004,0.573,1
+"test-performance-guardrails.R","performance-guardrails","cv_muscal representative reconstruction workflow stays within a soft runtime budget",1,0,FALSE,FALSE,0,0.619999999999997,0.00800000000000001,0.629000000000001,1
+"test-performance-guardrails.R","performance-guardrails","infer_muscal representative bootstrap workflow stays within a soft runtime budget",1,0,FALSE,FALSE,0,4.172,0.128,4.397,1
+"test-performance-metrics.R","performance-metrics","metric registry and defaults are task aware",5,0,FALSE,FALSE,0,0.00500000000000256,0.001,0.00600000000000023,5
+"test-performance-metrics.R","performance-metrics","performance_metrics computes reconstruction metrics",3,0,FALSE,FALSE,0,0.00200000000000244,0,0.00200000000000244,3
+"test-performance-metrics.R","performance-metrics","performance_metrics computes response prediction metrics",3,0,FALSE,FALSE,0,0.00300000000000011,0,0.00300000000000011,3
+"test-performance-metrics.R","performance-metrics","performance_metrics computes retrieval and alignment metrics",5,0,FALSE,FALSE,0,0.00399999999999778,0.001,0.00399999999999778,5
+"test-performance-metrics.R","performance-metrics","performance metric outputs combine cleanly across folds",2,0,FALSE,FALSE,0,0.00300000000000011,0,0.00400000000000489,2
+"test-performance-metrics.R","performance-metrics","performance_metrics rejects invalid task and metric combinations",3,0,FALSE,FALSE,0,0.032,0.001,0.0329999999999941,3
+"test-performance-metrics.R","performance-metrics","performance_metrics aliases and retrieval encodings are equivalent",2,0,FALSE,FALSE,0,0.00199999999999889,0,0.00300000000000011,2
+"test-performance-metrics.R","performance-metrics","response similarity metrics are invariant to common positive scaling",2,0,FALSE,FALSE,0,0.00600000000000023,0.001,0.0069999999999979,2
+"test-performance-metrics.R","performance-metrics","performance_metrics validates dimensions and handles zero-norm rows robustly",3,0,FALSE,FALSE,0,0.00600000000000023,0,0.00600000000000023,3
+"test-plot_mfa.R","plot_mfa","plot.mfa runs without error",4,0,FALSE,FALSE,0,0.00700000000000145,0.001,0.00900000000000034,4
+"test-plot_mfa.R","plot_mfa","plot.mfa returns score matrix invisibly",3,0,FALSE,FALSE,0,0.00799999999999912,0.001,0.00799999999999557,3
+"test-plot_mfa.R","plot_mfa","plot.linked_mfa runs without error",5,0,FALSE,FALSE,0,0.0350000000000001,0.002,0.0360000000000014,5
+"test-plot_mfa.R","plot_mfa","autoplot.mfa produces ggplot object",1,0,FALSE,FALSE,0,0.0240000000000009,0,0.0249999999999986,1
+"test-plot_mfa.R","plot_mfa","autoplot.mfa with various options",3,0,FALSE,FALSE,0,0.0679999999999978,0.001,0.0689999999999955,3
+"test-plot_mfa.R","plot_mfa","autoplot.linked_mfa produces ggplot object",1,0,FALSE,FALSE,0,0.0530000000000008,0.00299999999999989,0.0539999999999949,1
+"test-plot_mfa.R","plot_mfa","autoplot.linked_mfa with coverage coloring",1,0,FALSE,FALSE,0,0.0470000000000006,0.001,0.0480000000000018,1
+"test-plot_mfa.R","plot_mfa","plot_partial_scores.mfa runs without error",1,0,FALSE,FALSE,0,0.0380000000000003,0.001,0.0379999999999967,1
+"test-plot_mfa.R","plot_mfa","plot_partial_scores.mfa with options",4,0,FALSE,FALSE,0,0.108999999999998,0,0.109999999999999,4
+"test-plot_mfa.R","plot_mfa","plot_partial_scores.mfa errors when partial_scores not available",1,0,FALSE,FALSE,0,0.00900000000000034,0.001,0.00900000000000034,1
+"test-plot_mfa.R","plot_mfa","plot_partial_scores.linked_mfa runs without error",1,0,FALSE,FALSE,0,0.0500000000000007,0.001,0.0510000000000019,1
+"test-plot_mfa.R","plot_mfa","plot_block_weights.mfa runs without error",1,0,FALSE,FALSE,0,0.027000000000001,0,0.0260000000000034,1
+"test-plot_mfa.R","plot_mfa","plot_block_weights.linked_mfa runs without error",1,0,FALSE,FALSE,0,0.0459999999999994,0.001,0.0470000000000041,1
+"test-plot_mfa.R","plot_mfa","plot_block_similarity.mfa runs without error",2,0,FALSE,FALSE,0,0.054000000000002,0.001,0.0549999999999997,2
+"test-plot_mfa.R","plot_mfa","plot_variance.mfa with bar plot",1,0,FALSE,FALSE,0,0.0259999999999998,0.001,0.027000000000001,1
+"test-plot_mfa.R","plot_mfa","plot_variance.mfa with line plot",1,0,FALSE,FALSE,0,0.0279999999999987,0,0.0279999999999987,1
+"test-plot_mfa.R","plot_mfa","plot_loadings.mfa with circle type",1,0,FALSE,FALSE,0,0.0259999999999998,0.001,0.0260000000000034,1
+"test-plot_mfa.R","plot_mfa","plot_loadings.mfa with bar type",1,0,FALSE,FALSE,0,0.0539999999999985,0.001,0.0549999999999997,1
+"test-plot_mfa.R","plot_mfa","plot_loadings.mfa with different dims",1,0,FALSE,FALSE,0,0.027000000000001,0,0.0280000000000058,1
+"test-plot_mfa.R","plot_mfa","plot_loadings.linked_mfa runs without error",1,0,FALSE,FALSE,0,0.0489999999999995,0.001,0.0509999999999948,1
+"test-plot_mfa.R","plot_mfa","plot_convergence.linked_mfa runs without error",1,0,TRUE,FALSE,0,0.0259999999999998,0.001,0.0259999999999962,0
+"test-plot_mfa.R","plot_mfa","plot_convergence with log_scale option",1,0,TRUE,FALSE,0,0.0339999999999989,0.002,0.0360000000000014,0
+"test-plot_mfa.R","plot_mfa","plot_coverage.linked_mfa runs without error",1,0,FALSE,FALSE,0,0.0450000000000017,0.001,0.0450000000000017,1
+"test-plot_mfa.R","plot_mfa",".plot_scores_base handles missing sdev",2,0,FALSE,FALSE,0,0.00199999999999889,0,0.00200000000000244,2
+"test-plot_mfa.R","plot_mfa",".plot_scores_base with labels uses rownames",1,0,FALSE,FALSE,0,0.00199999999999889,0.001,0.000999999999997669,1
+"test-plot_mfa.R","plot_mfa",".autoplot_scores creates valid ggplot",1,0,FALSE,FALSE,0,0.0200000000000031,0,0.0210000000000008,1
+"test-plot_mfa.R","plot_mfa",".autoplot_scores with color variable",1,0,FALSE,FALSE,0,0.0249999999999986,0.001,0.0249999999999986,1
+"test-plot_mfa.R","plot_mfa",".autoplot_scores with labels",1,0,FALSE,FALSE,0,0.0219999999999985,0,0.0229999999999961,1
+"test-plot_mfa.R","plot_mfa",".autoplot_scores with NULL sdev uses NA variance",1,0,FALSE,FALSE,0,0.0210000000000008,0.001,0.0210000000000008,1
+"test-preproc-utils.R","preproc-utils","single preprocessor is replicated across blocks",4,0,FALSE,FALSE,0,0.004999999999999,0.001,0.00500000000000256,4
+"test-preproc-utils.R","preproc-utils","list preprocessor length mismatch errors",1,0,FALSE,FALSE,0,0.00199999999999889,0,0.00300000000000011,1
+"test-preproc-utils.R","preproc-utils","inconsistent column counts warn when no preprocessing",1,0,FALSE,FALSE,0,0.00200000000000244,0.001,0.00199999999999534,1
+"test-preproc-utils.R","preproc-utils","NULL preprocessors can be materialized into fitted identity preprocessors",3,0,FALSE,FALSE,0,0.00799999999999912,0.001,0.0100000000000051,3
+"test-preproc-utils.R","preproc-utils","fitted pre_processor inputs are accepted and refreshed per block",4,0,FALSE,FALSE,0,0.00400000000000134,0,0.00499999999999545,4
+"test-preproc-utils.R","preproc-utils","materialized NULL preprocessors are fitted pass-through processors",3,0,FALSE,FALSE,0,0.00300000000000011,0.001,0.00400000000000489,3
+"test-project-covariate.R","project-covariate","table-side dimension mode returns named numeric vector",4,0,FALSE,FALSE,0,0.00300000000000011,0.001,0.00300000000000011,4
+"test-project-covariate.R","project-covariate","table-side feature mode returns matrix with labels",3,0,FALSE,FALSE,0,0.00199999999999889,0,0.00200000000000244,3
+"test-project-covariate.R","project-covariate","feature-side projection returns named numeric vector",4,0,FALSE,FALSE,0,0.00300000000000011,0.001,0.00300000000000011,4
+"test-project-covariate.R","project-covariate","generic project_covariate remains backward compatible for table-side input",3,0,FALSE,FALSE,0,0.00300000000000011,0,0.00300000000000011,3
+"test-response-aligned-mfa.R","response-aligned-mfa","response_aligned_mfa validates inputs and exposes the standard contract",17,0,FALSE,FALSE,0,0.0289999999999999,0.002,0.0319999999999965,17
+"test-response-aligned-mfa.R","response-aligned-mfa","response_aligned_mfa recovers a shared response-informed latent space",9,0,FALSE,FALSE,0,0.0910000000000011,0.001,0.0930000000000035,9
+"test-response-aligned-mfa.R","response-aligned-mfa","response_aligned_mfa drops anchor machinery when coupling is zero",8,0,FALSE,FALSE,0,0.0359999999999978,0.002,0.0379999999999967,8
+"test-response-aligned-mfa.R","response-aligned-mfa","response_aligned_mfa supports graph-based feature coupling",3,0,FALSE,FALSE,0,0.0500000000000007,0.001,0.0510000000000019,3
+"test-response-aligned-mfa.R","response-aligned-mfa","response_aligned_mfa predict() supports X-only and response-refined projection",10,0,FALSE,FALSE,0,0.0760000000000005,0,0.0769999999999982,10
+"test-response-aligned-mfa.R","response-aligned-mfa","response_aligned_mfa is invariant to block order when arguments are permuted consistently",8,0,FALSE,FALSE,0,0.160999999999998,0.001,0.161999999999999,8
+"test-response-aligned-mfa.R","response-aligned-mfa","response_aligned_mfa ignores blocks with zero predictor and response weight",10,0,FALSE,FALSE,0,0.0139999999999993,0.001,0.0150000000000006,10
+"test-response-aligned-mfa.R","response-aligned-mfa","response_aligned_mfa project() matches the explicit test-time score solve",4,0,FALSE,FALSE,0,0.111000000000001,0.001,0.113,4
+"test-response-aligned-mfa.R","response-aligned-mfa","response_aligned_mfa remains finite for collinear predictors and extreme row weights",9,0,FALSE,FALSE,0,0.0299999999999976,0.002,0.0330000000000013,9
+"test-response-aligned-mfa.R","response-aligned-mfa","response_aligned_mfa refit metadata can rebuild the fit",4,0,FALSE,FALSE,0,0.0240000000000009,0.001,0.0239999999999938,4
+"test-response-aligned-mfa.R","response-aligned-mfa","response_aligned_mfa stores parsed row weights and uses a deterministic sign convention",9,0,FALSE,FALSE,0,0.0330000000000013,0.002,0.0349999999999966,9
+"test-response-aligned-mfa.R","response-aligned-mfa","response_aligned_mfa can borrow supervision from anchor-level responses",5,0,FALSE,FALSE,0,0.0949999999999989,0.001,0.0960000000000036,5
+"test-response-aligned-mfa.R","response-aligned-mfa","response_aligned_mfa supports soft anchor coupling for mixed anchored and novel rows",3,0,FALSE,FALSE,0,0.0590000000000046,0.001,0.0599999999999952,3
+"test-response-aligned-mfa.R","response-aligned-mfa","response_aligned_mfa treats integer and one-hot anchor maps equivalently",7,0,FALSE,FALSE,0,0.0339999999999989,0,0.0350000000000037,7
+"test-response-aligned-mfa.R","response-aligned-mfa","response_aligned_mfa can use test-time anchor_map to refine prediction",1,0,FALSE,FALSE,0,0.0399999999999991,0.00099999999999989,0.0409999999999968,1
+"test-rmt-edge.R","rmt-edge","automatic RMT is unavailable rather than a disguised median threshold",5,0,FALSE,FALSE,0,0.00300000000000011,0.00100000000000011,0.00399999999999778,5
+"test-rmt-edge.R","rmt-edge","declared isotropic covariance edges have independent analytic values",6,0,FALSE,FALSE,0,0.00399999999999778,0,0.00400000000000489,6
+"test-rmt-edge.R","rmt-edge","RMT unit conversion and scale transformations preserve decisions",4,0,FALSE,FALSE,0,0.00300000000000011,0.00099999999999989,0.00300000000000011,4
+"test-rmt-edge.R","rmt-edge","RMT does not certify unsupported representations or invalid inputs",9,0,FALSE,FALSE,0,0.0150000000000006,0,0.0159999999999982,9
+"test-simulation-battery.R","simulation-battery","simulation battery: MFA recovery worsens monotonically across a noise grid",2,0,FALSE,FALSE,0,0.0770000000000053,0.00499999999999989,0.0799999999999983,2
+"test-simulation-battery.R","simulation-battery","simulation battery: anchored_mfa out-of-sample prediction improves with more training rows",2,0,FALSE,FALSE,0,0.0640000000000001,0.00100000000000011,0.0659999999999954,2
+"test-simulation-battery.R","simulation-battery","simulation battery: aligned_mfa with repeated indices benefits from the correct row mapping",3,0,FALSE,FALSE,0,0.201,0.002,0.204000000000001,3
+"test-simulation-battery.R","simulation-battery","simulation battery: aligned_mcca depends on the correct repeated-row mapping",3,0,FALSE,FALSE,0,0.0420000000000016,0.00099999999999989,0.044000000000004,3
+"test-simulation-battery.R","simulation-battery","simulation battery: graph_anchored_mfa benefits from a correct feature graph",5,0,FALSE,FALSE,0,0.158000000000001,0.002,0.161000000000001,5
+"test-summary-utils.R","summary-utils","summarize_matrix computes element-wise function",1,0,FALSE,FALSE,0,0.000999999999997669,0.00100000000000011,0.000999999999997669,1
+"test-summary-utils.R","summary-utils","summarize_boot aggregates bootstrap results",7,0,FALSE,FALSE,0,0.00500000000000256,0,0.00499999999999545,7
+"test-summary-utils.R","summary-utils","significant_components performs RMT and ICC",4,0,FALSE,FALSE,0,0.00200000000000244,0.00099999999999989,0.00300000000000011,4
+"test-synthdat.R","synthdat","synthetic_multiblock creates correct structure",6,0,FALSE,FALSE,0,0.0069999999999979,0.002,0.00799999999999557,6
+"test-synthdat.R","synthdat","synthetic_multiblock data equals F_true %*% t(V_true) when sigma=0",6,0,FALSE,FALSE,0,0.0180000000000007,0,0.0180000000000007,6
+"test-synthdat.R","synthdat","synthetic_multiblock data is column-centered",3,0,FALSE,FALSE,0,0.00200000000000244,0,0.00200000000000244,3
+"test-synthdat.R","synthdat","synthetic_multiblock V_true are orthonormal",3,0,FALSE,FALSE,0,0.00199999999999534,0.00100000000000011,0.00199999999999534,3
+"test-synthdat.R","synthdat","synthetic_multiblock F_true is orthonormal",1,0,FALSE,FALSE,0,0.00200000000000244,0,0.00200000000000244,1
+"test-synthdat.R","synthdat","synthetic_multiblock respects seed for reproducibility",3,0,FALSE,FALSE,0,0.00300000000000011,0,0.00300000000000011,3
+"test-synthdat.R","synthdat","synthetic_multiblock with different seeds gives different results",2,0,FALSE,FALSE,0,0.00300000000000011,0.00099999999999989,0.00399999999999778,2
+"test-synthdat.R","synthdat","synthetic_multiblock handles vector p argument",6,0,FALSE,FALSE,0,0.00300000000000011,0.00100000000000011,0.00400000000000489,6
+"test-synthdat.R","synthdat","synthetic_multiblock with sigma adds noise",1,0,FALSE,FALSE,0,0.00300000000000011,0,0.00300000000000011,1
+"test-synthdat.R","synthdat","synthetic_multiblock with sphere=TRUE generates spatial coordinates",6,0,FALSE,FALSE,0,0.00500000000000256,0.00099999999999989,0.00599999999999312,6
+"test-synthdat.R","synthdat","synthetic_multiblock sphere coordinates are on unit sphere",2,0,FALSE,FALSE,0,0.00300000000000011,0,0.00300000000000011,2
+"test-synthdat.R","synthdat","synthetic_multiblock sphere Laplacian has correct structure",2,0,FALSE,FALSE,0,0.00300000000000011,0.00100000000000011,0.00499999999999545,2
+"test-synthdat.R","synthdat","synthetic_multiblock with r=1 creates rank-1 data",4,0,FALSE,FALSE,0,0.00300000000000011,0.00099999999999989,0.00400000000000489,4
+"test-synthdat.R","synthdat","synthetic_multiblock with large r",4,0,FALSE,FALSE,0,0.00200000000000244,0,0.00300000000000011,4
+"test-synthdat.R","synthdat","synthetic_multiblock output can be used with mfa",2,0,FALSE,FALSE,0,0.00600000000000023,0,0.0069999999999979,2
+"test-utils-extra.R","utils-extra","compute_sim_mat returns correct symmetric matrix",1,0,FALSE,FALSE,0,0.00200000000000244,0,0.00199999999999534,1
+"test-utils-extra.R","utils-extra","normalization_factors handles Frob and None",2,0,FALSE,FALSE,0,0.00200000000000244,0,0.00200000000000244,2
+"test-utils-extra.R","utils-extra","significant_components basic structure",4,0,FALSE,FALSE,0,0.00300000000000011,0.00099999999999989,0.00399999999999778,4
+"test-utils-extra.R","utils-extra","coords_list length mismatch triggers error",1,0,FALSE,FALSE,0,0.00300000000000011,0,0.00300000000000011,1
+"test-utils-extra.R","utils-extra","coords_list row count mismatch triggers error",1,0,FALSE,FALSE,0,0.00300000000000011,0.00100000000000011,0.00300000000000011,1
+"test-utils-misc.R","utils-misc","%||% returns second arg when first is NULL",3,0,FALSE,FALSE,0,0.00300000000000011,0,0.00200000000000244,3
+"test-utils-misc.R","utils-misc","%||% returns first arg when not NULL",5,0,FALSE,FALSE,0,0.00300000000000011,0.00099999999999989,0.00399999999999778,5
+"test-utils-misc.R","utils-misc","adam_update_block computes correct momentum update",3,0,FALSE,FALSE,0,0.00200000000000244,0,0.00300000000000011,3
+"test-utils-misc.R","utils-misc","adam_update_block handles multiple steps",4,0,FALSE,FALSE,0,0.00399999999999778,0.00100000000000011,0.00400000000000489,4
+"test-utils-misc.R","utils-misc","within_class_scatter computes correct scatter matrix",4,0,FALSE,FALSE,0,0.00399999999999778,0.00099999999999989,0.00600000000000023,4
+"test-utils-misc.R","utils-misc","within_class_scatter handles single class",2,0,FALSE,FALSE,0,0.00200000000000244,0,0.00199999999999534,2
+"test-utils-misc.R","utils-misc","between_class_scatter computes correct scatter matrix",4,0,FALSE,FALSE,0,0.00500000000000256,0.00100000000000011,0.00500000000000256,4
+"test-utils-misc.R","utils-misc","between_class_scatter is zero for single class",1,0,FALSE,FALSE,0,0.0069999999999979,0.00099999999999989,0.0069999999999979,1
+"test-utils-misc.R","utils-misc","significant_components validates inputs",2,0,FALSE,FALSE,0,0.00600000000000023,0,0.007000000000005,2
+"test-utils-misc.R","utils-misc","significant_components returns expected structure",9,0,FALSE,FALSE,0,0.00600000000000023,0.00100000000000011,0.0069999999999979,9
+"test-utils-misc.R","utils-misc","significant_components skips RMT when sdev not available",4,0,FALSE,FALSE,0,0.00300000000000011,0,0.00300000000000011,4
+"test-utils-misc.R","utils-misc","significant_components with check_rmt = FALSE",3,0,FALSE,FALSE,0,0.00300000000000011,0.00099999999999989,0.00300000000000011,3
+"test-utils-misc.R","utils-misc","significant_components errors when V_list missing",1,0,FALSE,FALSE,0,0.00199999999999534,0,0.00500000000000256,1
+"test-utils-misc.R","utils-misc","significant_components handles V_list as attribute",2,0,FALSE,FALSE,0,0.000999999999997669,0,0.00199999999999534,2

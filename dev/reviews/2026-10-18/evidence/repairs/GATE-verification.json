@@ -1,0 +1,30 @@
+{
+  "head": "06eb85f1eee84eff16e1f0bcd23f54730ae18152",
+  "local_suite": {
+    "exit": 0,
+    "files": 59,
+    "blocks": 557,
+    "passing_expectations": 2734,
+    "failures": 0,
+    "errors": 0,
+    "skips": 2
+  },
+  "default_check": {
+    "exit": 1,
+    "errors": 0,
+    "warnings": 1,
+    "notes": 1,
+    "warning": "Local R header warning-group mismatch reproduced in untouched baseline",
+    "note": "Owned project S3 method Rd markup; corrected"
+  },
+  "final_apple_cxx17_check": {
+    "exit": 0,
+    "errors": 0,
+    "warnings": 0,
+    "notes": 0,
+    "makevars": "GATE-apple-cxx17.Makevars",
+    "tarball_sha256": "c25e9dd90878b9d2e03ef2578fcbd9ef20730c1be9b1709c0f42929b75939fe0"
+  },
+  "hosted_ci": "Not run; Q05 supported upstream source not fetchable",
+  "scientific_qualification": "No general null calibration, coverage, or positive-lambda stationarity claim"
+}

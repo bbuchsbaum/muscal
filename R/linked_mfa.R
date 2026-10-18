@@ -617,8 +617,13 @@ linked_mfa <- function(Y,
 }
 
 .muscal_rowsum_counts <- function(X, idx, N) {
+  if (!is.matrix(X) || !is.numeric(X) || any(!is.finite(X))) stop("X must be a finite numeric matrix.")
+  if (!is.numeric(N) || length(N) != 1L || !is.finite(N) || N < 0 ||
+      N != floor(N) || N > .Machine$integer.max) stop("N must be a finite nonnegative integer scalar.")
+  if (!is.numeric(idx) || length(idx) != nrow(X) || any(!is.finite(idx)) ||
+      any(idx != floor(idx)) || any(idx < 1 | idx > N)) stop("idx must contain integer row groups in 1..N.")
   if (.muscal_has_native_symbol("muscal_rowsum_counts_cpp")) {
-    return(muscal_rowsum_counts_cpp(X, as.integer(idx), as.integer(N)))
+    return(muscal_rowsum_counts_cpp(X, idx, N))
   }
   rs <- rowsum(X, idx, reorder = FALSE)
   out <- matrix(0, nrow = N, ncol = ncol(X))

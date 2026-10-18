@@ -43,10 +43,14 @@ test_that("summarize_boot aggregates bootstrap results", {
 test_that("significant_components performs RMT and ICC", {
   V1 <- matrix(c(1,0,0,0,1,0), 3, 2)
   V2 <- matrix(c(0,0,1,0,0,1), 3, 2)
+  rownames(V1) <- rownames(V2) <- paste0("feature", 1:3)
   fit <- list(V_list = list(V1, V2), sdev = c(1, 0.5))
-  res <- significant_components(fit, n = 10, k_vec = c(3, 3), check_rmt = TRUE)
+  res <- significant_components(fit, n = 10, k_vec = c(3, 3), check_rmt = TRUE,
+                                 noise_variance = 0.1, spectrum = "covariance",
+                                 noise_model = "isotropic", check_icc = TRUE,
+                                 common_features = rownames(V1))
   expect_equal(res$rmt_pass, c(TRUE, FALSE))
   expect_equal(res$keep, integer(0))
   expect_equal(res$icc, c(0, 0))
-  expect_equal(res$mp_edge, 0.625, tolerance = 1e-6)
+  expect_equal(res$mp_edge, 0.3149193338482967, tolerance = 1e-12)
 })

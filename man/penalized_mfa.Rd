@@ -79,6 +79,9 @@ Options are:
 Adam is generally more robust and converges faster with default settings.}
 
 \item{preproc}{A preprocessing specification (default: `multivarious::center()`).
+Data blocks must share equal positive observation counts, and preprocessing
+must preserve the shared observation rows and their order. Blocks may have
+different feature counts where the chosen penalty supports them.
 Can be:
 \itemize{
   \item A single `pre_processor` object applied to all blocks
@@ -123,7 +126,7 @@ block in the analysis.}
 \value{
 A `multiblock_projector` object of class `penalized_mfa` with the following components:
   \describe{
-    \item{\code{v}}{Concatenated loading matrix (total_features × ncomp) formed by
+    \item{\code{v}}{Concatenated loading matrix (total_features <c3><97> ncomp) formed by
       vertically stacking all block-specific loading matrices.}
     \item{\code{preproc}}{A `concat_pre_processor` object containing the preprocessing
       transformations applied to each block. Can be used to transform new data.}
@@ -134,7 +137,7 @@ A `multiblock_projector` object of class `penalized_mfa` with the following comp
   Additional information is stored as attributes:
   \describe{
     \item{\code{V_list}}{List of length S containing the final orthonormal loading
-      matrices for each block. Each element is a (p_i × ncomp) matrix.}
+      matrices for each block. Each element is a (p_i <c3><97> ncomp) matrix.}
     \item{\code{obj_values}}{Numeric vector of objective function values at each
       iteration, including the initial value. Length is (iterations_run + 1).}
     \item{\code{consensus}}{The consensus loading matrix (\code{p_post} x ncomp) if

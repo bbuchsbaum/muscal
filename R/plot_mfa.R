@@ -687,6 +687,7 @@ plot_block_similarity.mfa <- function(x, method = c("RV", "RV2"), ...) {
 #' @return A ggplot object or base R plot.
 #' @export
 plot_variance <- function(x, type = c("bar", "line"), ...) {
+  if (inherits(x, "distatis")) return(plot_variance.distatis(x, type = type, ...))
   type <- match.arg(type)
   sdev <- x$sdev
   if (is.null(sdev) || length(sdev) == 0) {

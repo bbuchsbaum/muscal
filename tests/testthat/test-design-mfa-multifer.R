@@ -167,3 +167,42 @@ test_that("serial bootstrap uses the statistic_stability sidecar and keeps the p
   expect_equal(nrow(boot$summary$singular_values), 1L)
   expect_true(all(vapply(boot$sampled_subjects, length, integer(1)) == 4L))
 })
+
+test_that("supported stability capabilities use explicit engine and sidecar formals", {
+  compatible <- muscal:::.dmfa_multifer_stability_formals_compatible
+  old <- function(recipe, adapter, data, original_fit, units, R, seed, parallel,
+                  method_align, store_aligned_scores) NULL
+  sidecar <- function(artifact, units, statistics, nonnegative, statistic, probs) NULL
+  expect_true(compatible(old, sidecar))
+  expect_false(compatible(function(recipe, adapter) NULL, sidecar))
+  expect_false(compatible(old, function(artifact, units, statistics) NULL))
+  local_mocked_bindings(.dmfa_multifer_effect_contract_available = function() FALSE,
+                       .package = "muscal")
+  expect_error(muscal:::.dmfa_require_multifer_effect_contract(), "requires a multifer build.*effect_significance")
+})
+
+test_that("live multifer stability handles multiple components and failed attempts", {
+  skip_if_not_installed("multifer")
+  skip_if_not(muscal:::.dmfa_multifer_stability_contract_available())
+  sim <- .sim_design_mfa(n_subjects = 4, trials = 24, p = 5, seed = 997)
+  fit <- design_mfa(sim$Y, sim$design, ~ saliency, rank = 2)
+  boot <- infer_design_mfa(fit, "saliency", nrep = 4, seed = 998, alpha = 0.2)
+  expect_identical(boot$engine, "multifer")
+  expect_equal(nrow(boot$summary$singular_values), 2L)
+  values <- do.call(rbind, lapply(boot$replicates, `[[`, "singular_values"))
+  expect_equal(boot$summary$singular_values$lower,
+    unname(apply(values, 2, stats::quantile, probs = 0.1)), tolerance = 1e-12)
+  original <- fit$fit_spec$refit$fit_fn
+  count <- 0L
+  fit$fit_spec$refit$fit_fn <- function(data) {
+    count <<- count + 1L
+    if (count == 2L) stop("intentional engine fixture failure")
+    original(data)
+  }
+  partial <- expect_warning(infer_design_mfa(fit, "saliency", statistics = "partial_ss",
+    nrep = 4, seed = 998), "1 of 4 replicates failed")
+  expect_identical(partial$engine, "multifer")
+  expect_equal(partial$n_success, 3L)
+  expect_equal(partial$failures[[1]]$index, 2L)
+  expect_match(partial$failures[[1]]$message, "intentional engine fixture failure")
+})

@@ -170,7 +170,9 @@ test_that("significant_components returns expected structure", {
   expect_type(result, "list")
   expect_named(result, c(
     "keep", "rmt_pass", "icc_pass", "icc", "icc_pvalue",
-    "mp_edge", "sigma2_est", "lambda", "n", "k_vec", "alpha"
+    "mp_edge", "sigma2_est", "lambda", "n", "k_vec", "alpha",
+    "rmt_status", "rmt_reason", "gamma", "n_eff", "spectrum", "noise_model",
+    "icc_status"
   ))
 
   expect_type(result$keep, "integer")
@@ -193,8 +195,10 @@ test_that("significant_components skips RMT when sdev not available", {
     "sdev"
   )
 
-  # RMT should be skipped, all pass by default
-  expect_true(all(result$rmt_pass))
+  # Missing spectral evidence is unavailable, not a positive result.
+  expect_true(all(is.na(result$rmt_pass)))
+  expect_identical(result$rmt_status, "unavailable")
+  expect_length(result$keep, 0)
 })
 
 test_that("significant_components with check_rmt = FALSE", {
@@ -214,8 +218,8 @@ test_that("significant_components with check_rmt = FALSE", {
     "skipped"
   )
 
-  # All should pass RMT when check disabled
-  expect_true(all(result$rmt_pass))
+  expect_true(all(is.na(result$rmt_pass)))
+  expect_identical(result$rmt_status, "disabled")
 })
 
 test_that("significant_components errors when V_list missing", {

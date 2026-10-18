@@ -1,0 +1,87 @@
+During startup - Warning messages:
+1: Setting LC_CTYPE failed, using "C" 
+2: Setting LC_COLLATE failed, using "C" 
+3: Setting LC_TIME failed, using "C" 
+4: Setting LC_MESSAGES failed, using "C" 
+5: Setting LC_MONETARY failed, using "C" 
+Warning message:
+package 'testthat' was built under R version 4.5.2 
+bada-bootstrap-refit: WW1.234
+
+== Warnings ====================================================================
+1. identical-subject bootstrap refits preserve loading units ('test-bada-bootstrap-refit.R:21:3') - package 'future' was built under R version 4.5.2
+
+2. identical-subject bootstrap refits preserve loading units ('test-bada-bootstrap-refit.R:21:3') - package 'purrr' was built under R version 4.5.2
+
+== Failed ======================================================================
+-- 1. Failure ('test-bada-bootstrap-refit.R:22:3'): identical-subject bootstrap 
+Expected `result$boot_lds_mean` to equal `unname(f$fit$v)`.
+Differences:
+2/4 mismatches (average diff: 1.67)
+[1] -2.67 - -1 == -1.67
+[4] -2.67 - -1 == -1.67
+
+-- 2. Error ('test-bada-bootstrap-refit.R:29:3'): BaDA bootstrap refits match in
+<subscriptOutOfBoundsError/error/condition>
+Error in `x$v[, comp_idx, drop = FALSE]`: subscript out of bounds
+Backtrace:
+     x
+  1. +-multivarious::bootstrap(...) at test-bada-bootstrap-refit.R:29:3
+  2. +-muscal:::bootstrap.bada(...)
+  3. | +-... %>% bind_rows() at muscal/R/bada.R:104:3
+  4. | \-furrr::future_map(...)
+  5. |   \-furrr:::furrr_map_template(...)
+  6. |     \-furrr:::furrr_template(...)
+  7. |       \-furrr:::furrr_try_catch(...)
+  8. |         \-base::tryCatch(expr = expr, purrr_error_indexed = rethrow_purrr_error_indexed)
+  9. |           \-base (local) tryCatchList(expr, classes, parentenv, handlers)
+ 10. |             \-base (local) tryCatchOne(expr, names, parentenv, handlers[[1L]])
+ 11. |               \-value[[3L]](cond)
+ 12. |                 \-rlang::cnd_signal(cnd)
+ 13. \-dplyr::bind_rows(.)
+ 14.   \-rlang::list2(...)
+
+-- 3. Error ('test-bada-bootstrap-refit.R:59:3'): BaDA bootstrap validates targe
+<subscriptOutOfBoundsError/error/condition>
+Error in `x$v[, comp_idx, drop = FALSE]`: subscript out of bounds
+Backtrace:
+     x
+  1. +-multivarious::bootstrap(f$fit, data = f$data, nboot = 3, resample_indices = schedule) at test-bada-bootstrap-refit.R:59:3
+  2. +-muscal:::bootstrap.bada(f$fit, data = f$data, nboot = 3, resample_indices = schedule)
+  3. | +-... %>% bind_rows() at muscal/R/bada.R:104:3
+  4. | \-furrr::future_map(...)
+  5. |   \-furrr:::furrr_map_template(...)
+  6. |     \-furrr:::furrr_template(...)
+  7. |       \-furrr:::furrr_try_catch(...)
+  8. |         \-base::tryCatch(expr = expr, purrr_error_indexed = rethrow_purrr_error_indexed)
+  9. |           \-base (local) tryCatchList(expr, classes, parentenv, handlers)
+ 10. |             \-base (local) tryCatchOne(expr, names, parentenv, handlers[[1L]])
+ 11. |               \-value[[3L]](cond)
+ 12. |                 \-rlang::cnd_signal(cnd)
+ 13. \-dplyr::bind_rows(.)
+ 14.   \-rlang::list2(...)
+
+-- 4. Error ('test-bada-bootstrap-refit.R:74:3'): BaDA seeded bootstrap and subj
+<subscriptOutOfBoundsError/error/condition>
+Error in `x$v[, comp_idx, drop = FALSE]`: subscript out of bounds
+Backtrace:
+     x
+  1. +-multivarious::bootstrap(f$fit, data = f$data, nboot = 4, seed = 118) at test-bada-bootstrap-refit.R:74:3
+  2. +-muscal:::bootstrap.bada(f$fit, data = f$data, nboot = 4, seed = 118)
+  3. | +-... %>% bind_rows() at muscal/R/bada.R:104:3
+  4. | \-furrr::future_map(...)
+  5. |   \-furrr:::furrr_map_template(...)
+  6. |     \-furrr:::furrr_template(...)
+  7. |       \-furrr:::furrr_try_catch(...)
+  8. |         \-base::tryCatch(expr = expr, purrr_error_indexed = rethrow_purrr_error_indexed)
+  9. |           \-base (local) tryCatchList(expr, classes, parentenv, handlers)
+ 10. |             \-base (local) tryCatchOne(expr, names, parentenv, handlers[[1L]])
+ 11. |               \-value[[3L]](cond)
+ 12. |                 \-rlang::cnd_signal(cnd)
+ 13. \-dplyr::bind_rows(.)
+ 14.   \-rlang::list2(...)
+
+== DONE ========================================================================
+Error:
+! Test failures.
+Execution halted

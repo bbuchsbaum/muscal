@@ -333,3 +333,25 @@ test_that("serial inference progress and optional future refits keep the contrac
     "TRUE or FALSE"
   )
 })
+
+test_that("refit callbacks must preserve the conditional target and complete schema", {
+  sim <- .sim_design_mfa(n_subjects = 4, trials = 20, p = 4, seed = 911)
+  fit <- design_mfa(sim$Y, sim$design, ~ saliency, rank = 1)
+  spec <- muscal:::.muscal_resolve_refit_spec(fit)
+  changed <- spec$data
+  changed$reference_weight <- rev(changed$reference_weight) + seq_along(changed$reference_weight)
+  expect_error(spec$fit_fn(changed), "frozen reference")
+  changed <- spec$data
+  changed$reference_grid <- changed$reference_grid[rev(seq_len(nrow(changed$reference_grid))), , drop = FALSE]
+  expect_error(spec$fit_fn(changed), "frozen reference")
+  changed <- spec$data
+  changed$block_weight <- NULL
+  expect_error(spec$fit_fn(changed), "complete refit-data")
+  changed <- spec$data
+  names(changed$design)[1] <- "wrong_subject"
+  expect_error(spec$fit_fn(changed), "subject identities")
+  changed <- spec$data
+  changed$Y[[1]] <- changed$Y[[1]][-1, , drop = FALSE]
+  expect_error(spec$fit_fn(changed), "row|trial")
+  expect_error(spec$fit_fn(NULL), "complete refit-data")
+})

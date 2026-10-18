@@ -1,0 +1,25 @@
+During startup - Warning messages:
+1: Setting LC_CTYPE failed, using "C" 
+2: Setting LC_COLLATE failed, using "C" 
+3: Setting LC_TIME failed, using "C" 
+4: Setting LC_MESSAGES failed, using "C" 
+5: Setting LC_MONETARY failed, using "C" 
+Warning message:
+package 'testthat' was built under R version 4.5.2 
+benchmark-qualification: ..........12
+
+== Failed ======================================================================
+-- 1. Error ('test-benchmark-qualification.R:43:3'): benchmark receipts bind the
+Error in `capture.output(sessionInfo())`: could not find function "capture.output"
+Backtrace:
+    x
+ 1. \-h$bench_provenance(117) at test-benchmark-qualification.R:43:3
+
+-- 2. Error ('test-benchmark-qualification.R:55:5'): Design-MFA profiling retain
+Error in `is.call(expr) && identical(expr[[1]], as.name("<-")) && as.character(expr[[2]]) %in% c("max_profiled_allocation", "profile_fit")`: 'length = 3' in coercion to 'logical(1)'
+
+== DONE ========================================================================
+I believe in you!
+Error:
+! Test failures.
+Execution halted

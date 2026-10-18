@@ -1,14 +1,14 @@
 library(testthat)
 library(muscal)
 
-orthonormal_scores <- function(N, K) {
+.ams_orthonormal_scores <- function(N, K) {
   S <- matrix(rnorm(N * K), N, K)
   S <- qr.Q(qr(S), complete = FALSE)
   if (ncol(S) > K) S <- S[, seq_len(K), drop = FALSE]
   S
 }
 
-subspace_rmse <- function(A, B) {
+.ams_subspace_rmse <- function(A, B) {
   QA <- qr.Q(qr(A), complete = FALSE)
   QB <- qr.Q(qr(B), complete = FALSE)
   if (ncol(QA) > ncol(QB)) QA <- QA[, seq_len(ncol(QB)), drop = FALSE]
@@ -18,7 +18,7 @@ subspace_rmse <- function(A, B) {
   sqrt(mean((P1 - P2)^2))
 }
 
-sim_anchored_mfa <- function(N = 80,
+.ams_sim_anchored_mfa <- function(N = 80,
                              q = 6,
                              p = c(12, 12),
                              K = 3,
@@ -26,7 +26,7 @@ sim_anchored_mfa <- function(N = 80,
                              noise_x = 0.10,
                              reps = 1,
                              matched_loading_sd = 0.10) {
-  S_true <- orthonormal_scores(N, K)
+  S_true <- .ams_orthonormal_scores(N, K)
   B_true <- matrix(rnorm(q * K), q, K)
 
   template <- matrix(rnorm(max(p) * K), max(p), K)
@@ -52,12 +52,12 @@ sim_anchored_mfa <- function(N = 80,
   list(Y = Y, X = X, row_index = row_index, S_true = S_true)
 }
 
-sim_aligned_mfa <- function(N = 80,
+.ams_sim_aligned_mfa <- function(N = 80,
                             p = c(12, 12),
                             K = 3,
                             noise_x = 0.10,
                             reps = 1) {
-  S_true <- orthonormal_scores(N, K)
+  S_true <- .ams_orthonormal_scores(N, K)
   template <- matrix(rnorm(max(p) * K), max(p), K)
 
   X <- row_index <- vector("list", length(p))
@@ -74,12 +74,12 @@ sim_aligned_mfa <- function(N = 80,
   list(X = X, row_index = row_index, N = N, S_true = S_true)
 }
 
-sim_aligned_mcca <- function(N = 70,
+.ams_sim_aligned_mcca <- function(N = 70,
                              p = c(14, 12, 10),
                              q = 8,
                              K = 3,
                              noise = 0.12) {
-  S_true <- orthonormal_scores(N, K)
+  S_true <- .ams_orthonormal_scores(N, K)
   A_y <- matrix(rnorm(q * K), q, K)
   Y <- S_true %*% t(A_y) + matrix(rnorm(N * q, sd = noise), N, q)
 
@@ -98,7 +98,7 @@ sim_aligned_mcca <- function(N = 70,
 
 test_that("anchored_mfa matches row_index by names, not list position", {
   set.seed(201)
-  sim <- sim_anchored_mfa()
+  sim <- .ams_sim_anchored_mfa()
 
   fit_ref <- anchored_mfa(
     Y = sim$Y,
@@ -119,38 +119,40 @@ test_that("anchored_mfa matches row_index by names, not list position", {
   )
 
   expect_equal(names(fit_named$row_index), names(sim$row_index))
-  expect_lt(subspace_rmse(fit_ref$s, fit_named$s), 1e-6)
+  expect_lt(.ams_subspace_rmse(fit_ref$s, fit_named$s), 1e-6)
 })
 
 test_that("aligned_mfa matches row_index by names, not list position", {
   set.seed(202)
-  sim <- sim_aligned_mfa()
+  sim <- .ams_sim_aligned_mfa()
 
+  set.seed(5202)
   fit_ref <- aligned_mfa(
     X = sim$X,
     row_index = sim$row_index,
     N = sim$N,
     ncomp = 3,
     normalization = "None",
-    ridge = 1e-6
+    ridge = 1e-6, max_iter = 100, tol = 1e-12
   )
 
+  set.seed(5202)
   fit_named <- aligned_mfa(
     X = sim$X,
     row_index = sim$row_index[c("X2", "X1")],
     N = sim$N,
     ncomp = 3,
     normalization = "None",
-    ridge = 1e-6
+    ridge = 1e-6, max_iter = 100, tol = 1e-12
   )
 
   expect_equal(names(fit_named$row_index), names(sim$row_index))
-  expect_lt(subspace_rmse(fit_ref$s, fit_named$s), 1e-6)
+  expect_lt(.ams_subspace_rmse(fit_ref$s, fit_named$s), 1e-8)
 })
 
 test_that("aligned_mcca matches row_index by names, not list position", {
   set.seed(203)
-  sim <- sim_aligned_mcca()
+  sim <- .ams_sim_aligned_mcca()
 
   fit_ref <- aligned_mcca(
     X = sim$X,
@@ -169,12 +171,12 @@ test_that("aligned_mcca matches row_index by names, not list position", {
   )
 
   expect_equal(names(fit_named$row_index), names(sim$row_index))
-  expect_lt(subspace_rmse(fit_ref$s, fit_named$s), 1e-8)
+  expect_lt(.ams_subspace_rmse(fit_ref$s, fit_named$s), 1e-8)
 })
 
 test_that("zero-weight blocks do not influence weighted blocks through feature priors", {
   set.seed(204)
-  sim <- sim_anchored_mfa(N = 70, p = c(10, 10), K = 2, noise_x = 0.15)
+  sim <- .ams_sim_anchored_mfa(N = 70, p = c(10, 10), K = 2, noise_x = 0.15)
 
   X_alt <- sim$X
   X_alt[[2]] <- matrix(rnorm(length(X_alt[[2]])), nrow(X_alt[[2]]), ncol(X_alt[[2]]))
@@ -206,7 +208,7 @@ test_that("zero-weight blocks do not influence weighted blocks through feature p
     max_iter = 80
   )
 
-  expect_lt(subspace_rmse(fit_a$s, fit_b$s), 1e-8)
+  expect_lt(.ams_subspace_rmse(fit_a$s, fit_b$s), 1e-8)
   expect_equal(fit_a$V_list[[1]], fit_b$V_list[[1]], tolerance = 1e-6)
   expect_lt(max(abs(fit_a$V_list[[2]])), 1e-8)
   expect_lt(max(abs(fit_b$V_list[[2]])), 1e-8)
@@ -214,7 +216,7 @@ test_that("zero-weight blocks do not influence weighted blocks through feature p
 
 test_that("aligned_mfa does not force ncomp down to the narrowest block width", {
   set.seed(205)
-  sim <- sim_aligned_mfa(N = 60, p = c(1, 6), K = 3, noise_x = 0.05)
+  sim <- .ams_sim_aligned_mfa(N = 60, p = c(1, 6), K = 3, noise_x = 0.05)
 
   fit <- aligned_mfa(
     X = sim$X,
@@ -231,7 +233,7 @@ test_that("aligned_mfa does not force ncomp down to the narrowest block width", 
 
 test_that("aligned_mcca rejects all-zero block weights", {
   set.seed(206)
-  sim <- sim_aligned_mcca(p = c(8, 8), K = 2)
+  sim <- .ams_sim_aligned_mcca(p = c(8, 8), K = 2)
 
   expect_error(
     aligned_mcca(
@@ -250,7 +252,7 @@ test_that("aligned_mcca rejects all-zero block weights", {
 
 test_that("aligned_mcca recovers a meaningful shared row space on synthetic aligned data", {
   set.seed(207)
-  sim <- sim_aligned_mcca()
+  sim <- .ams_sim_aligned_mcca()
 
   fit <- aligned_mcca(
     X = sim$X,
@@ -261,5 +263,43 @@ test_that("aligned_mcca recovers a meaningful shared row space on synthetic alig
   )
 
   expect_equal(dim(fit$s), c(sim$N, 3))
-  expect_lt(subspace_rmse(fit$s, sim$S_true), 0.30)
+  expect_lt(.ams_subspace_rmse(fit$s, sim$S_true), 0.30)
+})
+
+
+test_that("linked_mfa remains an exact anchored_mfa alias", {
+  set.seed(208)
+  sim <- .ams_sim_anchored_mfa()
+  set.seed(5210)
+  anchored <- anchored_mfa(sim$Y, sim$X, sim$row_index, ncomp = 3,
+    normalization = "None", ridge = 1e-6)
+  set.seed(5210)
+  linked <- linked_mfa(sim$Y, sim$X, sim$row_index, ncomp = 3,
+    normalization = "None", ridge = 1e-6)
+  expect_equal(linked$s, anchored$s, tolerance = 1e-10)
+  expect_equal(linked$v, anchored$v, tolerance = 1e-10)
+})
+
+test_that("aligned_mfa recovers synthetic shared scores without an anchor", {
+  set.seed(209)
+  sim <- .ams_sim_aligned_mfa()
+  fit <- aligned_mfa(sim$X, sim$row_index, N = sim$N, ncomp = 3,
+    normalization = "None", ridge = 1e-6, max_iter = 100)
+  Q <- qr.Q(qr(fit$s))
+  # Mean squared canonical correlations: unrelated rank-three spaces in 80 rows
+  # have expectation about 3/80, so this checks substantial latent recovery.
+  overlap <- sum(crossprod(Q, sim$S_true)^2) / 3
+  expect_gt(overlap, 0.8)
+  expect_true(all(fit$block_fit$r2 > 0.7))
+})
+
+test_that("anchored and aligned MCCA agree under identical normalization", {
+  set.seed(210)
+  sim <- .ams_sim_aligned_mcca()
+  aligned <- aligned_mcca(c(list(Y = sim$Y), sim$X),
+    c(list(Y = seq_len(sim$N)), sim$row_index), N = sim$N, ncomp = 3,
+    normalization = "None", ridge = 1e-4)
+  anchored <- anchored_mcca(sim$Y, sim$X, sim$row_index, ncomp = 3,
+    normalization = "None", ridge = 1e-4)
+  expect_lt(.ams_subspace_rmse(aligned$s, anchored$s), 1e-8)
 })

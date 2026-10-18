@@ -32,14 +32,17 @@ intervals are optional because they can be large.}
 
 \item{nrep}{Number of resampling replicates.}
 
-\item{alpha}{Interval tail probability.}
+\item{alpha}{Total error probability for central percentile intervals.}
 
 \item{seed}{Optional random seed. The caller's global random-number state is
 restored on successful and error exits.}
 
 \item{exchangeability}{For permutation, a function accepting `data`, `term`,
 and `replicate` and returning a complete refit-data list. The callback owns
-the scientific validity of the null transformation.}
+the scientific validity of the null transformation. Return aligned named
+`Y`, `design`, `trial_weights`, `block_weight`, `reference_grid`, and
+`reference_weight` fields (plus `feature_map` for soft alignment). Preserve
+the frozen reference grid and weights. Malformed refits are failures.}
 
 \item{verbose}{Emit per-replicate progress. Failed replicates always warn.}
 
@@ -64,6 +67,14 @@ Nearly tied components should be interpreted through the returned subspace
 distances rather than voxelwise loading intervals.
 }
 \details{
+The target is conditional on the fitted reference grid, its cell weights,
+feature maps, contrasts and chosen penalties/rank. Subject resampling keeps
+each subject's trials, design and trial weights together and preserves the
+fitted reference grid/weights; it does not estimate a new population grid.
+Exchangeability of subjects or a caller-specified null transformation is a
+scientific assumption, not established by callback schema validation. No
+unconditional rejection-rate or interval-coverage calibration is claimed.
+
 Bootstrap percentile intervals on `partial_ss` (and other nonnegative
 statistics) have a positive null expectation and must not be read as a
 hypothesis test. Use permutation with an explicit `exchangeability`

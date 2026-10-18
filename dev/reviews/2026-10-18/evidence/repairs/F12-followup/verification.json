@@ -1,0 +1,51 @@
+{
+  "head": "06eb85f1eee84eff16e1f0bcd23f54730ae18152",
+  "changes": [
+    "Nonzero loading directions validated before sampling and inside each replicate statistic guard.",
+    "COVSTATIS rationale acknowledges scalar repair; classification remains research/experimental."
+  ],
+  "before_regressions_exit_code": 1,
+  "focused": {
+    "blocks": 30,
+    "passing_expectations": 205,
+    "failures": 0,
+    "errors": 0,
+    "skips": 0
+  },
+  "local_suite": {
+    "files": 59,
+    "blocks": 559,
+    "passing_expectations": 2754,
+    "failures": 0,
+    "errors": 0,
+    "skips": 2
+  },
+  "package_check": {
+    "errors": 0,
+    "warnings": 0,
+    "notes": 0,
+    "check_dir": "/private/tmp/muscal-F12-followup-check-20261018",
+    "args": "--no-manual"
+  },
+  "build": {
+    "path": "/private/tmp/muscal-F12-followup-check-20261018/muscal_0.1.0.tar.gz",
+    "sha256": "50c715ec3e5737f95fa40bf4666cd7346c5c4841d5563c45814197216cbed77b",
+    "size_bytes": 2577256,
+    "source_manifest_sha256": "ca1487bb8bd11434b2125cef4b865b2467b2a14303945c8c9811f617d6d6bd42"
+  },
+  "source_manifest_sha256": "ca1487bb8bd11434b2125cef4b865b2467b2a14303945c8c9811f617d6d6bd42",
+  "supplementary_hashes": {
+    "dev/reviews/2026-10-18/method-tags-current.csv": "128b9b6191f7edf98b13a999d206d45e5321d778e4727f7afb3738fd409a7bac",
+    "dev/reviews/2026-10-18/repair-status.md": "c3817f0e00732f4e4f1580b478710e9e5ac56a93f597184ba3a5f111169abd5b",
+    "dev/reviews/2026-10-18/evidence/repairs/F12-followup/README.md": "69618440e7348892c02c626805ecee2b22a690e181606bc72adda328089bd056",
+    "dev/reviews/2026-10-18/evidence/repairs/F12-followup/check.R": "6793a210e21dd196ca2ea74e8eeb391f1d636cf3bc9024c2d3de954f483484f7"
+  },
+  "environment": {
+    "R_LIBS": "/private/tmp/muscal-Q05-pinned-library",
+    "R_MAKEVARS_USER": "/Users/bbuchsbaum/code/muscal/dev/reviews/2026-10-18/evidence/repairs/GATE-apple-cxx17.Makevars",
+    "LC_ALL": "en_US.UTF-8"
+  },
+  "diagnostics": "Existing dependency build-version warnings in local tests; sandbox-limited Quarto version-query warning in rcmdcheck wrapper. Package check Status: OK.",
+  "Q05": "Open: compatible upstream multifer revision is unpublished and cannot be fetched by CI.",
+  "scope": "Local and uncommitted; original gate evidence preserved. No hosted CI, publication or scientific calibration claim."
+}

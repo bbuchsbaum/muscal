@@ -1,20 +1,7 @@
 #!/usr/bin/env Rscript
 
-suppressPackageStartupMessages({
-  if (requireNamespace("muscal", quietly = TRUE)) {
-    library(muscal)
-  }
-})
-
-# Development fallback for environments where load_all/compilation is unavailable.
-if (!exists("ipca", mode = "function")) {
-  source("R/all_generic.R")
-  source("R/utils.R")
-  source("R/mfa.R")
-  source("R/mcca.R")
-  source("R/ipca.R")
-  `%>%` <- dplyr::`%>%`
-}
+source("dev/benchmark_qualification.R")
+suppressPackageStartupMessages(bench_load_local())
 
 parse_args <- function(args) {
   out <- list(quick = FALSE, reps = NULL, seed = 1L, delta = 0.04)
@@ -214,7 +201,7 @@ main <- function() {
             method = m,
             ok = FALSE,
             similarity = NA_real_,
-            r2_y = NA_real_,
+            training_adjusted_r2 = NA_real_,
             elapsed_sec = NA_real_,
             converged = NA,
             error = "genpca not installed",
@@ -232,7 +219,7 @@ main <- function() {
             method = m,
             ok = FALSE,
             similarity = NA_real_,
-            r2_y = NA_real_,
+            training_adjusted_r2 = NA_real_,
             elapsed_sec = fitres$elapsed,
             converged = NA,
             error = fitres$error,
@@ -255,7 +242,7 @@ main <- function() {
           method = m,
           ok = TRUE,
           similarity = sim_score,
-          r2_y = r2,
+          training_adjusted_r2 = r2,
           elapsed_sec = fitres$elapsed,
           converged = if (!is.null(fitres$fit$converged)) isTRUE(fitres$fit$converged) else NA,
           error = NA_character_,
@@ -267,37 +254,14 @@ main <- function() {
   }
 
   raw <- do.call(rbind, raw_rows)
+  raw$convergence_required <- raw$method == "ipca"
+  raw$exclusion <- bench_classify(raw)
+  saveRDS(bench_provenance(opts$seed), "dev/ipca_vs_multiset_provenance.rds")
   raw_path <- "dev/ipca_vs_multiset_raw.csv"
   utils::write.csv(raw, raw_path, row.names = FALSE)
 
-  ok_raw <- raw[raw$ok, , drop = FALSE]
-  if (nrow(ok_raw) == 0) {
-    cat("\nNo successful fits in synthetic battery.\n")
-    cat(sprintf("Raw results (with errors): %s\n", raw_path))
-    quit(save = "no", status = 1)
-  }
-  groups <- unique(ok_raw[c("scenario", "method")])
-  summary_rows <- vector("list", nrow(groups))
-  for (i in seq_len(nrow(groups))) {
-    sc <- groups$scenario[[i]]
-    md <- groups$method[[i]]
-    sub <- ok_raw[ok_raw$scenario == sc & ok_raw$method == md, , drop = FALSE]
-    summary_rows[[i]] <- data.frame(
-      scenario = sc,
-      method = md,
-      similarity_mean = mean(sub$similarity, na.rm = TRUE),
-      similarity_sd = stats::sd(sub$similarity, na.rm = TRUE),
-      similarity_n = sum(is.finite(sub$similarity)),
-      r2_mean = mean(sub$r2_y, na.rm = TRUE),
-      r2_sd = stats::sd(sub$r2_y, na.rm = TRUE),
-      r2_n = sum(is.finite(sub$r2_y)),
-      elapsed_mean = mean(sub$elapsed_sec, na.rm = TRUE),
-      elapsed_sd = stats::sd(sub$elapsed_sec, na.rm = TRUE),
-      elapsed_n = sum(is.finite(sub$elapsed_sec)),
-      stringsAsFactors = FALSE
-    )
-  }
-  summary_df <- do.call(rbind, summary_rows)
+  summary_df <- bench_summary(raw, c("scenario", "method"),
+                              c("similarity", "training_adjusted_r2", "elapsed_sec"))
 
   summary_path <- "dev/ipca_vs_multiset_summary.csv"
   utils::write.csv(summary_df, summary_path, row.names = FALSE)
@@ -306,11 +270,13 @@ main <- function() {
     out <- list()
     idx <- 1L
     for (sc in unique(raw$scenario)) {
-      ip <- raw[raw$scenario == sc & raw$method == "ipca", c("rep", metric_col)]
-      cp <- raw[raw$scenario == sc & raw$method == comparator, c("rep", metric_col)]
-      merged <- merge(ip, cp, by = "rep", suffixes = c("_ipca", "_cmp"))
-      d <- merged[[paste0(metric_col, "_ipca")]] - merged[[paste0(metric_col, "_cmp")]]
-      d <- d[is.finite(d)]
+      paired <- bench_pairs(raw[raw$scenario == sc, ], c("ipca", comparator), metric_col)
+      paired$metric <- metric_col
+      paired$comparator <- comparator
+      utils::write.table(paired, "dev/ipca_vs_multiset_pair_ledger.csv", sep = ",",
+        row.names = FALSE, col.names = !file.exists("dev/ipca_vs_multiset_pair_ledger.csv"),
+        append = file.exists("dev/ipca_vs_multiset_pair_ledger.csv"))
+      d <- paired$delta[paired$eligible]
       ci <- bootstrap_ci(d, B = if (opts$quick) 300 else 1200)
       out[[idx]] <- data.frame(
         scenario = sc,
@@ -319,6 +285,8 @@ main <- function() {
         mean_delta = ci["mean"],
         lwr = ci["lwr"],
         upr = ci["upr"],
+        attempted = nrow(paired),
+        excluded = sum(!paired$eligible),
         n = length(d),
         noninferior = if (is.finite(ci["lwr"])) ci["lwr"] > (-opts$delta) else NA,
         stringsAsFactors = FALSE
@@ -328,46 +296,17 @@ main <- function() {
     do.call(rbind, out)
   }
 
+  if (file.exists("dev/ipca_vs_multiset_pair_ledger.csv")) unlink("dev/ipca_vs_multiset_pair_ledger.csv")
   ni_rows <- list(
     compare_metric("similarity", "mcca"),
     compare_metric("similarity", "mfa"),
-    compare_metric("r2_y", "mcca"),
-    compare_metric("r2_y", "mfa")
+    compare_metric("training_adjusted_r2", "mcca"),
+    compare_metric("training_adjusted_r2", "mfa")
   )
   ni_df <- do.call(rbind, ni_rows)
 
-  # vs best comparator (mcca/mfa) per replicate
-  best_rows <- list()
-  bidx <- 1L
-  for (sc in unique(raw$scenario)) {
-    sub <- raw[raw$scenario == sc & raw$method %in% c("ipca", "mcca", "mfa"), c("rep", "method", "similarity", "r2_y")]
-    reps_sc <- sort(unique(sub$rep))
-    for (metric in c("similarity", "r2_y")) {
-      deltas <- c()
-      for (rp in reps_sc) {
-        ss <- sub[sub$rep == rp, , drop = FALSE]
-        ip <- ss[ss$method == "ipca", metric]
-        cm <- ss[ss$method %in% c("mcca", "mfa"), metric]
-        if (length(ip) == 1 && is.finite(ip) && any(is.finite(cm))) {
-          deltas <- c(deltas, ip - max(cm[is.finite(cm)]))
-        }
-      }
-      ci <- bootstrap_ci(deltas, B = if (opts$quick) 300 else 1200)
-      best_rows[[bidx]] <- data.frame(
-        scenario = sc,
-        metric = metric,
-        comparator = "best(mcca,mfa)",
-        mean_delta = ci["mean"],
-        lwr = ci["lwr"],
-        upr = ci["upr"],
-        n = length(deltas),
-        noninferior = if (is.finite(ci["lwr"])) ci["lwr"] > (-opts$delta) else NA,
-        stringsAsFactors = FALSE
-      )
-      bidx <- bidx + 1L
-    }
-  }
-  ni_df <- rbind(ni_df, do.call(rbind, best_rows))
+  # A best-of-comparators claim requires a separately specified, jointly eligible
+  # selection protocol; only prespecified pairwise comparisons are reported here.
 
   ni_path <- "dev/ipca_vs_multiset_noninferiority.csv"
   utils::write.csv(ni_df, ni_path, row.names = FALSE)
@@ -388,7 +327,8 @@ main <- function() {
   writeLines(capture.output(print(summary_df, row.names = FALSE)), con)
   writeLines("```", con)
   writeLines("", con)
-  writeLines("## Non-inferiority Results", con)
+  writeLines("Training adjusted R-squared uses the fitted observations; it is not held-out prediction. Iterative fits require known convergence; analytic MFA/MCCA fits do not require iterative convergence. Pair ledgers retain all exclusion reasons. Bootstrap comparison intervals are exploratory, not a calibrated noninferiority study.", con)
+  writeLines("## Exploratory Pairwise Comparison Results", con)
   writeLines("", con)
   writeLines("```text", con)
   writeLines(capture.output(print(ni_df, row.names = FALSE)), con)

@@ -1,0 +1,31 @@
+During startup - Warning messages:
+1: Setting LC_CTYPE failed, using "C" 
+2: Setting LC_COLLATE failed, using "C" 
+3: Setting LC_TIME failed, using "C" 
+4: Setting LC_MESSAGES failed, using "C" 
+5: Setting LC_MONETARY failed, using "C" 
+Warning message:
+package 'testthat' was built under R version 4.5.2 
+loading-alignment: ..........................
+
+== DONE ========================================================================
+components_utils: .......................................
+
+== DONE ========================================================================
+orient-components: .............................................................
+
+== DONE ========================================================================
+infer-muscal: .............................................................................................................1...........
+
+== Failed ======================================================================
+-- 1. Failure ('test-infer-muscal.R:533:3'): infer_muscal validates statistic id
+Expected `result$summary$mean` to equal `unname(ref)`.
+Differences:
+2/4 mismatches (average diff: NaN)
+[3] NA - 0 == NA
+[4] NA - 1 == NA
+
+== DONE ========================================================================
+Error:
+! Test failures.
+Execution halted

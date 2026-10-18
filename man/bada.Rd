@@ -86,8 +86,19 @@ This function projects new data onto a previously fitted BaDA model,
 returning the scores of the new data in the space of the original model.
 }
 \details{
-The function returns a list containing the summarized bootstrap resampled components and scores for the model.
-The returned list contains eight elements:
+Whole subjects are sampled with replacement, with unique replicate subject
+identities for duplicate draws. Each draw refits the point estimator and freshly
+fits the original subject preprocessing recipe. This assumes a deterministic,
+row-preserving preprocessing recipe and supports `rescomp = 0` only.
+Permutations and signs are aligned to the fitted loading basis. Tied retained
+reference roots have NA coordinate summaries and subspace diagnostics instead.
+This experimental percentile summary does not establish coverage or subject
+exchangeability. Failed/rank-deficient draws are reported and excluded; selective
+failures may bias inference. At least two valid draws are required.
+`alpha` is a one-sided tail probability: the default 0.05 gives central 90%
+intervals; use 0.025 for central 95% intervals. Additional fields report attempted
+and valid counts, failures, resampling indices, and alignment diagnostics.
+The returned list contains eight summary matrices:
    * `boot_scores_mean`: A matrix which is the mean of all bootstrapped scores matrices.
    * `boot_scores_sd`: A matrix which is the standard deviation of all bootstrapped scores matrices.
    * `boot_scores_upper`: A matrix which is the upper alpha percentile of all bootstrapped scores matrices.
@@ -116,6 +127,15 @@ If no block is specified, it delegates to the default project method.
     `@rdname bada` tag.  Method‐specific files should therefore **omit** the
     `@return` field and simply add `@inheritParams bada` (or `@inherit bada`)
     plus any method‑specific `@details` or `@note` sections.
+}
+
+\section{Bootstrap controls}{
+
+`bootstrap(x, nboot, data=...)` requires the original fitted multidesign data.
+Optional `seed` controls reproducibility, `verbose=TRUE` prints draw indices,
+`keep_replicates=TRUE` retains aligned loading/score matrices, and
+`resample_indices` supplies a list of nboot subject-index vectors, each of
+length the original subject count. `alpha` is the one-sided percentile tail.
 }
 
 \references{

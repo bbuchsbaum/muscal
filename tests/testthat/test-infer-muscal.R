@@ -460,3 +460,150 @@ test_that("infer_muscal rejects matrix-valued permutation statistics", {
     "numeric vector statistic"
   )
 })
+
+.infer_validation_fixture <- function(observed, draws = list(observed)) {
+  i <- 0L
+  sampled <- 0L
+  spec <- list(
+    data = NULL,
+    fit_fn = function(data) list(sdev = data, v = data),
+    bootstrap_fn = function(data) {
+      sampled <<- sampled + 1L
+      i <<- i + 1L
+      value <- draws[[i]]
+      if (inherits(value, "error")) stop(value)
+      value
+    },
+    permutation_fn = function(data) {
+      sampled <<- sampled + 1L
+      i <<- i + 1L
+      draws[[i]]
+    }
+  )
+  list(
+    fit = list(sdev = observed, v = observed,
+               fit_spec = list(refit_supported = TRUE, refit = spec)),
+    sampled = function() sampled
+  )
+}
+
+test_that("infer_muscal rejects invalid observations before sampling", {
+  for (value in list(NULL, numeric(0), "wrong", NA_real_, Inf, matrix(numeric(), 0, 1))) {
+    fixture <- .infer_validation_fixture(value)
+    expect_error(infer_muscal(fixture$fit, nrep = 2), "Observed statistic")
+    expect_equal(fixture$sampled(), 0L)
+  }
+  fixture <- .infer_validation_fixture(matrix(numeric(), 0, 1))
+  expect_error(infer_muscal(fixture$fit, statistic = "loadings", nrep = 2),
+               "Observed statistic")
+  expect_equal(fixture$sampled(), 0L)
+})
+
+test_that("infer_muscal excludes malformed statistics without recycling", {
+  fixture <- .infer_validation_fixture(c(10, 20), list(
+    c(1, 2), numeric(0), 7, c(1, 2, 3), c(NA, 4), c(3, 6)
+  ))
+  result <- infer_muscal(fixture$fit, nrep = 6)
+  expect_equal(result$n_success, 2)
+  expect_length(result$failures, 4)
+  expect_equal(vapply(result$failures, `[[`, integer(1), "index"), 2:5)
+  expect_true(all(vapply(result$failures, `[[`, character(1), "stage") == "statistic"))
+  expect_equal(result$summary$mean, c(2, 4))
+  expect_equal(result$summary$lower, c(1.05, 2.1))
+  expect_equal(result$summary$upper, c(2.95, 5.9))
+})
+
+test_that("infer_muscal validates statistic identities and loading shapes", {
+  fixture <- .infer_validation_fixture(c(a = 1, b = 2), list(
+    c(b = 2, a = 1), c(a = 2, b = 4), c(a = 3, b = 6)
+  ))
+  result <- infer_muscal(fixture$fit, nrep = 3)
+  expect_equal(result$n_success, 2)
+  expect_match(result$failures[[1]]$message, "identities")
+  expect_equal(result$summary$label, c("a", "b"))
+
+  ref <- matrix(c(1, 0, 0, 1), 2, 2,
+                dimnames = list(c("f1", "f2"), c("c1", "c2")))
+  fixture <- .infer_validation_fixture(ref, list(
+    matrix(1, 4, 1), ref[2:1, , drop = FALSE], ref, ref
+  ))
+  fixture$fit$sdev <- c(3, 1) # Separated component scales, not the loading matrix.
+  result <- infer_muscal(fixture$fit, statistic = "loadings", nrep = 4)
+  expect_equal(result$n_success, 2)
+  expect_length(result$failures, 2)
+  expect_equal(result$summary$mean, unname(ref))
+})
+
+test_that("infer_muscal accounts for sampling failures and insufficient valid draws", {
+  fixture <- .infer_validation_fixture(1, list(simpleError("bad sample"), 2, 4))
+  result <- infer_muscal(fixture$fit, nrep = 3)
+  expect_equal(result$n_success, 2)
+  expect_equal(result$failures[[1]]$stage, "sample")
+  expect_equal(result$summary$mean, 3)
+  fixture <- .infer_validation_fixture(1, list(numeric(0), NA_real_))
+  expect_error(infer_muscal(fixture$fit, nrep = 2), "All inference replicates failed")
+  fixture <- .infer_validation_fixture(1, list(2, NA_real_))
+  expect_error(infer_muscal(fixture$fit, nrep = 2), "at least two valid")
+  expect_error(infer_muscal(fixture$fit, nrep = 0), "at least 1")
+})
+
+test_that("infer_muscal counts zero-norm loading draws before summarizing", {
+  ref <- matrix(c(1, 0, 0, 1), 2, 2,
+                dimnames = list(c("f1", "f2"), c("c1", "c2")))
+  degenerate <- ref
+  degenerate[, 2] <- 0
+  fixture <- .infer_validation_fixture(ref, list(ref, degenerate, ref))
+  fixture$fit$sdev <- c(3, 1)
+
+  result <- infer_muscal(fixture$fit, statistic = "loadings", nrep = 3)
+  expect_equal(fixture$sampled(), 3L)
+  expect_equal(result$nrep, 3)
+  expect_equal(result$n_success, 2)
+  expect_length(result$failures, 1)
+  expect_equal(result$failures[[1]]$index, 2L)
+  expect_equal(result$failures[[1]]$stage, "statistic")
+  expect_match(result$failures[[1]]$message, "zero-norm")
+  expect_equal(result$replicates, list(ref, ref))
+  expect_equal(result$summary$mean, unname(ref))
+  expect_equal(result$summary$sd, matrix(0, 2, 2))
+  expect_equal(result$summary$lower, unname(ref))
+  expect_equal(result$summary$upper, unname(ref))
+})
+
+test_that("infer_muscal validates loading directions before counting valid draws", {
+  ref <- diag(2)
+  degenerate <- ref
+  degenerate[, 1] <- 0
+  fixture <- .infer_validation_fixture(degenerate)
+  fixture$fit$sdev <- c(3, 1)
+  expect_error(infer_muscal(fixture$fit, statistic = "loadings", nrep = 2),
+               "zero-norm")
+  expect_equal(fixture$sampled(), 0L)
+
+  for (draws in list(list(degenerate, degenerate), list(ref, degenerate))) {
+    fixture <- .infer_validation_fixture(ref, draws)
+    fixture$fit$sdev <- c(3, 1)
+    message <- if (identical(draws[[1]], ref)) "at least two valid" else
+      "All inference replicates failed"
+    expect_error(infer_muscal(fixture$fit, statistic = "loadings", nrep = 2),
+                 message)
+    expect_equal(fixture$sampled(), 2L)
+  }
+
+  fixture <- .infer_validation_fixture(c(0, 0), list(c(0, 0), c(0, 0)))
+  result <- infer_muscal(fixture$fit, nrep = 2)
+  expect_equal(result$n_success, 2)
+  expect_equal(result$summary$mean, c(0, 0))
+})
+
+test_that("infer_muscal keeps scalar permutation dimensions and valid-draw denominators", {
+  fixture <- .infer_validation_fixture(3, list(3, NA_real_, 3))
+  result <- infer_muscal(fixture$fit, method = "permutation", nrep = 3)
+  expect_equal(dim(result$perm_values), c(2L, 1L))
+  expect_equal(result$n_success, 2)
+  expect_equal(result$component_results$p_value, 1)
+  fixture <- .infer_validation_fixture(3, list(3))
+  result <- infer_muscal(fixture$fit, method = "permutation", nrep = 1)
+  expect_equal(dim(result$perm_values), c(1L, 1L))
+  expect_equal(result$component_results$p_value, 1)
+})

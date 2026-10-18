@@ -1,0 +1,20 @@
+{
+  "schema_version": 1,
+  "started_utc": "2026-10-18T17:56:22.435201+00:00",
+  "finished_utc": "2026-10-18T17:56:32.105677+00:00",
+  "duration_seconds": 9.670376,
+  "command": [
+    "Rscript",
+    "--vanilla",
+    "-e",
+    "pkgload::load_all(\".\", quiet=TRUE); files <- c(\"infer-muscal\", \"loading-alignment\", \"bada-bootstrap-refit\"); results <- lapply(files, function(f) testthat::test_file(paste0(\"tests/testthat/test-\", f, \".R\"), reporter=\"summary\", stop_on_failure=TRUE)); counts <- lapply(results, function(r) { x <- as.data.frame(r); c(blocks=nrow(x), passed=sum(x$passed), failed=sum(x$failed), errors=sum(x$error), skipped=sum(x$skipped)) }); print(setNames(counts, files))"
+  ],
+  "cwd": "/Users/bbuchsbaum/code/muscal",
+  "log": "/Users/bbuchsbaum/code/muscal/dev/reviews/2026-10-18/evidence/repairs/F12-followup/focused.log",
+  "exit_code": 0,
+  "child_returncode": 0,
+  "reason": "exited",
+  "detail": null,
+  "timeout_seconds": null,
+  "log_bytes": 1866
+}

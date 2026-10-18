@@ -1,0 +1,73 @@
+During startup - Warning messages:
+1: Setting LC_CTYPE failed, using "C" 
+2: Setting LC_COLLATE failed, using "C" 
+3: Setting LC_TIME failed, using "C" 
+4: Setting LC_MESSAGES failed, using "C" 
+5: Setting LC_MONETARY failed, using "C" 
+Warning message:
+package 'testthat' was built under R version 4.5.2 
+design-mfa-inference: ..................................................WW....1234.5
+
+== Warnings ====================================================================
+1. serial inference progress and optional future refits keep the contract ('test-design-mfa-inference.R:320:3') - package 'future' was built under R version 4.5.2
+
+2. serial inference progress and optional future refits keep the contract ('test-design-mfa-inference.R:320:3') - package 'purrr' was built under R version 4.5.2
+
+== Failed ======================================================================
+-- 1. Failure ('test-design-mfa-inference.R:343:3'): refit callbacks must preser
+Expected `spec$fit_fn(changed)` to throw a error.
+
+-- 2. Failure ('test-design-mfa-inference.R:346:3'): refit callbacks must preser
+Expected `spec$fit_fn(changed)` to throw a error.
+
+-- 3. Failure ('test-design-mfa-inference.R:349:3'): refit callbacks must preser
+`spec$fit_fn(changed)` threw an error with unexpected message.
+Expected match: "complete refit-data"
+Actual message: "Numeric `block_weight` must contain one nonnegative finite value per subject."
+Backtrace:
+    x
+ 1. +-testthat::expect_error(spec$fit_fn(changed), "complete refit-data") at test-design-mfa-inference.R:349:3
+ 2. | \-testthat:::quasi_capture(...)
+ 3. |   +-testthat (local) .capture(...)
+ 4. |   | \-base::withCallingHandlers(...)
+ 5. |   \-rlang::eval_bare(quo_get_expr(.quo), quo_get_env(.quo))
+ 6. \-spec$fit_fn(changed)
+ 7.   +-muscal::design_mfa(...) at muscal/R/design_mfa.R:587:5
+ 8.   \-muscal:::design_mfa.list(...) at muscal/R/design_mfa.R:179:3
+ 9.     \-muscal:::.dmfa_parse_weights(...) at muscal/R/design_mfa.R:302:3
+
+-- 4. Failure ('test-design-mfa-inference.R:352:3'): refit callbacks must preser
+`spec$fit_fn(changed)` threw an error with unexpected message.
+Expected match: "subject identities"
+Actual message: "Named `Y` and `design` lists must contain the same subjects."
+Backtrace:
+    x
+ 1. +-testthat::expect_error(spec$fit_fn(changed), "subject identities") at test-design-mfa-inference.R:352:3
+ 2. | \-testthat:::quasi_capture(...)
+ 3. |   +-testthat (local) .capture(...)
+ 4. |   | \-base::withCallingHandlers(...)
+ 5. |   \-rlang::eval_bare(quo_get_expr(.quo), quo_get_env(.quo))
+ 6. \-spec$fit_fn(changed)
+ 7.   +-muscal::design_mfa(...) at muscal/R/design_mfa.R:587:5
+ 8.   \-muscal:::design_mfa.list(...) at muscal/R/design_mfa.R:179:3
+ 9.     \-muscal:::.dmfa_validate_inputs(...) at muscal/R/design_mfa.R:282:3
+
+-- 5. Failure ('test-design-mfa-inference.R:356:3'): refit callbacks must preser
+`spec$fit_fn(NULL)` threw an error with unexpected message.
+Expected match: "complete refit-data"
+Actual message: "Unsupported `Y` input. Supply a named list of subject trial-by-feature matrices."
+Backtrace:
+    x
+ 1. +-testthat::expect_error(spec$fit_fn(NULL), "complete refit-data") at test-design-mfa-inference.R:356:3
+ 2. | \-testthat:::quasi_capture(...)
+ 3. |   +-testthat (local) .capture(...)
+ 4. |   | \-base::withCallingHandlers(...)
+ 5. |   \-rlang::eval_bare(quo_get_expr(.quo), quo_get_env(.quo))
+ 6. \-spec$fit_fn(NULL)
+ 7.   +-muscal::design_mfa(...) at muscal/R/design_mfa.R:587:5
+ 8.   \-muscal:::design_mfa.default(...) at muscal/R/design_mfa.R:179:3
+
+== DONE ========================================================================
+Error:
+! Test failures.
+Execution halted

@@ -1,0 +1,28 @@
+During startup - Warning messages:
+1: Setting LC_CTYPE failed, using "C" 
+2: Setting LC_COLLATE failed, using "C" 
+3: Setting LC_TIME failed, using "C" 
+4: Setting LC_MESSAGES failed, using "C" 
+5: Setting LC_MONETARY failed, using "C" 
+Warning message:
+package 'testthat' was built under R version 4.5.2 
+native-contracts: ............1............................
+
+== Failed ======================================================================
+-- 1. Failure ('test-native-contracts.R:29:5'): compiled row kernels reject malf
+`muscal:::muscal_apply_row_operator_cpp(A, S, graph, 0, 0)` threw an error with unexpected message.
+Expected match: "dimensions|dgCMatrix|sparse"
+Actual message: "No such slot: i."
+Backtrace:
+    x
+ 1. +-testthat::expect_error(...) at test-native-contracts.R:29:5
+ 2. | \-testthat:::quasi_capture(...)
+ 3. |   +-testthat (local) .capture(...)
+ 4. |   | \-base::withCallingHandlers(...)
+ 5. |   \-rlang::eval_bare(quo_get_expr(.quo), quo_get_env(.quo))
+ 6. \-muscal:::muscal_apply_row_operator_cpp(A, S, graph, 0, 0)
+
+== DONE ========================================================================
+Error:
+! Test failures.
+Execution halted

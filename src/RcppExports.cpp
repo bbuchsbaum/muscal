@@ -39,14 +39,14 @@ BEGIN_RCPP
 END_RCPP
 }
 // muscal_rowsum_counts_cpp
-List muscal_rowsum_counts_cpp(Eigen::Map<Eigen::MatrixXd> X, IntegerVector idx, const int N);
+List muscal_rowsum_counts_cpp(Eigen::Map<Eigen::MatrixXd> X, SEXP idx, SEXP N);
 RcppExport SEXP _muscal_muscal_rowsum_counts_cpp(SEXP XSEXP, SEXP idxSEXP, SEXP NSEXP) {
 BEGIN_RCPP
     Rcpp::RObject rcpp_result_gen;
     Rcpp::RNGScope rcpp_rngScope_gen;
     Rcpp::traits::input_parameter< Eigen::Map<Eigen::MatrixXd> >::type X(XSEXP);
-    Rcpp::traits::input_parameter< IntegerVector >::type idx(idxSEXP);
-    Rcpp::traits::input_parameter< const int >::type N(NSEXP);
+    Rcpp::traits::input_parameter< SEXP >::type idx(idxSEXP);
+    Rcpp::traits::input_parameter< SEXP >::type N(NSEXP);
     rcpp_result_gen = Rcpp::wrap(muscal_rowsum_counts_cpp(X, idx, N));
     return rcpp_result_gen;
 END_RCPP

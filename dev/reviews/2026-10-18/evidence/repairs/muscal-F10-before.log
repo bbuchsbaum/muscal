@@ -1,0 +1,88 @@
+During startup - Warning messages:
+1: Setting LC_CTYPE failed, using "C" 
+2: Setting LC_COLLATE failed, using "C" 
+3: Setting LC_TIME failed, using "C" 
+4: Setting LC_MESSAGES failed, using "C" 
+5: Setting LC_MONETARY failed, using "C" 
+Warning message:
+package 'testthat' was built under R version 4.5.2 
+clusterwise-graph: 12345WWWW67
+
+== Warnings ====================================================================
+1. clusterwise graphs reject invalid neighbor counts ('test-clusterwise-graph.R:21:5') - numerical expression has 2 elements: only the first used
+
+2. clusterwise graphs reject invalid neighbor counts ('test-clusterwise-graph.R:21:5') - numerical expression has 2 elements: only the first used
+
+3. clusterwise graphs reject invalid neighbor counts ('test-clusterwise-graph.R:21:5') - numerical expression has 2 elements: only the first used
+
+4. clusterwise graphs reject invalid neighbor counts ('test-clusterwise-graph.R:21:5') - numerical expression has 2 elements: only the first used
+
+== Failed ======================================================================
+-- 1. Error ('test-clusterwise-graph.R:6:5'): clusterwise neighbors have explici
+Error in `intI(i, n = di[margin], dn = dn[[margin]], give.dn = FALSE)`: 'NA' indices are not (yet?) supported for sparse Matrices
+Backtrace:
+    x
+ 1. \-muscal:::spatial_constraints(coords, k_nn = 0) at test-clusterwise-graph.R:6:5
+ 2.   +-methods (local) `[<-`(`*tmp*`, i, neighbors, value = `<dbl>`) at muscal/R/penalized_mfa_clusterwise.R:61:7
+ 3.   \-Matrix (local) `[<-`(`*tmp*`, i, neighbors, value = `<dbl>`)
+ 4.     +-methods (local) `[<-`(`*tmp*`, i, j, value = `<dbl>`)
+ 5.     \-Matrix (local) `[<-`(`*tmp*`, i, j, value = `<dbl>`)
+ 6.       +-Matrix:::replCmat4(...)
+ 7.       \-Matrix:::.ind.prep2(j, 2L, di, dn)
+ 8.         \-Matrix:::intI(i, n = di[margin], dn = dn[[margin]], give.dn = FALSE)
+
+-- 2. Failure ('test-clusterwise-graph.R:21:5'): clusterwise graphs reject inval
+Expected `muscal:::spatial_constraints(coords, k_nn = k)` to throw a error.
+
+-- 3. Failure ('test-clusterwise-graph.R:21:5'): clusterwise graphs reject inval
+Expected `muscal:::spatial_constraints(coords, k_nn = k)` to throw a error.
+
+-- 4. Failure ('test-clusterwise-graph.R:21:5'): clusterwise graphs reject inval
+`muscal:::spatial_constraints(coords, k_nn = k)` threw an error with unexpected message.
+Expected match: "k_nn"
+Actual message: "NA/NaN argument"
+Backtrace:
+    x
+ 1. +-testthat::expect_error(...) at test-clusterwise-graph.R:21:5
+ 2. | \-testthat:::quasi_capture(...)
+ 3. |   +-testthat (local) .capture(...)
+ 4. |   | \-base::withCallingHandlers(...)
+ 5. |   \-rlang::eval_bare(quo_get_expr(.quo), quo_get_env(.quo))
+ 6. \-muscal:::spatial_constraints(coords, k_nn = k)
+
+-- 5. Failure ('test-clusterwise-graph.R:21:5'): clusterwise graphs reject inval
+`muscal:::spatial_constraints(coords, k_nn = k)` threw an error with unexpected message.
+Expected match: "k_nn"
+Actual message: "result would be too long a vector"
+Backtrace:
+    x
+ 1. +-testthat::expect_error(...) at test-clusterwise-graph.R:21:5
+ 2. | \-testthat:::quasi_capture(...)
+ 3. |   +-testthat (local) .capture(...)
+ 4. |   | \-base::withCallingHandlers(...)
+ 5. |   \-rlang::eval_bare(quo_get_expr(.quo), quo_get_env(.quo))
+ 6. \-muscal:::spatial_constraints(coords, k_nn = k)
+
+-- 6. Failure ('test-clusterwise-graph.R:21:5'): clusterwise graphs reject inval
+Expected `muscal:::spatial_constraints(coords, k_nn = k)` to throw a error.
+
+-- 7. Error ('test-clusterwise-graph.R:28:3'): clusterwise public defaults fit f
+Error in `intI(i, n = di[margin], dn = dn[[margin]], give.dn = FALSE)`: 'NA' indices are not (yet?) supported for sparse Matrices
+Backtrace:
+     x
+  1. \-muscal::penalized_mfa_clusterwise(...) at test-clusterwise-graph.R:28:3
+  2.   \-muscal:::cluster_graph(coords_list, adjacency_opts) at muscal/R/penalized_mfa_clusterwise.R:745:3
+  3.     +-base::do.call(spatial_constraints, c(list(coords_list), adj_opts)) at muscal/R/penalized_mfa_clusterwise.R:104:3
+  4.     \-muscal (local) `<fn>`(`<list>`, nblocks = 2L)
+  5.       +-methods (local) `[<-`(`*tmp*`, i, neighbors, value = `<dbl>`) at muscal/R/penalized_mfa_clusterwise.R:61:7
+  6.       \-Matrix (local) `[<-`(`*tmp*`, i, neighbors, value = `<dbl>`)
+  7.         +-methods (local) `[<-`(`*tmp*`, i, j, value = `<dbl>`)
+  8.         \-Matrix (local) `[<-`(`*tmp*`, i, j, value = `<dbl>`)
+  9.           +-Matrix:::replCmat4(...)
+ 10.           \-Matrix:::.ind.prep2(j, 2L, di, dn)
+ 11.             \-Matrix:::intI(i, n = di[margin], dn = dn[[margin]], give.dn = FALSE)
+
+== DONE ========================================================================
+Error:
+! Test failures.
+Execution halted

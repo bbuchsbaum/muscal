@@ -1,0 +1,20 @@
+{
+  "schema_version": 1,
+  "started_utc": "2026-10-18T17:56:42.046577+00:00",
+  "finished_utc": "2026-10-18T17:57:30.535578+00:00",
+  "duration_seconds": 48.488771,
+  "command": [
+    "Rscript",
+    "--vanilla",
+    "-e",
+    "r <- testthat::test_local(\".\", reporter=\"summary\", stop_on_failure=TRUE); x <- as.data.frame(r); counts <- list(files=length(unique(x$file)), blocks=nrow(x), passing_expectations=sum(x$passed), failures=sum(x$failed), errors=sum(x$error), skips=sum(x$skipped)); print(counts); jsonlite::write_json(counts,\"dev/reviews/2026-10-18/evidence/repairs/F12-followup/suite-counts.json\",auto_unbox=TRUE,pretty=TRUE)"
+  ],
+  "cwd": "/Users/bbuchsbaum/code/muscal",
+  "log": "/Users/bbuchsbaum/code/muscal/dev/reviews/2026-10-18/evidence/repairs/F12-followup/suite.log",
+  "exit_code": 0,
+  "child_returncode": 0,
+  "reason": "exited",
+  "detail": null,
+  "timeout_seconds": null,
+  "log_bytes": 5553
+}

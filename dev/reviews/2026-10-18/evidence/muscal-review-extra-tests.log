@@ -1,0 +1,22 @@
+During startup - Warning messages:
+1: Setting LC_CTYPE failed, using "C" 
+2: Setting LC_COLLATE failed, using "C" 
+3: Setting LC_TIME failed, using "C" 
+4: Setting LC_MESSAGES failed, using "C" 
+5: Setting LC_MONETARY failed, using "C" 
+Warning message:
+package 'testthat' was built under R version 4.5.2 
+aligned_models_synthetic_tests: .........1......2...
+
+== Failed ======================================================================
+-- 1. Failure ('aligned_models_synthetic_tests.R:243:3'): aligned_mfa should mat
+Expected `subspace_rmse(fit_ref$s, fit_named$s)` < 1e-08.
+Actual comparison: 0.00000050 >= 0.00000001
+Difference: 0.00000049 >= 0
+
+-- 2. Failure ('aligned_models_synthetic_tests.R:344:3'): anchored_mcca matches 
+Expected `subspace_rmse(fit_aligned$s, fit_anchored$s)` < 1e-08.
+Actual comparison: 0.00422358 >= 0.00000001
+Difference: 0.00422357 >= 0
+
+== DONE ========================================================================

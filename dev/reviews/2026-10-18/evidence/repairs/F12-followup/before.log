@@ -1,0 +1,78 @@
+Warning message:
+package ‘testthat’ was built under R version 4.5.2 
+infer-muscal: ....................................................................................................................1234.5........
+
+══ Failed ══════════════════════════════════════════════════════════════════════
+── 1. Error ('test-infer-muscal.R:558:3'): infer_muscal counts zero-norm loading
+Error: Cannot align zero-norm loading directions.
+Backtrace:
+    ▆
+ 1. └─muscal::infer_muscal(fixture$fit, statistic = "loadings", nrep = 3) at test-infer-muscal.R:558:3
+ 2.   └─muscal:::.muscal_summarize_bootstrap(...) at muscal/R/infer_muscal.R:124:5
+ 3.     └─muscal::loading_reliability(...) at muscal/R/infer_muscal.R:222:5
+ 4.       └─base::lapply(...) at muscal/R/components_utils.R:153:5
+ 5.         └─muscal (local) FUN(X[[i]], ...)
+ 6.           └─muscal:::.muscal_align_loading_basis(V_ref_mat, boot_i) at muscal/R/components_utils.R:156:7
+ 7.             └─muscal:::.muscal_unit_loading_basis(candidate) at muscal/R/components_utils.R:285:3
+
+── 2. Failure ('test-infer-muscal.R:579:3'): infer_muscal validates loading dire
+`infer_muscal(fixture$fit, statistic = "loadings", nrep = 2)` threw an error with unexpected message.
+Expected match: "zero-norm"
+Actual message: "Bootstrap uncertainty requires at least two valid replicates."
+Backtrace:
+    ▆
+ 1. ├─testthat::expect_error(...) at test-infer-muscal.R:579:3
+ 2. │ └─testthat:::quasi_capture(...)
+ 3. │   ├─testthat (local) .capture(...)
+ 4. │   │ └─base::withCallingHandlers(...)
+ 5. │   └─rlang::eval_bare(quo_get_expr(.quo), quo_get_env(.quo))
+ 6. └─muscal::infer_muscal(fixture$fit, statistic = "loadings", nrep = 2)
+
+── 3. Failure ('test-infer-muscal.R:581:3'): infer_muscal validates loading dire
+Expected `fixture$sampled()` to equal 0L.
+Differences:
+1/1 mismatches
+[1] 2 - 0 == 2
+
+── 4. Failure ('test-infer-muscal.R:588:5'): infer_muscal validates loading dire
+`infer_muscal(fixture$fit, statistic = "loadings", nrep = 2)` threw an error with unexpected message.
+Expected match: "All inference replicates failed"
+Actual message: "Cannot align zero-norm loading directions."
+Backtrace:
+     ▆
+  1. ├─testthat::expect_error(...) at test-infer-muscal.R:588:5
+  2. │ └─testthat:::quasi_capture(...)
+  3. │   ├─testthat (local) .capture(...)
+  4. │   │ └─base::withCallingHandlers(...)
+  5. │   └─rlang::eval_bare(quo_get_expr(.quo), quo_get_env(.quo))
+  6. └─muscal::infer_muscal(fixture$fit, statistic = "loadings", nrep = 2)
+  7.   └─muscal:::.muscal_summarize_bootstrap(...) at muscal/R/infer_muscal.R:124:5
+  8.     └─muscal::loading_reliability(...) at muscal/R/infer_muscal.R:222:5
+  9.       └─base::lapply(...) at muscal/R/components_utils.R:153:5
+ 10.         └─muscal (local) FUN(X[[i]], ...)
+ 11.           └─muscal:::.muscal_align_loading_basis(V_ref_mat, boot_i) at muscal/R/components_utils.R:156:7
+ 12.             └─muscal:::.muscal_unit_loading_basis(candidate) at muscal/R/components_utils.R:285:3
+
+── 5. Failure ('test-infer-muscal.R:588:5'): infer_muscal validates loading dire
+`infer_muscal(fixture$fit, statistic = "loadings", nrep = 2)` threw an error with unexpected message.
+Expected match: "at least two valid"
+Actual message: "Cannot align zero-norm loading directions."
+Backtrace:
+     ▆
+  1. ├─testthat::expect_error(...) at test-infer-muscal.R:588:5
+  2. │ └─testthat:::quasi_capture(...)
+  3. │   ├─testthat (local) .capture(...)
+  4. │   │ └─base::withCallingHandlers(...)
+  5. │   └─rlang::eval_bare(quo_get_expr(.quo), quo_get_env(.quo))
+  6. └─muscal::infer_muscal(fixture$fit, statistic = "loadings", nrep = 2)
+  7.   └─muscal:::.muscal_summarize_bootstrap(...) at muscal/R/infer_muscal.R:124:5
+  8.     └─muscal::loading_reliability(...) at muscal/R/infer_muscal.R:222:5
+  9.       └─base::lapply(...) at muscal/R/components_utils.R:153:5
+ 10.         └─muscal (local) FUN(X[[i]], ...)
+ 11.           └─muscal:::.muscal_align_loading_basis(V_ref_mat, boot_i) at muscal/R/components_utils.R:156:7
+ 12.             └─muscal:::.muscal_unit_loading_basis(candidate) at muscal/R/components_utils.R:285:3
+
+══ DONE ════════════════════════════════════════════════════════════════════════
+Error:
+! Test failures.
+Execution halted

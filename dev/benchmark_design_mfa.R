@@ -1,11 +1,7 @@
 #!/usr/bin/env Rscript
 
-suppressPackageStartupMessages({
-  if (requireNamespace("devtools", quietly = TRUE)) {
-    devtools::load_all(".", quiet = TRUE)
-  }
-  library(muscal)
-})
+source("dev/benchmark_qualification.R")
+suppressPackageStartupMessages(bench_load_local())
 
 simulate_design_mfa <- function(n_subjects, trials, p, seed) {
   set.seed(seed)
@@ -92,7 +88,7 @@ profile_fit <- function(label, expression, n_trials, p_reference) {
   if (profiling) utils::Rprofmem(profile)
   gc(reset = TRUE)
   started <- proc.time()[["elapsed"]]
-  fit <- force(expression)
+  fit <- tryCatch(force(expression), error = function(e) e)
   elapsed <- proc.time()[["elapsed"]] - started
   heap <- gc()
   if (profiling) utils::Rprofmem(NULL)
@@ -101,9 +97,21 @@ profile_fit <- function(label, expression, n_trials, p_reference) {
   } else {
     NA_real_
   }
+  if (inherits(fit, "error")) {
+    row <- data.frame(engine = label, ok = FALSE, error = conditionMessage(fit),
+      computation = NA_character_, subjects = NA_integer_, trials = n_trials,
+      reference_features = p_reference, elapsed_sec = elapsed,
+      trial_features_per_sec = NA_real_, fit_bytes = NA_real_, approx_max_r_heap_bytes = max_used,
+      max_single_allocation_bytes = NA_real_, design_rank = NA_integer_, solver_iterations = NA_integer_,
+      solver_converged = NA, solver_residual = NA_real_, solver_relative_residual = NA_real_)
+    unlink(profile)
+    return(list(fit = NULL, row = row))
+  }
   row <- data.frame(
     engine = label,
-    computation = fit$computation,
+    ok = !inherits(fit, "error"),
+    error = if (inherits(fit, "error")) conditionMessage(fit) else NA_character_,
+    computation = if (inherits(fit, "error")) NA_character_ else fit$computation,
     subjects = length(fit$subjects),
     trials = n_trials,
     reference_features = p_reference,
@@ -114,7 +122,7 @@ profile_fit <- function(label, expression, n_trials, p_reference) {
     max_single_allocation_bytes = if (profiling) max_profiled_allocation(profile) else NA_real_,
     design_rank = fit$full_model$rank,
     solver_iterations = fit$full_model$iterations,
-    solver_converged = isTRUE(fit$full_model$converged),
+    solver_converged = if (is.null(fit$full_model$converged)) NA else fit$full_model$converged,
     solver_residual = if (is.null(fit$full_model$solver_residual)) {
       NA_real_
     } else {
@@ -298,15 +306,16 @@ if (imaging && !imaging_soft) {
       streamed_dense_coefficient_max_abs = NA_real_,
       streamed_dense_sse_abs = NA_real_
     )
-  } else {
+  } else if (!is.null(shared$fit)) {
     compare_sufficient_solvers(shared$fit, sim$Y)
-  }
+  } else data.frame()
   map_benchmark <- benchmark_coordinate_maps(
     p, n_subjects, 20260817 + benchmark_replicate
   )
-  prediction_difference <- max(abs(predict(shared$fit) - predict(spatial$fit)))
+  prediction_difference <- if (isTRUE(shared$row$solver_converged) && isTRUE(spatial$row$solver_converged)) max(abs(predict(shared$fit) - predict(spatial$fit))) else NA_real_
 }
 mode <- if (imaging_soft) "imaging_soft" else if (imaging) "imaging" else if (quick) "quick" else "standard"
+saveRDS(bench_provenance(20260815 + benchmark_replicate), paste0(if (is.null(output_path)) sprintf("dev/design_mfa_benchmark_results_%s.csv", mode) else output_path, ".provenance.rds"))
 rows$replicate <- benchmark_replicate
 rows$benchmark_mode <- mode
 rows$input_response_bytes <- sum(vapply(sim$Y, function(y) as.numeric(object.size(y)), numeric(1)))

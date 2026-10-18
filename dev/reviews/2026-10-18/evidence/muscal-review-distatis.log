@@ -1,0 +1,47 @@
+During startup - Warning messages:
+1: Setting LC_CTYPE failed, using "C" 
+2: Setting LC_COLLATE failed, using "C" 
+3: Setting LC_TIME failed, using "C" 
+4: Setting LC_MESSAGES failed, using "C" 
+5: Setting LC_MONETARY failed, using "C" 
+Warning message:
+`prep()` was deprecated in multivarious 0.3.0.
+i Please use `fit()` instead.
+i The prep() function is deprecated. Use fit() for a more standard interface.
+i The deprecated feature was likely used in the multivarious package.
+  Please report the issue to the authors. 
+DISTATIS research reproducer
+R version: 4.5.1 
+All published-target and geometry assertions passed.
+
+Assessor weights (paper method vs current covstatis MFA):
+ assessor paper_method covstatis_mfa
+        1   0.09966827    0.09879583
+        2   0.10110999    0.13779510
+        3   0.10898507    0.08880780
+        4   0.10125226    0.13792595
+        5   0.09909578    0.08787415
+        6   0.11562983    0.10038836
+        7   0.10129575    0.10623375
+        8   0.10898507    0.08880780
+        9   0.07368256    0.06235525
+       10   0.09029542    0.09101601
+
+Maximum weight difference: 0.03668511 
+RV diagonal: 1 1 1 1 1 1 1 1 1 1 
+Current MFA interstructure diagonal: 1.68 2.640625 1.368605 2.640625 1.361111 1.48 1.68 1.368605 1.368605 1.68 
+RV leading roots: 5.982768 1.404689 0.7557803 
+Compromise positive roots: 0.663992 0.4904717 0.4042912 0.3387649 0.2281394 0.1302608 0.05011034 
+First four compromise axes, percent inertia: 82.28512 
+Compromise quality (leading RV root / trace): 0.5982768 
+Maximum published RV rounding error: 0.004971751 
+Maximum published score rounding error: 0.004621317 
+Partial-score barycenter error: 1.394718e-15 
+
+Current assessor coordinate squared norms: 0.6571038 0.5171862 0.4213908 0.3789051 0.2510134 0.1229737 0.04865067 
+Standard interstructure coordinate squared norms: 10.50453 2.532629 1.142724 1.060105 0.8632493 0.3963719 0.3749487 
+Current rank-one fit outcome: non-conformable arguments 
+Current one-component MFA beer fit outcome: non-conformable arguments 
+
+DistatisR installed: FALSE 
+No DistatisR numerical parity claim is made by this script.

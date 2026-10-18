@@ -584,6 +584,23 @@ design_mfa_control <- function(rank_tol = sqrt(.Machine$double.eps),
                                     store,
                                     control) {
   function(data) {
+    required <- c("Y", "design", "trial_weights", "block_weight", "reference_grid", "reference_weight")
+    if (!is.list(data) || !all(required %in% names(data))) {
+      stop("Callbacks must return a complete refit-data list including weights and frozen reference fields.", call. = FALSE)
+    }
+    if (!identical(data$reference_grid, reference_grid) ||
+        !identical(data$reference_weight, reference_weight)) {
+      stop("Callbacks must preserve the frozen reference grid and weights.", call. = FALSE)
+    }
+    ids <- names(data$Y)
+    if (!is.list(data$Y) || !length(data$Y) || is.null(ids) || anyNA(ids) ||
+        any(!nzchar(ids)) || anyDuplicated(ids) || !is.list(data$design) ||
+        !identical(names(data$design), ids) || !is.list(data$trial_weights) ||
+        !identical(names(data$trial_weights), ids) ||
+        (!is.null(data$feature_map) && !identical(names(data$feature_map), ids)) ||
+        (is.numeric(data$block_weight) && !identical(names(data$block_weight), ids))) {
+      stop("Refit-data subject identities must align across responses, design, maps and weights.", call. = FALSE)
+    }
     design_mfa(
       Y = data$Y,
       design = data$design,

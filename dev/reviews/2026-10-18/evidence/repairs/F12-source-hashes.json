@@ -1,0 +1,5 @@
+{
+  "R/infer_muscal.R": "a7f4dac1824310dc93ea01831a7b2145f2cd0e21c06d2d1e26fcd3b96a7b59f4",
+  "tests/testthat/test-infer-muscal.R": "815b6f29607af44d56925f55a262f35091b36eadb42ee43496ab5fa225f7c8c5",
+  "man/infer_muscal.Rd": "67fedd58e9e9cedd270d00d3e3d948580effda72d7af4510b0f20b7cb56ef211"
+}

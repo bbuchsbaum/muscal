@@ -1,0 +1,60 @@
+During startup - Warning messages:
+1: Setting LC_CTYPE failed, using "C" 
+2: Setting LC_COLLATE failed, using "C" 
+3: Setting LC_TIME failed, using "C" 
+4: Setting LC_MESSAGES failed, using "C" 
+5: Setting LC_MONETARY failed, using "C" 
+Warning message:
+package 'testthat' was built under R version 4.5.2 
+rmt-edge: W12345678
+
+== Warnings ====================================================================
+1. automatic RMT is unavailable rather than a disguised median threshold ('test-rmt-edge.R:8:3') - Not enough eigenvalues in the specified tail quantile for robust noise estimation. Using overall median. RMT results may be less reliable.
+
+== Failed ======================================================================
+-- 1. Failure ('test-rmt-edge.R:9:3'): automatic RMT is unavailable rather than 
+Expected `result$rmt_status` to be identical to "unavailable".
+Differences:
+target is NULL, current is character
+
+-- 2. Failure ('test-rmt-edge.R:10:3'): automatic RMT is unavailable rather than
+Expected `all(is.na(result$rmt_pass))` to be TRUE.
+Differences:
+`actual`:   FALSE
+`expected`: TRUE 
+
+
+-- 3. Failure ('test-rmt-edge.R:11:3'): automatic RMT is unavailable rather than
+Expected `is.na(result$mp_edge)` to be TRUE.
+Differences:
+`actual`:   FALSE
+`expected`: TRUE 
+
+
+-- 4. Failure ('test-rmt-edge.R:12:3'): automatic RMT is unavailable rather than
+Expected `result$keep` to have length 0.
+Actual length: 1.
+
+-- 5. Error ('test-rmt-edge.R:13:3'): automatic RMT is unavailable rather than a
+Error in `expect_match(result$rmt_reason, "noise variance.*spectral units")`: `object` must be a character vector, not `NULL`.
+Backtrace:
+    x
+ 1. \-testthat::expect_match(object = result$rmt_reason) at test-rmt-edge.R:13:3
+ 2.   \-testthat:::check_character(object)
+ 3.     \-testthat:::stop_input_type(...)
+ 4.       \-rlang::abort(message, ..., call = call, arg = arg)
+
+-- 6. Error ('test-rmt-edge.R:18:3'): declared isotropic covariance edges have i
+Error in `significant_components(fit, n = 64, noise_variance = 2, spectrum = "covariance", noise_model = "isotropic", n_eff = 64)`: unused arguments (noise_variance = 2, spectrum = "covariance", noise_model = "isotropic", n_eff = 64)
+
+-- 7. Error ('test-rmt-edge.R:34:3'): RMT unit conversion and scale transformati
+Error in `significant_components(fit, n = 64, noise_variance = 2, spectrum = "covariance", noise_model = "isotropic")`: unused arguments (noise_variance = 2, spectrum = "covariance", noise_model = "isotropic")
+
+-- 8. Error ('test-rmt-edge.R:51:3'): RMT does not certify unsupported represent
+Error in `significant_components(fit, n = 64, noise_variance = 2)`: unused argument (noise_variance = 2)
+
+== DONE ========================================================================
+No one gets it right on their first try
+Error:
+! Test failures.
+Execution halted

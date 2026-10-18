@@ -1,0 +1,119 @@
+── R CMD build ─────────────────────────────────────────────────────────────────
+* checking for file ‘.../DESCRIPTION’ ... OK
+* preparing ‘muscal’:
+* checking DESCRIPTION meta-information ... OK
+* cleaning src
+* installing the package to build vignettes
+* creating vignettes ... OK
+* cleaning src
+* checking for LF line-endings in source and make files and shell scripts
+* checking for empty or unneeded directories
+* building ‘muscal_0.1.0.tar.gz’
+
+── R CMD check ─────────────────────────────────────────────────────────────────
+* using log directory ‘/private/tmp/muscal-GATE-check-20261018/muscal.Rcheck’
+* using R version 4.5.1 (2025-06-13)
+* using platform: aarch64-apple-darwin20
+* R was compiled by
+    Apple clang version 16.0.0 (clang-1600.0.26.6)
+    GNU Fortran (GCC) 14.2.0
+* running under: macOS Sonoma 14.3
+* using session charset: UTF-8
+* using option ‘--no-manual’
+* checking for file ‘muscal/DESCRIPTION’ ... OK
+* checking extension type ... Package
+* this is package ‘muscal’ version ‘0.1.0’
+* package encoding: UTF-8
+* checking package namespace information ... OK
+* checking package dependencies ... OK
+* checking if this is a source package ... OK
+* checking if there is a namespace ... OK
+* checking for executable files ... OK
+* checking for hidden files and directories ... OK
+* checking for portable file names ... OK
+* checking for sufficient/correct file permissions ... OK
+* checking whether package ‘muscal’ can be installed ... WARNING
+Found the following significant warnings:
+  /Library/Frameworks/R.framework/Resources/include/R_ext/Boolean.h:62:36: warning: unknown warning group '-Wfixed-enum-extension', ignored [-Wunknown-warning-option]
+See ‘/private/tmp/muscal-GATE-check-20261018/muscal.Rcheck/00install.out’ for details.
+* used C++ compiler: ‘Homebrew clang version 20.1.8’
+* used SDK: ‘MacOSX14.2.sdk’
+* checking installed package size ... INFO
+  installed size is  6.0Mb
+  sub-directories of 1Mb or more:
+    doc   3.3Mb
+    R     2.0Mb
+* checking package directory ... OK
+* checking ‘build’ directory ... OK
+* checking DESCRIPTION meta-information ... OK
+* checking top-level files ... OK
+* checking for left-over files ... OK
+* checking index information ... OK
+* checking package subdirectories ... OK
+* checking code files for non-ASCII characters ... OK
+* checking R files for syntax errors ... OK
+* checking whether the package can be loaded ... OK
+* checking whether the package can be loaded with stated dependencies ... OK
+* checking whether the package can be unloaded cleanly ... OK
+* checking whether the namespace can be loaded with stated dependencies ... OK
+* checking whether the namespace can be unloaded cleanly ... OK
+* checking dependencies in R code ... OK
+* checking S3 generic/method consistency ... OK
+* checking replacement functions ... OK
+* checking foreign function calls ... OK
+* checking R code for possible problems ... OK
+* checking Rd files ... OK
+* checking Rd metadata ... OK
+* checking Rd cross-references ... OK
+* checking for missing documentation entries ... OK
+* checking for code/documentation mismatches ... OK
+* checking Rd \usage sections ... NOTE
+S3 methods shown with full name in Rd file 'project.penalized_mfa_clusterwise.Rd':
+  ‘project.penalized_mfa_clusterwise’
+The \usage entries for S3 methods should use the \method markup and not
+their full name.
+See chapter ‘Writing R documentation files’ in the ‘Writing R
+Extensions’ manual.
+* checking Rd contents ... OK
+* checking for unstated dependencies in examples ... OK
+* checking line endings in C/C++/Fortran sources/headers ... OK
+* checking compiled code ... OK
+* checking installed files from ‘inst/doc’ ... OK
+* checking files in ‘vignettes’ ... OK
+* checking examples ... OK
+* checking for unstated dependencies in ‘tests’ ... OK
+* checking tests ...
+  Running ‘testthat.R’
+ OK
+* checking for unstated dependencies in vignettes ... OK
+* checking package vignettes ... OK
+* checking re-building of vignette outputs ... OK
+* DONE
+
+Status: 1 WARNING, 1 NOTE
+See
+  ‘/private/tmp/muscal-GATE-check-20261018/muscal.Rcheck/00check.log’
+for details.
+
+sysctl: sysctl fmt -1 1024 1: Operation not permitted
+Warning message:
+In system2("quarto", "-V", stdout = TRUE, env = paste0("TMPDIR=",  :
+  running command 'TMPDIR=/private/var/folders/9h/nkjq6vss7mqdl4ck7q1hd8ph0000gp/T/Rtmpe4JbGd/filed881308d47bc 'quarto' -V' had status 1
+── R CMD check results ─────────────────────────────────────── muscal 0.1.0 ────
+Duration: 1m 54.9s
+
+❯ checking whether package ‘muscal’ can be installed ... WARNING
+  See below...
+
+❯ checking Rd \usage sections ... NOTE
+  S3 methods shown with full name in Rd file 'project.penalized_mfa_clusterwise.Rd':
+    ‘project.penalized_mfa_clusterwise’
+  
+  The \usage entries for S3 methods should use the \method markup and not
+  their full name.
+  See chapter ‘Writing R documentation files’ in the ‘Writing R
+  Extensions’ manual.
+
+0 errors ✔ | 1 warning ✖ | 1 note ✖
+Error: R CMD check found WARNINGs
+Execution halted

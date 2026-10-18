@@ -6,7 +6,7 @@ Authors@R: person("Bradley", "Buchsbaum", email = "bradley.buchsbaum@gmail.com",
 Author: Bradley Buchsbaum [aut, cre]
 Maintainer: Bradley Buchsbaum <bradley.buchsbaum@gmail.com>
 Description: Provides core 'French school' multivariate analysis methods including
-    Multiple Factor Analysis (MFA), Penalized MFA, STATIS, variants of
+    Multiple Factor Analysis (MFA), Penalized MFA, STATIS, DISTATIS, variants of
     Correspondence Analysis (BADA, BAMFA), and Generalized Procrustes Analysis.
     Also includes essential utility functions for data simulation, testing,
     and processing potentially used by related statistical packages.

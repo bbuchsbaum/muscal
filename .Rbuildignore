@@ -18,3 +18,5 @@
 ^pkgdown$
 ^\.github$
 ^figure$
+^\.mote$
+^\.dashboard$

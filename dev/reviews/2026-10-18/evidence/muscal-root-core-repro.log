@@ -1,0 +1,20 @@
+During startup - Warning messages:
+1: Setting LC_CTYPE failed, using "C" 
+2: Setting LC_COLLATE failed, using "C" 
+3: Setting LC_TIME failed, using "C" 
+4: Setting LC_MESSAGES failed, using "C" 
+5: Setting LC_MONETARY failed, using "C" 
+Warning message:
+package 'testthat' was built under R version 4.5.2 
+Applying the same preprocessor definition independently to each block.
+C1: 'NA' indices are not (yet?) supported for sparse Matrices
+Applying the same preprocessor definition independently to each block.
+C2: non-conformable arrays
+C3: bootstrap replicate uses fixed x$v and x$fscores; no active PCA refit
+C7: documented normalized branch equals unnormalized Laplacian
+C8: lower-only directed edge deleted by forceSymmetric(uplo='U')
+Applying the same preprocessor definition independently to each block.
+C9: returned preprocessor leaves nonzero-mean training block unchanged
+Applying the same preprocessor definition independently to each block.
+C10: number of rows are not compatible for +
+All 7 confirmed core-method repro checks passed.

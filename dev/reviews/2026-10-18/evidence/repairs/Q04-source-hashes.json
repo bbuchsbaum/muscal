@@ -1,0 +1,7 @@
+{
+  "src/row_ops.cpp": "47de2547a6ee44b6a6f2552b1d0c4feb7bd61dcbbad84f2c5d4c4ef1ff83bd8b",
+  "src/RcppExports.cpp": "fc73a340abe12fe8c6387d8154625f3861a92e76ba64511c2fdaf97f94e06c3f",
+  "R/RcppExports.R": "067734453825964f8ca90182c1a17494331634eec93b8e2a30faf1b201b309cc",
+  "R/linked_mfa.R": "5f216679f2c471a9f3aa976c152a7016ca28e7e22e2ad726a751495181bad6d2",
+  "tests/testthat/test-native-contracts.R": "975a8336ac46c3aeea055ee7c9523445c2d3b0eb57eb9fa301c9c3d1c54034ed"
+}

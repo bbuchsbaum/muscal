@@ -1,0 +1,52 @@
+During startup - Warning messages:
+1: Setting LC_CTYPE failed, using "C" 
+2: Setting LC_COLLATE failed, using "C" 
+3: Setting LC_TIME failed, using "C" 
+4: Setting LC_MESSAGES failed, using "C" 
+5: Setting LC_MONETARY failed, using "C" 
+Warning message:
+package 'testthat' was built under R version 4.5.2 
+component-retention-contract: ..............................123456789abcdefg.
+
+== Failed ======================================================================
+-- 1. Error ('test-component-retention-contract.R:118:10'): retention alpha cont
+Error in `estimate_components(fit, alpha = alpha, check_icc = TRUE, common_features = ids, noise_variance = 0.1, spectrum = "covariance", noise_model = "isotropic")`: unused arguments (check_icc = TRUE, common_features = ids)
+Backtrace:
+    x
+ 1. \-run(0.001) at test-component-retention-contract.R:121:3
+
+-- 2. Failure ('test-component-retention-contract.R:140:5'): invalid or irreleva
+Expected `estimate_components(fit, alpha = alpha)` to throw a error.
+
+-- 3. Failure ('test-component-retention-contract.R:141:5'): invalid or irreleva
+Expected `significant_components(fit, n = 20, alpha = alpha)` to throw a error.
+
+-- 4. Failure ('test-component-retention-contract.R:140:5'): invalid or irreleva
+Expected `estimate_components(fit, alpha = alpha)` to throw a error.
+
+-- 5. Failure ('test-component-retention-contract.R:141:5'): invalid or irreleva
+Expected `significant_components(fit, n = 20, alpha = alpha)` to throw a error.
+
+-- 6. Failure ('test-component-retention-contract.R:140:5'): invalid or irreleva
+Expected `estimate_components(fit, alpha = alpha)` to throw a error.
+
+-- 7. Failure ('test-component-retention-contract.R:141:5'): invalid or irreleva
+Expected `significant_components(fit, n = 20, alpha = alpha)` to throw a error.
+
+-- 8. Failure ('test-component-retention-contract.R:140:5'): invalid or irreleva
+Expected `estimate_components(fit, alpha = alpha)` to throw a error.
+
+-- 9. Failure ('test-component-retention-contract.R:141:5'): invalid or irreleva
+Expected `significant_components(fit, n = 20, alpha = alpha)` to throw a error.
+
+-- 10. Failure ('test-component-retention-contract.R:140:5'): invalid or irrelev
+Expected `estimate_components(fit, alpha = alpha)` to throw a error.
+  ... and 6 more
+
+
+Maximum number of 10 failures reached, some test results may be missing.
+
+== DONE ========================================================================
+Error:
+! Test failures.
+Execution halted

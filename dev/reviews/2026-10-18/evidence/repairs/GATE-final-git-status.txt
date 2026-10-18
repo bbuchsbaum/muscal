@@ -1,0 +1,81 @@
+ M .Rbuildignore
+ M DESCRIPTION
+ M NAMESPACE
+ M R/bada.R
+ M R/components_utils.R
+ M R/covstatis.R
+ M R/covstatis_multifer.R
+ M R/design_mfa.R
+ M R/design_mfa_inference.R
+ M R/design_mfa_multifer.R
+ M R/design_mfa_tune.R
+ M R/infer_muscal.R
+ M R/linked_mfa.R
+ M R/penalized_mfa.R
+ M R/penalized_mfa_clusterwise.R
+ M R/plot_mfa.R
+ M R/utils.R
+ M README.md
+ M dev/benchmark_design_mfa.R
+ M dev/ipca_benchmark_dense_vs_gram.R
+ M dev/ipca_vs_multiset_synth.R
+ M dev/run_design_mfa_benchmarks.R
+ M man/bada.Rd
+ M man/cluster_graph.Rd
+ M man/estimate_components.Rd
+ M man/infer_design_mfa.Rd
+ M man/infer_muscal.Rd
+ M man/muscal-package.Rd
+ M man/penalized_mfa.Rd
+ M man/penalized_mfa_clusterwise.Rd
+ M man/significant_components.Rd
+ M man/spatial_constraints.Rd
+ M man/tune_design_mfa.Rd
+ M src/RcppExports.cpp
+ M src/row_ops.cpp
+ D tests/testthat/aligned_models_synthetic_tests.R
+ M tests/testthat/test-aligned-models-synthetic.R
+ M tests/testthat/test-components_utils.R
+ M tests/testthat/test-design-mfa-inference.R
+ M tests/testthat/test-design-mfa-multifer.R
+ M tests/testthat/test-infer-muscal.R
+ M tests/testthat/test-penalized-mfa-clusterwise.R
+ M tests/testthat/test-penalized-mfa.R
+ M tests/testthat/test-summary-utils.R
+ M tests/testthat/test-utils-misc.R
+?? .github/workflows/multifer-contract.yaml
+?? .mote/
+?? R/distatis.R
+?? R/plot_distatis.R
+?? dev/benchmark_qualification.R
+?? dev/check_multifer_contract.R
+?? dev/distatis_reference_results.txt
+?? dev/distatis_research.R
+?? dev/distatis_research.md
+?? dev/distatis_research_results.txt
+?? dev/distatis_validation.md
+?? dev/reviews/
+?? dev/validate_distatis_reference.R
+?? man/distatis.Rd
+?? man/plot.distatis.Rd
+?? man/plot_variance.distatis.Rd
+?? man/predict.penalized_mfa_clusterwise.Rd
+?? man/project.penalized_mfa_clusterwise.Rd
+?? man/project_covariate.distatis.Rd
+?? man/project_distance.Rd
+?? man/project_subjects.distatis.Rd
+?? man/reconstruct.distatis.Rd
+?? man/scores.distatis.Rd
+?? man/sorting_distances.Rd
+?? tests/testthat/test-bada-bootstrap-refit.R
+?? tests/testthat/test-benchmark-qualification.R
+?? tests/testthat/test-clusterwise-graph.R
+?? tests/testthat/test-clusterwise-projection.R
+?? tests/testthat/test-clusterwise-rank.R
+?? tests/testthat/test-component-retention-contract.R
+?? tests/testthat/test-covstatis-scalar.R
+?? tests/testthat/test-distatis.R
+?? tests/testthat/test-loading-alignment.R
+?? tests/testthat/test-native-contracts.R
+?? tests/testthat/test-rmt-edge.R
+?? vignettes/distatis.Rmd

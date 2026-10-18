@@ -1,0 +1,9 @@
+{
+  "R/design_mfa.R": "386033f3fae0b1e57f87b5bf6fcef065609ccc6d8264e7bd5f9a87dd97649a19",
+  "R/design_mfa_inference.R": "a0a79eee9103847d265e155bb2cbb7b868a5f48230104bfb4373133103d90281",
+  "R/design_mfa_tune.R": "7fcd1b1d1851e4222d3864644bc0904c250275e86844b55ae6a0dd701b70cdda",
+  "tests/testthat/test-design-mfa-inference.R": "3f6f70e11d7cb6eede6ef366f48934fa37c4d01a43eb499dd76ee94d21d73ca8",
+  "tests/testthat/test-design-mfa-tuning.R": "0fcf1055f7465dacd4a3bc4e8788f9389c3e51ea5872e98551d5c3559a59d0bc",
+  "man/infer_design_mfa.Rd": "521f31fd2ed4904b01ee9633e4f0b4edc43bd96323f0f582654560a6c8993468",
+  "man/tune_design_mfa.Rd": "c78736d7997c56e395e145de184f29367b61ee899846c6d4486dffe5ff6c59b3"
+}

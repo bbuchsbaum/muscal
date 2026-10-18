@@ -1,0 +1,7 @@
+{
+  "R/components_utils.R": "edb03b1fbb916345007deccf11f5d84771c0b66cf4741d9245a3195ccfcb06c3",
+  "tests/testthat/test-loading-alignment.R": "f6c3cdad7163ceaa0abce2e36cf0801a2feb8218908f7d76a786334ea99e1a43",
+  "tests/testthat/test-components_utils.R": "dafb1f411eecd92f9e0059a1529c48d032b7f59d578e23120a0f28333e4ce8d2",
+  "tests/testthat/test-infer-muscal.R": "fb5b892c0abb770477e4152f814e9d30d1b5a211f52b1f4de3bd159f5600dde3",
+  "man/estimate_components.Rd": "98747cde0325d1966bab51aa785571ae932f7f49edb662a24872b8f75d396381"
+}

@@ -1,0 +1,163 @@
+* installing *source* package ‘muscal’ ...
+** this is package ‘muscal’ version ‘0.1.0’
+** using staged installation
+** libs
+using C++ compiler: ‘Apple clang version 15.0.0 (clang-1500.1.0.2.5)’
+using SDK: ‘MacOSX14.2.sdk’
+/usr/bin/clang++ -I"/Library/Frameworks/R.framework/Resources/include" -DNDEBUG  -I'/Users/bbuchsbaum/Library/R/arm64/4.5/library/Rcpp/include' -I'/Users/bbuchsbaum/Library/R/arm64/4.5/library/RcppEigen/include' -I/opt/R/arm64/include    -fPIC  -falign-functions=64 -Wall -g -O2   -c RcppExports.cpp -o RcppExports.o
+In file included from RcppExports.cpp:4:
+In file included from /Users/bbuchsbaum/Library/R/arm64/4.5/library/RcppEigen/include/RcppEigen.h:25:
+In file included from /Users/bbuchsbaum/Library/R/arm64/4.5/library/RcppEigen/include/RcppEigenForward.h:26:
+In file included from /Users/bbuchsbaum/Library/R/arm64/4.5/library/Rcpp/include/RcppCommon.h:30:
+In file included from /Users/bbuchsbaum/Library/R/arm64/4.5/library/Rcpp/include/Rcpp/r/headers.h:67:
+/Users/bbuchsbaum/Library/R/arm64/4.5/library/Rcpp/include/Rcpp/platform/compiler.h:32:2: error: "The C++ compilation standard is too old: use C++11 or newer."
+#error "The C++ compilation standard is too old: use C++11 or newer."
+ ^
+In file included from RcppExports.cpp:4:
+In file included from /Users/bbuchsbaum/Library/R/arm64/4.5/library/RcppEigen/include/RcppEigen.h:25:
+In file included from /Users/bbuchsbaum/Library/R/arm64/4.5/library/RcppEigen/include/RcppEigenForward.h:26:
+In file included from /Users/bbuchsbaum/Library/R/arm64/4.5/library/Rcpp/include/RcppCommon.h:30:
+In file included from /Users/bbuchsbaum/Library/R/arm64/4.5/library/Rcpp/include/Rcpp/r/headers.h:71:
+In file included from /Library/Frameworks/R.framework/Resources/include/R.h:73:
+/Library/Frameworks/R.framework/Resources/include/R_ext/Error.h:58:2: error: expected expression
+[[noreturn]] void Rf_error(const char *, ...) R_PRINTF_FORMAT(1, 2);
+ ^
+/Library/Frameworks/R.framework/Resources/include/R_ext/Error.h:58:14: error: expected unqualified-id
+[[noreturn]] void Rf_error(const char *, ...) R_PRINTF_FORMAT(1, 2);
+             ^
+/Library/Frameworks/R.framework/Resources/include/R_ext/Error.h:60:2: error: expected expression
+[[noreturn]] void UNIMPLEMENTED(const char *);
+ ^
+/Library/Frameworks/R.framework/Resources/include/R_ext/Error.h:60:14: error: expected unqualified-id
+[[noreturn]] void UNIMPLEMENTED(const char *);
+             ^
+/Library/Frameworks/R.framework/Resources/include/R_ext/Error.h:61:2: error: expected expression
+[[noreturn]] void WrongArgCount(const char *);
+ ^
+/Library/Frameworks/R.framework/Resources/include/R_ext/Error.h:61:14: error: expected unqualified-id
+[[noreturn]] void WrongArgCount(const char *);
+             ^
+In file included from RcppExports.cpp:4:
+In file included from /Users/bbuchsbaum/Library/R/arm64/4.5/library/RcppEigen/include/RcppEigen.h:25:
+In file included from /Users/bbuchsbaum/Library/R/arm64/4.5/library/RcppEigen/include/RcppEigenForward.h:26:
+In file included from /Users/bbuchsbaum/Library/R/arm64/4.5/library/Rcpp/include/RcppCommon.h:75:
+In file included from /Users/bbuchsbaum/Library/R/arm64/4.5/library/Rcpp/include/Rcpp/utils/tinyformat.h:33:
+/Users/bbuchsbaum/Library/R/arm64/4.5/library/Rcpp/include/Rcpp/utils/tinyformat/tinyformat.h:878:26: warning: variadic templates are a C++11 extension [-Wc++11-extensions]
+        template<typename... Args>
+                         ^
+/Users/bbuchsbaum/Library/R/arm64/4.5/library/Rcpp/include/Rcpp/utils/tinyformat/tinyformat.h:882:9: error: expected member name or ';' after declaration specifiers
+        { static_assert(sizeof...(args) == N, "Number of args must be N"); }
+        ^
+/Users/bbuchsbaum/Library/R/arm64/4.5/library/Rcpp/include/Rcpp/utils/tinyformat/tinyformat.h:880:27: error: 'm_formatters' is a private member of 'tinyformat::FormatList'
+            : FormatList(&m_formatterStore[0], N),
+                          ^
+/Users/bbuchsbaum/Library/R/arm64/4.5/library/Rcpp/include/Rcpp/utils/tinyformat/tinyformat.h:880:27: error: use of undeclared identifier 'm_formatterStore'; did you mean 'm_formatters'?
+            : FormatList(&m_formatterStore[0], N),
+                          ^~~~~~~~~~~~~~~~
+                          m_formatters
+/Users/bbuchsbaum/Library/R/arm64/4.5/library/Rcpp/include/Rcpp/utils/tinyformat/tinyformat.h:862:34: note: 'm_formatters' declared here
+        const detail::FormatArg* m_formatters;
+                                 ^
+/Users/bbuchsbaum/Library/R/arm64/4.5/library/Rcpp/include/Rcpp/utils/tinyformat/tinyformat.h:881:30: error: expected '('
+            m_formatterStore { FormatArg(args)... }
+                             ^
+/Users/bbuchsbaum/Library/R/arm64/4.5/library/Rcpp/include/Rcpp/utils/tinyformat/tinyformat.h:881:47: error: expected ';' after expression
+            m_formatterStore { FormatArg(args)... }
+                                              ^
+                                              ;
+/Users/bbuchsbaum/Library/R/arm64/4.5/library/Rcpp/include/Rcpp/utils/tinyformat/tinyformat.h:881:32: error: expression contains unexpanded parameter pack 'args'
+            m_formatterStore { FormatArg(args)... }
+                               ^         ~~~~
+/Users/bbuchsbaum/Library/R/arm64/4.5/library/Rcpp/include/Rcpp/utils/tinyformat/tinyformat.h:881:47: error: expected expression
+            m_formatterStore { FormatArg(args)... }
+                                              ^
+/Users/bbuchsbaum/Library/R/arm64/4.5/library/Rcpp/include/Rcpp/utils/tinyformat/tinyformat.h:927:18: warning: variadic templates are a C++11 extension [-Wc++11-extensions]
+template<typename... Args>
+                 ^
+/Users/bbuchsbaum/Library/R/arm64/4.5/library/Rcpp/include/Rcpp/utils/tinyformat/tinyformat.h:963:18: warning: variadic templates are a C++11 extension [-Wc++11-extensions]
+template<typename... Args>
+                 ^
+/Users/bbuchsbaum/Library/R/arm64/4.5/library/Rcpp/include/Rcpp/utils/tinyformat/tinyformat.h:971:18: warning: variadic templates are a C++11 extension [-Wc++11-extensions]
+template<typename... Args>
+                 ^
+/Users/bbuchsbaum/Library/R/arm64/4.5/library/Rcpp/include/Rcpp/utils/tinyformat/tinyformat.h:980:18: warning: variadic templates are a C++11 extension [-Wc++11-extensions]
+template<typename... Args>
+                 ^
+/Users/bbuchsbaum/Library/R/arm64/4.5/library/Rcpp/include/Rcpp/utils/tinyformat/tinyformat.h:986:18: warning: variadic templates are a C++11 extension [-Wc++11-extensions]
+template<typename... Args>
+                 ^
+In file included from RcppExports.cpp:4:
+In file included from /Users/bbuchsbaum/Library/R/arm64/4.5/library/RcppEigen/include/RcppEigen.h:25:
+In file included from /Users/bbuchsbaum/Library/R/arm64/4.5/library/RcppEigen/include/RcppEigenForward.h:26:
+In file included from /Users/bbuchsbaum/Library/R/arm64/4.5/library/Rcpp/include/RcppCommon.h:131:
+/Users/bbuchsbaum/Library/R/arm64/4.5/library/Rcpp/include/Rcpp/exceptions.h:156:5: error: use of undeclared identifier 'Rf_error'; did you mean 'ferror'?
+    Rf_error("Internal error: Rcpp longjump failed to resume");
+    ^~~~~~~~
+    ferror
+/Library/Developer/CommandLineTools/SDKs/MacOSX.sdk/usr/include/stdio.h:137:6: note: 'ferror' declared here
+int      ferror(FILE *);
+         ^
+In file included from RcppExports.cpp:4:
+In file included from /Users/bbuchsbaum/Library/R/arm64/4.5/library/RcppEigen/include/RcppEigen.h:25:
+In file included from /Users/bbuchsbaum/Library/R/arm64/4.5/library/RcppEigen/include/RcppEigenForward.h:26:
+In file included from /Users/bbuchsbaum/Library/R/arm64/4.5/library/Rcpp/include/RcppCommon.h:131:
+/Users/bbuchsbaum/Library/R/arm64/4.5/library/Rcpp/include/Rcpp/exceptions.h:156:14: error: cannot initialize a parameter of type 'FILE *' (aka '__sFILE *') with an lvalue of type 'const char[47]'
+    Rf_error("Internal error: Rcpp longjump failed to resume");
+             ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+/Library/Developer/CommandLineTools/SDKs/MacOSX.sdk/usr/include/stdio.h:137:19: note: passing argument to parameter here
+int      ferror(FILE *);
+                      ^
+In file included from RcppExports.cpp:4:
+In file included from /Users/bbuchsbaum/Library/R/arm64/4.5/library/RcppEigen/include/RcppEigen.h:25:
+In file included from /Users/bbuchsbaum/Library/R/arm64/4.5/library/RcppEigen/include/RcppEigenForward.h:26:
+In file included from /Users/bbuchsbaum/Library/R/arm64/4.5/library/Rcpp/include/RcppCommon.h:131:
+/Users/bbuchsbaum/Library/R/arm64/4.5/library/Rcpp/include/Rcpp/exceptions.h:188:23: warning: variadic templates are a C++11 extension [-Wc++11-extensions]
+    template <typename... Args>
+                      ^
+/Users/bbuchsbaum/Library/R/arm64/4.5/library/Rcpp/include/Rcpp/exceptions.h:189:46: warning: rvalue references are a C++11 extension [-Wc++11-extensions]
+    inline void warning(const char* fmt, Args&&... args ) {
+                                             ^
+/Users/bbuchsbaum/Library/R/arm64/4.5/library/Rcpp/include/Rcpp/exceptions.h:203:23: warning: variadic templates are a C++11 extension [-Wc++11-extensions]
+    template <typename... Args>
+                      ^
+/Users/bbuchsbaum/Library/R/arm64/4.5/library/Rcpp/include/Rcpp/exceptions.h:204:49: warning: rvalue references are a C++11 extension [-Wc++11-extensions]
+    inline void NORET stop(const char* fmt, Args&&... args) {
+                                                ^
+/Users/bbuchsbaum/Library/R/arm64/4.5/library/Rcpp/include/Rcpp/exceptions.h:252:5: warning: variadic templates are a C++11 extension [-Wc++11-extensions]
+    RCPP_ADVANCED_EXCEPTION_CLASS(not_compatible, "Not compatible" )            // #nocov end
+    ^
+/Users/bbuchsbaum/Library/R/arm64/4.5/library/Rcpp/include/Rcpp/exceptions.h:179:31: note: expanded from macro 'RCPP_ADVANCED_EXCEPTION_CLASS'
+            template <typename... Args>                                               \
+                              ^
+/Users/bbuchsbaum/Library/R/arm64/4.5/library/Rcpp/include/Rcpp/exceptions.h:252:5: warning: rvalue references are a C++11 extension [-Wc++11-extensions]
+/Users/bbuchsbaum/Library/R/arm64/4.5/library/Rcpp/include/Rcpp/exceptions.h:180:45: note: expanded from macro 'RCPP_ADVANCED_EXCEPTION_CLASS'
+            __CLASS__( const char* fmt, Args&&... args ) throw() :                    \
+                                            ^
+/Users/bbuchsbaum/Library/R/arm64/4.5/library/Rcpp/include/Rcpp/exceptions.h:253:5: warning: variadic templates are a C++11 extension [-Wc++11-extensions]
+    RCPP_ADVANCED_EXCEPTION_CLASS(index_out_of_bounds, "Index is out of bounds")
+    ^
+/Users/bbuchsbaum/Library/R/arm64/4.5/library/Rcpp/include/Rcpp/exceptions.h:179:31: note: expanded from macro 'RCPP_ADVANCED_EXCEPTION_CLASS'
+            template <typename... Args>                                               \
+                              ^
+/Users/bbuchsbaum/Library/R/arm64/4.5/library/Rcpp/include/Rcpp/exceptions.h:253:5: warning: rvalue references are a C++11 extension [-Wc++11-extensions]
+/Users/bbuchsbaum/Library/R/arm64/4.5/library/Rcpp/include/Rcpp/exceptions.h:180:45: note: expanded from macro 'RCPP_ADVANCED_EXCEPTION_CLASS'
+            __CLASS__( const char* fmt, Args&&... args ) throw() :                    \
+                                            ^
+In file included from RcppExports.cpp:4:
+In file included from /Users/bbuchsbaum/Library/R/arm64/4.5/library/RcppEigen/include/RcppEigen.h:25:
+In file included from /Users/bbuchsbaum/Library/R/arm64/4.5/library/RcppEigen/include/RcppEigenForward.h:26:
+In file included from /Users/bbuchsbaum/Library/R/arm64/4.5/library/Rcpp/include/RcppCommon.h:134:
+/Users/bbuchsbaum/Library/R/arm64/4.5/library/Rcpp/include/Rcpp/unwindProtect.h:45:10: error: no member named 'function' in namespace 'std'
+    std::function<SEXP(void)>* callback = (std::function<SEXP(void)>*) data;
+    ~~~~~^
+/Users/bbuchsbaum/Library/R/arm64/4.5/library/Rcpp/include/Rcpp/unwindProtect.h:45:28: error: expected '(' for function-style cast or type construction
+    std::function<SEXP(void)>* callback = (std::function<SEXP(void)>*) data;
+                       ~~~~^
+/Users/bbuchsbaum/Library/R/arm64/4.5/library/Rcpp/include/Rcpp/unwindProtect.h:45:32: error: use of undeclared identifier 'callback'
+    std::function<SEXP(void)>* callback = (std::function<SEXP(void)>*) data;
+                               ^
+fatal error: too many errors emitted, stopping now [-ferror-limit=]
+14 warnings and 20 errors generated.
+make: *** [RcppExports.o] Error 1
+ERROR: compilation failed for package ‘muscal’
+* removing ‘/private/tmp/muscal-GATE-apple-library/muscal’

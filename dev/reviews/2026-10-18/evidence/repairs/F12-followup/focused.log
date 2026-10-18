@@ -1,0 +1,28 @@
+Warning message:
+package ‘testthat’ was built under R version 4.5.2 
+infer-muscal: .............................................................................................................................................
+
+══ DONE ════════════════════════════════════════════════════════════════════════
+loading-alignment: .............................
+
+══ DONE ════════════════════════════════════════════════════════════════════════
+bada-bootstrap-refit: WW...................................
+
+══ Warnings ════════════════════════════════════════════════════════════════════
+1. identical-subject bootstrap refits preserve loading units ('test-bada-bootstrap-refit.R:21:3') - package ‘future’ was built under R version 4.5.2
+
+2. identical-subject bootstrap refits preserve loading units ('test-bada-bootstrap-refit.R:21:3') - package ‘purrr’ was built under R version 4.5.2
+
+══ DONE ════════════════════════════════════════════════════════════════════════
+$`infer-muscal`
+ blocks  passed  failed  errors skipped 
+     20     141       0       0       0 
+
+$`loading-alignment`
+ blocks  passed  failed  errors skipped 
+      5      29       0       0       0 
+
+$`bada-bootstrap-refit`
+ blocks  passed  failed  errors skipped 
+      5      35       0       0       0 
+

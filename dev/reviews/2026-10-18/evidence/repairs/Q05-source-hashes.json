@@ -1,0 +1,6 @@
+{
+  "R/design_mfa_multifer.R": "faf1062829089da88afc82e377f81c425a5164bffb0b08fd6b1b180238eff2e6",
+  "tests/testthat/test-design-mfa-multifer.R": "bb9d69ad72e27156e6eeab3160de99c4a9b129f22b1e5e790cb1122a3512616b",
+  ".github/workflows/multifer-contract.yaml": "40b4b7ae46c86e76977e0683c0159fda6bd260dd651c50b43f28d979808ee71b",
+  "dev/check_multifer_contract.R": "15e93051401314232e0414bf41158e505af79a67fc2a74779b78a3437ecdbf2b"
+}

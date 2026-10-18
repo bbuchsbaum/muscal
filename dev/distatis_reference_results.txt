@@ -1,0 +1,42 @@
+Warning message:
+package 'testthat' was built under R version 4.5.2 
+Warning message:
+`prep()` was deprecated in multivarious 0.3.0.
+i Please use `fit()` instead.
+i The prep() function is deprecated. Use fit() for a more standard interface.
+i The deprecated feature was likely used in the multivarious package.
+  Please report the issue to the authors. 
+DISTATIS installed-reference parity
+R: 4.5.1 DistatisR: 1.1.2 
+Reference input: squared distances; RV = TRUE; three retained axes.
+    case normalization       quantity maximum_absolute_error
+    beer           mfa             RV             1.3323e-15
+    beer           mfa          alpha             2.2204e-16
+    beer           mfa     compromise             1.1102e-16
+    beer           mfa          roots             3.8858e-16
+    beer           mfa  object_scores             9.4369e-16
+    beer           mfa partial_scores             1.3323e-15
+    beer           mfa  assessor_gram             4.7740e-15
+    beer          none             RV             1.5543e-15
+    beer          none          alpha             5.5511e-17
+    beer          none     compromise             1.1102e-16
+    beer          none          roots             3.8858e-16
+    beer          none  object_scores             5.5511e-16
+    beer          none partial_scores             6.9389e-16
+    beer          none  assessor_gram             1.5543e-15
+ general           mfa             RV             4.4409e-16
+ general           mfa          alpha             2.2204e-16
+ general           mfa     compromise             1.1102e-16
+ general           mfa          roots             4.4409e-16
+ general           mfa  object_scores             6.6613e-16
+ general           mfa partial_scores             6.6613e-16
+ general           mfa  assessor_gram             1.1102e-15
+ general          none             RV             3.3307e-16
+ general          none          alpha             1.1102e-16
+ general          none     compromise             7.1054e-15
+ general          none          roots             2.1316e-14
+ general          none  object_scores             3.2196e-15
+ general          none partial_scores             7.1054e-15
+ general          none  assessor_gram             1.2212e-15
+All reference comparisons passed at absolute tolerance 1e-10.
+Direct parity covers mfa and none. Reference SUMPCA is trace normalization, not Frobenius.

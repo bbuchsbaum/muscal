@@ -273,7 +273,15 @@ as_multifer_adapter.design_mfa <- function(x, ...) {
   if (!isTRUE(targets_ok)) {
     return(FALSE)
   }
-  "on_error" %in% names(formals(multifer::bootstrap_fits))
+  .dmfa_multifer_stability_formals_compatible(
+    multifer::bootstrap_fits, multifer::statistic_stability_from_bootstrap)
+}
+
+.dmfa_multifer_stability_formals_compatible <- function(bootstrap, sidecar) {
+  all(c("recipe", "adapter", "data", "original_fit", "units", "R", "seed",
+        "parallel", "method_align", "store_aligned_scores") %in% names(formals(bootstrap))) &&
+    all(c("artifact", "units", "statistics", "nonnegative", "statistic") %in% names(formals(sidecar))) &&
+    any(c("probs", "alpha") %in% names(formals(sidecar)))
 }
 
 .dmfa_translate_exchangeability <- function(exchangeability, term) {
@@ -511,19 +519,26 @@ as_multifer_adapter.design_mfa <- function(x, ...) {
   if (isTRUE(verbose)) {
     message(sprintf("infer_design_mfa: running %d replicates via multifer", nrep))
   }
-  artifact <- multifer::bootstrap_fits(
-    recipe = recipe,
-    adapter = adapter,
-    data = spec$data,
-    original_fit = x,
-    units = units,
-    R = nrep,
-    method_align = "sign",
-    seed = NULL,
-    parallel = "sequential",
-    store_aligned_scores = FALSE,
-    on_error = "drop"
-  )
+  if (!.dmfa_multifer_stability_contract_available()) {
+    stop("Unsupported multifer stability contract: requires bootstrap_fits and a statistic-stability sidecar with probs or alpha and a statistic callback. See dev/check_multifer_contract.R for the pinned supported build.", call. = FALSE)
+  }
+  boot_args <- list(recipe = recipe, adapter = adapter, data = spec$data,
+    original_fit = x, units = units, R = nrep, method_align = "sign", seed = NULL,
+    parallel = "sequential", store_aligned_scores = FALSE)
+  if ("on_error" %in% names(formals(multifer::bootstrap_fits))) {
+    boot_args$on_error <- "drop"
+    artifact <- do.call(multifer::bootstrap_fits, boot_args)
+  } else {
+    # Older supported engines abort a batch on a failed refit. Run one draw per
+    # call, retaining the same serial RNG stream and every failed attempt.
+    boot_args$R <- 1L
+    reps <- lapply(seq_len(nrep), function(i) {
+      tryCatch(do.call(multifer::bootstrap_fits, boot_args)$reps[[1L]],
+        error = function(e) list(ok = FALSE, error = conditionMessage(e)))
+    })
+    artifact <- structure(list(reps = reps, R = nrep), class = "multifer_bootstrap_artifact")
+  }
+
 
   subject_ids <- names(spec$data$Y)
   if (is.null(subject_ids)) {
@@ -599,12 +614,11 @@ as_multifer_adapter.design_mfa <- function(x, ...) {
       ),
       class = "multifer_bootstrap_artifact"
     )
-    stab <- multifer::statistic_stability_from_bootstrap(
+    sidecar_args <- list(
       artifact = filtered,
       units = units,
       statistics = observed_named,
       nonnegative = TRUE,
-      alpha = alpha,
       statistic = function(fit) {
         .design_mfa_named_statistics(
           fit,
@@ -615,6 +629,10 @@ as_multifer_adapter.design_mfa <- function(x, ...) {
         )
       }
     )
+    if ("probs" %in% names(formals(multifer::statistic_stability_from_bootstrap))) {
+      sidecar_args$probs <- c(alpha / 2, 1 - alpha / 2)
+    } else sidecar_args$alpha <- alpha
+    stab <- do.call(multifer::statistic_stability_from_bootstrap, sidecar_args)
     if ("partial_ss" %in% named_stats) {
       summary$partial_ss <- .dmfa_sidecar_vector_summary(
         stab, "partial_ss", labels = "partial_ss"

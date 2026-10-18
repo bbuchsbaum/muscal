@@ -1,0 +1,6 @@
+CC=/usr/bin/clang
+CXX=/usr/bin/clang++ -std=gnu++17
+CXX11=/usr/bin/clang++
+CXX14=/usr/bin/clang++
+CXX17=/usr/bin/clang++
+CXX20=/usr/bin/clang++

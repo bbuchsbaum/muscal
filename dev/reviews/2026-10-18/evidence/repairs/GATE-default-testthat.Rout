@@ -1,0 +1,40 @@
+
+R version 4.5.1 (2025-06-13) -- "Great Square Root"
+Copyright (C) 2025 The R Foundation for Statistical Computing
+Platform: aarch64-apple-darwin20
+
+R is free software and comes with ABSOLUTELY NO WARRANTY.
+You are welcome to redistribute it under certain conditions.
+Type 'license()' or 'licence()' for distribution details.
+
+R is a collaborative project with many contributors.
+Type 'contributors()' for more information and
+'citation()' on how to cite R or R packages in publications.
+
+Type 'demo()' for some demos, 'help()' for on-line help, or
+'help.start()' for an HTML browser interface to help.
+Type 'q()' to quit R.
+
+> library(testthat)
+Warning message:
+package 'testthat' was built under R version 4.5.2 
+> library(muscal)
+> 
+> test_check("muscal")
+[ FAIL 0 | WARN 3 | SKIP 7 | PASS 2710 ]
+
+══ Skipped tests (7) ═══════════════════════════════════════════════════════════
+• convergence info not available (2): 'test-plot_mfa.R:261:3',
+  'test-plot_mfa.R:272:3'
+• Development benchmarks are excluded from source packages (4):
+  'test-benchmark-qualification.R:10:3', 'test-benchmark-qualification.R:22:3',
+  'test-benchmark-qualification.R:39:3', 'test-benchmark-qualification.R:51:3'
+• source Rd files are unavailable in the installed-package test copy (1):
+  'test-design-mfa-contract.R:291:3'
+
+[ FAIL 0 | WARN 3 | SKIP 7 | PASS 2710 ]
+> 
+> 
+> proc.time()
+   user  system elapsed 
+ 26.269   0.989  27.776 

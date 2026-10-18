@@ -1,5 +1,7 @@
 #!/usr/bin/env Rscript
 
+source("dev/benchmark_qualification.R")
+
 args <- commandArgs(trailingOnly = TRUE)
 mode_arg <- grep("^--mode=", args, value = TRUE)
 mode <- if (length(mode_arg) == 0L) "quick" else sub("^--mode=", "", mode_arg[[1L]])
@@ -23,9 +25,9 @@ mode_flag <- switch(
   imaging = "--imaging",
   imaging_soft = "--imaging-soft"
 )
-temporary <- tempfile("design-mfa-benchmark-")
+temporary <- tempfile("design-mfa-benchmark-", tmpdir = "dev")
 dir.create(temporary)
-on.exit(unlink(temporary, recursive = TRUE), add = TRUE)
+message("Raw child logs and source receipts retained in: ", temporary)
 
 paths <- file.path(temporary, sprintf("replicate-%02d.csv", seq_len(repetitions)))
 for (replicate in seq_len(repetitions)) {
@@ -42,12 +44,19 @@ for (replicate in seq_len(repetitions)) {
   )
   if (!identical(status, 0L) || !file.exists(paths[[replicate]])) {
     if (file.exists(log_path)) cat(readLines(log_path, warn = FALSE), sep = "\n")
-    stop(sprintf("Fresh-process benchmark replicate %d failed.", replicate), call. = FALSE)
+    failed <- data.frame(engine = if (mode == "imaging") "shared" else c("shared", "shared_spatial", "soft_sparse_map"),
+      replicate = replicate, ok = FALSE, solver_converged = NA, error = paste("Child process failed, status", status, "log", log_path))
+    utils::write.csv(failed, paths[[replicate]], row.names = FALSE)
   }
   message(sprintf("completed fresh-process replicate %d of %d", replicate, repetitions))
 }
 
-raw <- do.call(rbind, lapply(paths, utils::read.csv, check.names = FALSE))
+tables <- lapply(paths, utils::read.csv, check.names = FALSE)
+fields <- unique(unlist(lapply(tables, names)))
+raw <- do.call(rbind, lapply(tables, function(x) {
+  for (name in setdiff(fields, names(x))) x[[name]] <- NA
+  x[fields]
+}))
 rownames(raw) <- NULL
 numeric_summary <- c(
   "elapsed_sec",
@@ -62,36 +71,9 @@ numeric_summary <- c(
   "coordinate_map_bytes"
 )
 numeric_summary <- intersect(numeric_summary, names(raw))
-groups <- split(seq_len(nrow(raw)), raw$engine)
-summary <- do.call(rbind, lapply(groups, function(rows) {
-  values <- raw[rows, numeric_summary, drop = FALSE]
-  out <- data.frame(
-    engine = raw$engine[rows[[1L]]],
-    repetitions = length(rows),
-    stringsAsFactors = FALSE
-  )
-  for (field in numeric_summary) {
-    x <- values[[field]]
-    finite <- x[is.finite(x)]
-    statistics <- if (length(finite) == 0L) {
-      rep(NA_real_, 5L)
-    } else {
-      c(
-        stats::median(finite),
-        stats::quantile(finite, 0.25, names = FALSE),
-        stats::quantile(finite, 0.75, names = FALSE),
-        min(finite),
-        max(finite)
-      )
-    }
-    names(statistics) <- c("median", "q1", "q3", "min", "max")
-    for (statistic in names(statistics)) {
-      out[[paste0(field, "_", statistic)]] <- statistics[[statistic]]
-    }
-  }
-  out
-}))
-rownames(summary) <- NULL
+raw$converged <- raw$solver_converged
+raw$exclusion <- bench_classify(raw)
+summary <- bench_summary(raw, "engine", numeric_summary)
 
 raw_path <- sprintf("dev/design_mfa_benchmark_%s_repeated_raw.csv", mode)
 summary_path <- sprintf("dev/design_mfa_benchmark_%s_repeated_summary.csv", mode)

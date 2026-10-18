@@ -1,0 +1,11 @@
+{
+  "supported_multifer_sha": "8fe24a8a211a4666ef93ccc9c079af477e235336",
+  "local_upstream_head": "c8f26f94d8711920ab4c6c1bdba212a9ba795304",
+  "public_head": "b42afa827ebe4f38fa5236423e758026c6a6c551",
+  "pinned_source_archive_sha256": "53a9030b00854f1d99d0c9f030e76fbf2272f6f24ccfcf5418a243c9ca216846",
+  "pinned_library": "/private/tmp/muscal-Q05-pinned-library",
+  "unsupported_public_library": "/private/tmp/muscal-Q05-library",
+  "pinned_test_exit": 0,
+  "unsupported_capability_exit": 1,
+  "ci_fetch_qualification": "Supported revision is not in public heads or tags. Manual workflow authored; no hosted run claimed."
+}

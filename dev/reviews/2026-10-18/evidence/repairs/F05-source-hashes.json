@@ -1,0 +1,5 @@
+{
+  "R/bada.R": "3204d78d9ba5138fab6d08a577a960f32719167e9083b0be5b91c81bbfeca0d9",
+  "tests/testthat/test-bada-bootstrap-refit.R": "ccb20e5a647156da71d7e56818559a6384c3c2e7ebe0dee3262d12efa39e6d43",
+  "man/bada.Rd": "23ed847bbfed3cfd4ce3f530152c1c110282ed98377bee90abfbb44d7d8a53d4"
+}

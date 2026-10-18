@@ -2,14 +2,16 @@
 % Please edit documentation in R/penalized_mfa_clusterwise.R
 \name{spatial_constraints}
 \alias{spatial_constraints}
-\title{Simple spatial constraints function (creates k-NN adjacency matrix)}
+\title{Pooled-feature union k-NN adjacency}
 \usage{
 spatial_constraints(coords_list, k_nn = 6, nblocks = NULL, ...)
 }
 \arguments{
 \item{coords_list}{List of coordinate matrices (each k_s x 3)}
 
-\item{k_nn}{Number of nearest neighbors (default 6)}
+\item{k_nn}{Finite nonnegative integer neighbor count (default 6), capped at
+available non-self vertices. Zero creates no edges. All boundary ties within
+floating-point tolerance are included, so actual degree may exceed k_nn.}
 
 \item{nblocks}{Number of blocks (ignored, for compatibility)}
 }
@@ -17,6 +19,14 @@ spatial_constraints(coords_list, k_nn = 6, nblocks = NULL, ...)
 Sparse adjacency matrix
 }
 \description{
-Simple spatial constraints function (creates k-NN adjacency matrix)
+Pooled-feature union k-NN adjacency
+}
+\details{
+Features are pooled across the supplied coordinate blocks. Directed
+  neighbors are symmetrized by union with unit edge weights. Self removal uses
+  vertex identity, including duplicate coordinates. Boundary ties are included
+  regardless of input order. The graph does not distinguish within-block
+  smoothing from between-block correspondence; that scientific distinction
+  remains part of the broader experimental recovery plan.
 }
 \keyword{internal}

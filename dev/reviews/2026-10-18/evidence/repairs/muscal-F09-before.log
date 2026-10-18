@@ -1,0 +1,108 @@
+During startup - Warning messages:
+1: Setting LC_CTYPE failed, using "C" 
+2: Setting LC_COLLATE failed, using "C" 
+3: Setting LC_TIME failed, using "C" 
+4: Setting LC_MESSAGES failed, using "C" 
+5: Setting LC_MONETARY failed, using "C" 
+Warning message:
+package 'testthat' was built under R version 4.5.2 
+clusterwise-rank: 123...............4....56W78W9a.
+
+== Warnings ====================================================================
+1. rank and finite-data boundary errors are explicit ('test-clusterwise-rank.R:59:5') - non-empty data for zero-extent matrix
+
+2. rank and finite-data boundary errors are explicit ('test-clusterwise-rank.R:59:5') - NAs introduced by coercion to integer range
+
+== Failed ======================================================================
+-- 1. Failure ('test-clusterwise-rank.R:12:3'): clusterwise common rank is check
+`penalized_mfa_clusterwise(...)` threw an error with unexpected message.
+Expected match: "common rank"
+Actual message: "number of rows are not compatible for +"
+Backtrace:
+    x
+ 1. +-testthat::expect_error(...) at test-clusterwise-rank.R:12:3
+ 2. | \-testthat:::quasi_capture(...)
+ 3. |   +-testthat (local) .capture(...)
+ 4. |   | \-base::withCallingHandlers(...)
+ 5. |   \-rlang::eval_bare(quo_get_expr(.quo), quo_get_env(.quo))
+ 6. \-muscal::penalized_mfa_clusterwise(...)
+ 7.   \-muscal:::block_update_cluster(...) at muscal/R/penalized_mfa_clusterwise.R:1038:9
+ 8.     +-G_spatial_fresh_diag + G_spatial_off_diag at muscal/R/penalized_mfa_clusterwise.R:229:7
+ 9.     \-G_spatial_fresh_diag + G_spatial_off_diag
+
+-- 2. Failure ('test-clusterwise-rank.R:14:3'): clusterwise common rank is check
+Expected `touched` to be FALSE.
+Differences:
+`actual`:   TRUE 
+`expected`: FALSE
+
+
+-- 3. Error ('test-clusterwise-rank.R:15:3'): clusterwise common rank is checked
+Error in `penalized_mfa_clusterwise(f$data, f$coords, ncomp = 3, lambda = 1, rank_action = "reduce", max_iter = 2)`: unused argument (rank_action = "reduce")
+
+-- 4. Failure ('test-clusterwise-rank.R:37:11'): common-rank updates are dimensi
+Expected `tcrossprod(V)` to equal `tcrossprod(reference)`.
+Differences:
+4/25 mismatches (average diff: 1.56e-09)
+[3]  -0.1168 - -0.1168 == -1.32e-09
+[9]  -0.0638 - -0.0638 ==  1.81e-09
+[11] -0.1168 - -0.1168 == -1.32e-09
+[17] -0.0638 - -0.0638 ==  1.81e-09
+
+-- 5. Failure ('test-clusterwise-rank.R:47:3'): effective rank prevents unsuppor
+Expected `penalized_mfa_clusterwise(f$data, f$coords, ncomp = 2)` to throw a error.
+
+-- 6. Error ('test-clusterwise-rank.R:48:3'): effective rank prevents unsupporte
+Error in `penalized_mfa_clusterwise(f$data, f$coords, ncomp = 2, rank_action = "reduce", lambda = 0, max_iter = 1)`: unused argument (rank_action = "reduce")
+
+-- 7. Failure ('test-clusterwise-rank.R:59:5'): rank and finite-data boundary er
+Expected `penalized_mfa_clusterwise(f$data, f$coords, ncomp = rank)` to throw a error.
+
+-- 8. Failure ('test-clusterwise-rank.R:59:5'): rank and finite-data boundary er
+`penalized_mfa_clusterwise(f$data, f$coords, ncomp = rank)` threw an error with unexpected message.
+Expected match: "ncomp"
+Actual message: "missing value where TRUE/FALSE needed"
+Backtrace:
+    x
+ 1. +-testthat::expect_error(...) at test-clusterwise-rank.R:59:5
+ 2. | \-testthat:::quasi_capture(...)
+ 3. |   +-testthat (local) .capture(...)
+ 4. |   | \-base::withCallingHandlers(...)
+ 5. |   \-rlang::eval_bare(quo_get_expr(.quo), quo_get_env(.quo))
+ 6. \-muscal::penalized_mfa_clusterwise(f$data, f$coords, ncomp = rank)
+
+-- 9. Failure ('test-clusterwise-rank.R:59:5'): rank and finite-data boundary er
+`penalized_mfa_clusterwise(f$data, f$coords, ncomp = rank)` threw an error with unexpected message.
+Expected match: "ncomp"
+Actual message: "number of rows are not compatible for +"
+Backtrace:
+    x
+ 1. +-testthat::expect_error(...) at test-clusterwise-rank.R:59:5
+ 2. | \-testthat:::quasi_capture(...)
+ 3. |   +-testthat (local) .capture(...)
+ 4. |   | \-base::withCallingHandlers(...)
+ 5. |   \-rlang::eval_bare(quo_get_expr(.quo), quo_get_env(.quo))
+ 6. \-muscal::penalized_mfa_clusterwise(f$data, f$coords, ncomp = rank)
+ 7.   \-muscal:::block_update_cluster(...) at muscal/R/penalized_mfa_clusterwise.R:1038:9
+ 8.     +-G_spatial_fresh_diag + G_spatial_off_diag at muscal/R/penalized_mfa_clusterwise.R:229:7
+ 9.     \-G_spatial_fresh_diag + G_spatial_off_diag
+
+-- 10. Failure ('test-clusterwise-rank.R:59:5'): rank and finite-data boundary e
+`penalized_mfa_clusterwise(f$data, f$coords, ncomp = rank)` threw an error with unexpected message.
+Expected match: "ncomp"
+Actual message: "the condition has length > 1"
+Backtrace:
+    x
+ 1. +-testthat::expect_error(...) at test-clusterwise-rank.R:59:5
+ 2. | \-testthat:::quasi_capture(...)
+ 3. |   +-testthat (local) .capture(...)
+ 4. |   | \-base::withCallingHandlers(...)
+ 5. |   \-rlang::eval_bare(quo_get_expr(.quo), quo_get_env(.quo))
+ 6. \-muscal::penalized_mfa_clusterwise(f$data, f$coords, ncomp = rank)
+
+Maximum number of 10 failures reached, some test results may be missing.
+
+== DONE ========================================================================
+Error:
+! Test failures.
+Execution halted

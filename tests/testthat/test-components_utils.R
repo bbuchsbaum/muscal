@@ -63,10 +63,11 @@ test_that("estimate_components with rmt method uses significant_components", {
   fit <- mfa(blocks, ncomp = 5)
 
   # RMT requires V_list and n
-  res <- estimate_components(fit, method = "rmt", tail_q = 0.2)
+  res <- estimate_components(fit, method = "rmt", noise_variance = 0.1,
+    spectrum = "covariance", noise_model = "isotropic")
 
   expect_type(res, "list")
-  expect_named(res, c("keep", "criterion", "method_used"))
+  expect_named(res, c("keep", "criterion", "method_used", "diagnostics"))
   expect_equal(res$method_used, "rmt")
   expect_true(length(res$keep) >= 0)  # Could keep 0 or more components
 })
@@ -109,7 +110,7 @@ test_that("loading_reliability computes bootstrap statistics", {
   res <- loading_reliability(fit, method = "bootstrap", boot_loadings = boot_loadings)
 
   expect_type(res, "list")
-  expect_named(res, c("mean", "sd", "lower", "upper", "sign_consistency"))
+  expect_named(res, c("mean", "sd", "lower", "upper", "sign_consistency", "alignment"))
 
   # Check dimensions match original loadings
   expect_equal(dim(res$mean), dim(ref_loadings))

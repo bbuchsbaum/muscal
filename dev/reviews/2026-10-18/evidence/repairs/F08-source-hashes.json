@@ -1,0 +1,8 @@
+{
+  "R/penalized_mfa_clusterwise.R": "a99fc1f8aa30d749c9bbc28e27c11882589f9b3853102b8403fe1597d95d74c9",
+  "tests/testthat/test-clusterwise-projection.R": "f9c9e118d8e8ca0b697577805e9a7ddbe1c90ad7acc407f791b0b1e4a9497581",
+  "NAMESPACE": "a5d167db9ca92c54156068efb76caa89cd3dee3f6af25a46908517bc75274f77",
+  "man/penalized_mfa_clusterwise.Rd": "69c80f5a589aac062d8fdc8f3a4d2a8c58ac99a73e68be5d4f4091c6d476e203",
+  "man/project.penalized_mfa_clusterwise.Rd": "7b4bd2a5d86addb4808a40172fa181d56621a05afee1630aa3db0db8f9556dcc",
+  "man/predict.penalized_mfa_clusterwise.Rd": "b8f13d5d32d00d74d1ac34bd4130cee1a6b671ac71b64d7af9d48fe8b16936e7"
+}

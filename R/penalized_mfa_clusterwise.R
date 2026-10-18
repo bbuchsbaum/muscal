@@ -32,39 +32,79 @@ validate_pmfa_args <- function(data_list, coords_list = NULL, ncomp, lambda, max
   }
 }
 
-#' Simple spatial constraints function (creates k-NN adjacency matrix)
+#' Pooled-feature union k-NN adjacency
 #' @param coords_list List of coordinate matrices (each k_s x 3)
-#' @param k_nn Number of nearest neighbors (default 6)
+#' @param k_nn Finite nonnegative integer neighbor count (default 6), capped at
+#'   available non-self vertices. Zero creates no edges. All boundary ties within
+#'   floating-point tolerance are included, so actual degree may exceed k_nn.
 #' @param nblocks Number of blocks (ignored, for compatibility)
 #' @return Sparse adjacency matrix
+#' @details Features are pooled across the supplied coordinate blocks. Directed
+#'   neighbors are symmetrized by union with unit edge weights. Self removal uses
+#'   vertex identity, including duplicate coordinates. Boundary ties are included
+#'   regardless of input order. The graph does not distinguish within-block
+#'   smoothing from between-block correspondence; that scientific distinction
+#'   remains part of the broader experimental recovery plan.
 #' @keywords internal
 spatial_constraints <- function(coords_list, k_nn = 6, nblocks = NULL, ...) {
+  if (!is.numeric(k_nn) || length(k_nn) != 1L || !is.finite(k_nn) ||
+      k_nn < 0 || k_nn != floor(k_nn)) {
+    stop("`k_nn` must be a finite nonnegative integer.", call. = FALSE)
+  }
+  if (!is.list(coords_list) || !length(coords_list) ||
+      any(!vapply(coords_list, function(coords) is.matrix(coords) &&
+                    is.numeric(coords) && nrow(coords) > 0L &&
+                    ncol(coords) > 0L && all(is.finite(coords)), logical(1)))) {
+    stop("Coordinates must be nonempty finite numeric matrices.", call. = FALSE)
+  }
   # Combine all coordinates
   coords_all <- do.call(rbind, coords_list)
   n_total <- nrow(coords_all)
+  k_nn <- min(k_nn, n_total - 1L)
   
   if (!requireNamespace("Matrix", quietly = TRUE)) {
     stop("Package 'Matrix' needed for sparse adjacency. Please install it.", call. = FALSE)
   }
   
-  # Simple distance-based adjacency for testing
-  # In a real implementation, this might use RANN for k-NN graphs
-  dist_mat <- as.matrix(dist(coords_all))
-  
-  # Create k-NN adjacency matrix
-  A <- Matrix::Matrix(0, n_total, n_total, sparse = TRUE)
-  
-  for (i in 1:n_total) {
-    # Find k_nn nearest neighbors (excluding self)
-    neighbors <- order(dist_mat[i, ])[2:(k_nn + 1)]  # Skip self (position 1)
-    if (length(neighbors) > 0) {
-      A[i, neighbors] <- 1
+  A <- Matrix::sparseMatrix(i = integer(), j = integer(), x = numeric(),
+                            dims = c(n_total, n_total))
+  if (k_nn == 0L) return(Matrix::forceSymmetric(A))
+
+  # Translation and one common scale preserve Euclidean neighbor identities.
+  # Midranges computed from halves avoid overflow when coordinates span signs.
+  midpoint <- apply(coords_all, 2L, function(x) min(x) / 2 + max(x) / 2)
+  coords_all <- sweep(coords_all, 2L, midpoint, "-")
+  spread <- max(abs(coords_all))
+  if (spread > 0) coords_all <- coords_all / spread
+
+  # Query one extra non-self neighbor to detect a tie at the cutoff. The
+  # exceptional tie expansion allocates one O(P) distance vector, never P x P.
+  nearest <- RANN::nn2(coords_all, k = min(n_total, k_nn + 2L))
+  neighbors <- lapply(seq_len(n_total), function(i) {
+    ids <- nearest$nn.idx[i, ]
+    distances <- nearest$nn.dists[i, ]
+    keep <- ids != i & ids > 0L
+    ids <- ids[keep]
+    distances <- distances[keep]
+    ordering <- order(distances, ids)
+    ids <- ids[ordering]
+    distances <- distances[ordering]
+    cutoff <- distances[[k_nn]]
+    tolerance <- 8 * .Machine$double.eps * cutoff
+    if (length(ids) > k_nn && distances[[k_nn + 1L]] <= cutoff + tolerance) {
+      d <- sqrt(rowSums(sweep(coords_all, 2L, coords_all[i, ], "-")^2))
+      which(seq_len(n_total) != i & d <= cutoff + tolerance)
+    } else {
+      ids[seq_len(k_nn)]
     }
-  }
-  
-  # Make symmetric
-  A <- Matrix::forceSymmetric(A, uplo = "U")
-  
+  })
+  A <- Matrix::sparseMatrix(i = rep(seq_len(n_total), lengths(neighbors)),
+                            j = unlist(neighbors, use.names = FALSE), x = 1,
+                            dims = c(n_total, n_total))
+  # Union, not triangle selection: either directed edge creates one unit edge.
+  A <- Matrix::drop0((A + Matrix::t(A)) > 0) * 1
+  A <- Matrix::forceSymmetric(A)
+
   return(A)
 }
 
@@ -91,9 +131,12 @@ make_grad_fun <- function(X, XtX = NULL) {
 #' Build a cluster graph from spatial coordinates
 #' @param coords_list List of coordinate matrices (each k_s x 3)
 #' @param adjacency_opts Options for adjacency construction
-#' @return Sparse adjacency matrix
+#' @param return_graph Return adjacency, adjacency degrees, and combinatorial
+#'   Laplacian together instead of only the Laplacian (default FALSE).
+#' @return A sparse combinatorial Laplacian, or graph data if requested.
 #' @keywords internal
-cluster_graph <- function(coords_list, adjacency_opts = list()) {
+cluster_graph <- function(coords_list, adjacency_opts = list(), return_graph = FALSE) {
+  chk::chk_flag(return_graph)
   # Check for spatial_constraints function
   if (!exists("spatial_constraints", mode = "function")) {
     stop("Function 'spatial_constraints' not found. Ensure it is loaded.", call. = FALSE)
@@ -109,9 +152,33 @@ cluster_graph <- function(coords_list, adjacency_opts = list()) {
   }
   
   deg <- Matrix::rowSums(Aadj)
-  Sadj <- Matrix::Diagonal(x = deg) - Aadj
+  Sadj <- .pmfa_graph_laplacian(Aadj, normalized = FALSE)
+  if (return_graph) return(list(adjacency = Aadj, degree = deg, laplacian = Sadj))
   
   return(Sadj)
+}
+
+.pmfa_graph_laplacian <- function(A, normalized = FALSE) {
+  chk::chk_flag(normalized)
+  if (!(is.matrix(A) || inherits(A, "Matrix")) || length(dim(A)) != 2L ||
+      nrow(A) < 1L || nrow(A) != ncol(A)) {
+    stop("Adjacency must be a nonempty square matrix.", call. = FALSE)
+  }
+  A <- Matrix::Matrix(A, sparse = TRUE)
+  if (!isTRUE(Matrix::isSymmetric(A)) || any(!is.finite(A)) || any(A < 0) ||
+      any(Matrix::diag(A) != 0)) {
+    stop("Adjacency must be finite, nonnegative, symmetric and have zero diagonal.", call. = FALSE)
+  }
+  degree <- Matrix::rowSums(A)
+  L <- Matrix::Diagonal(x = degree) - A
+  if (normalized) {
+    inverse <- numeric(length(degree))
+    positive <- degree > 0
+    inverse[positive] <- 1 / sqrt(degree[positive])
+    D <- Matrix::Diagonal(x = inverse)
+    L <- D %*% L %*% D
+  }
+  L
 }
 
 #' Update a single block's loadings using gradient descent or Adam
@@ -242,7 +309,7 @@ block_update_cluster <- function(s, V_list, Sadj, row_indices_list, Vbig_begin_i
 #'
 #' For \eqn{S} subjects/blocks with data matrices \eqn{\mathbf{X}_s \in \mathbb{R}^{n_s \times k_s}}
 #' (where \eqn{k_s} is the number of clusters for subject \eqn{s}), we estimate
-#' orthonormal loading matrices \eqn{\mathbf{V}_s \in \mathbb{R}^{k_s \times r_s}}
+#' orthonormal loading matrices \eqn{\mathbf{V}_s \in \mathbb{R}^{k_s \times K}}
 #' by minimizing:
 #'
 #' \deqn{
@@ -295,7 +362,10 @@ block_update_cluster <- function(s, V_list, Sadj, row_indices_list, Vbig_begin_i
 #'   \item Symmetrize the adjacency matrix
 #' }
 #'
-#' The number of neighbors can be controlled via `adjacency_opts = list(k_nn = k)`.
+#' The neighbor count can be controlled via `adjacency_opts = list(k_nn = k)`.
+#' Graphs pool features across coordinate blocks and symmetrize by union. The
+#' count is capped at available non-self vertices; zero creates no edges and
+#' boundary ties are all included, so degree can exceed the requested count.
 #'
 #' ## Optimization Algorithm
 #'
@@ -324,11 +394,16 @@ block_update_cluster <- function(s, V_list, Sadj, row_indices_list, Vbig_begin_i
 #'     at the cost of computation time
 #' }
 #'
-#' ## Variable-Rank Loadings
+#' ## Common-Rank Contract
 #'
-#' When subjects have different numbers of clusters, each block can have a different
-#' effective rank. The algorithm automatically sets \eqn{r_s = \min(\text{ncomp}, k_s)}
-#' for each block and pads the concatenated loading matrix with zeros for consistency.
+#' Every block uses the same component count K. K cannot exceed the smallest
+#' feature count or the minimum numerical rank after preprocessing. Unsupported
+#' requests error by default. `rank_action = "reduce"` explicitly reduces all
+#' blocks together and records the requested and supported ranks; no unsupported
+#' directions are padded or initialized randomly.
+#'
+#' Positive-lambda spatial fits remain experimental. Correct graph construction
+#' and dimensions do not establish optimizer stationarity or inferential validity.
 #'
 #' ## Preprocessing
 #'
@@ -383,8 +458,11 @@ block_update_cluster <- function(s, V_list, Sadj, row_indices_list, Vbig_begin_i
 #'   is a \eqn{k_s \times 3} matrix of (x, y, z) spatial coordinates for the clusters in
 #'   the corresponding data block. Must have exactly 3 columns.
 #' @param ncomp Integer number of latent components to extract per block (default: 2).
-#'   When a block has fewer than `ncomp` clusters, the effective rank is automatically
-#'   reduced to match the number of clusters.
+#'   One common rank must be supported by every block after preprocessing.
+#' @param rank_action `"error"` (default) rejects unsupported common ranks;
+#'   `"reduce"` explicitly reduces the rank for every block together.
+#' @param rank_tol Relative singular-value tolerance for numerical rank after
+#'   preprocessing (default `sqrt(.Machine$double.eps)`).
 #' @param lambda Non-negative scalar controlling the spatial smoothness penalty strength
 #'   (default: 1). Larger values enforce stronger smoothness among spatially adjacent
 #'   clusters. When \eqn{\lambda = 0}, the method reduces to independent PCA per block.
@@ -445,18 +523,17 @@ block_update_cluster <- function(s, V_list, Sadj, row_indices_list, Vbig_begin_i
 #'   if memory is constrained.
 #' @param normalized_laplacian Logical indicating whether to use the normalized graph
 #'   Laplacian (default: TRUE). When TRUE, uses \eqn{\mathbf{L}_{\text{sym}} = \mathbf{D}^{-1/2} \mathbf{L} \mathbf{D}^{-1/2}}
-#'   for scale-free smoothness that is independent of node degree. When FALSE, uses the
-#'   unnormalized Laplacian \eqn{\mathbf{L} = \mathbf{D} - \mathbf{A}}. Normalized is
-#'   recommended for most applications.
+#'   with degrees computed from adjacency. Isolated vertices have zero normalized
+#'   rows and columns. When FALSE, uses the combinatorial Laplacian
+#'   \eqn{\mathbf{L} = \mathbf{D} - \mathbf{A}}. The choice changes the penalty.
 #'
 #' @return A `multiblock_projector` object of class `"penalized_mfa_clusterwise"` with
 #'   the following components:
 #'   \describe{
 #'     \item{\code{v}}{Concatenated loading matrix (total_clusters × ncomp) formed by
-#'       vertically stacking all block-specific loading matrices. Padded with zeros for
-#'       variable-rank blocks.}
-#'     \item{\code{preproc}}{A pass-through preprocessor (identity transformation), since
-#'       this function expects pre-processed input.}
+#'       vertically stacking all block-specific loading matrices at the common rank.}
+#'     \item{\code{preproc}}{The concatenated fitted training preprocessors. Raw
+#'       block projection uses each stored fitted transformation exactly once.}
 #'     \item{\code{block_indices}}{Named list indicating which rows of `v` correspond to
 #'       each block/subject. Each element is an integer vector of row indices.}
 #'   }
@@ -464,11 +541,14 @@ block_update_cluster <- function(s, V_list, Sadj, row_indices_list, Vbig_begin_i
 #'   Additional information stored as named elements (accessible via `$`):
 #'   \describe{
 #'     \item{\code{V_list}}{List of length S containing the final orthonormal loading
-#'       matrices for each block. Each element is a \eqn{k_s \times r_s} matrix where
-#'       \eqn{r_s = \min(\text{ncomp}, k_s)}.}
+#'       matrices for each block. Each element is a \eqn{k_s \times K} matrix.}
+#'     \item{\code{block_preproc, feature_names}}{Fitted block transformations and
+#'       their original feature identities.}
 #'     \item{\code{Sadj}}{The (normalized or unnormalized) graph Laplacian matrix used
 #'       for the spatial smoothness penalty. Sparse matrix of dimension
 #'       \eqn{\sum_s k_s \times \sum_s k_s}.}
+#'     \item{\code{adjacency, graph_degree, normalized_laplacian}}{Retained union
+#'       adjacency, its degree vector, and the chosen Laplacian type.}
 #'     \item{\code{LV}}{The matrix product \eqn{\mathbf{L} \mathbf{V}} from the final
 #'       iteration, useful for computing spatial penalty contributions.}
 #'     \item{\code{obj_values}}{Numeric vector of objective function values at each
@@ -479,9 +559,10 @@ block_update_cluster <- function(s, V_list, Sadj, row_indices_list, Vbig_begin_i
 #'       computation (FALSE).}
 #'     \item{\code{iterations_run}}{Integer indicating how many outer iterations were
 #'       completed before convergence or reaching max_iter.}
-#'     \item{\code{ncomp_block}}{Integer vector of length S containing the effective
-#'       number of components extracted for each block (may differ from `ncomp` for
-#'       blocks with fewer clusters).}
+#'     \item{\code{requested_ncomp, effective_rank, rank_action, rank_tol}}{Requested
+#'       common rank, each preprocessed block's numerical rank, and rank policy.}
+#'     \item{\code{ncomp_block}}{Integer vector of length S containing the common
+#'       resolved number of components, repeated for every block.}
 #'   }
 #'
 #' @examples
@@ -613,7 +694,7 @@ block_update_cluster <- function(s, V_list, Sadj, row_indices_list, Vbig_begin_i
 #'
 #' res_var <- pmfa_cluster(
 #'   data_var, coords_var,
-#'   ncomp = 8,  # Will be capped at 10 (smallest block)
+#'   ncomp = 8,  # Common rank below the smallest block's feature count (10)
 #'   lambda = 1,
 #'   verbose = TRUE
 #' )
@@ -682,7 +763,9 @@ penalized_mfa_clusterwise <- function(data_list,
                                       verbose       = FALSE,
                                       preproc       = NULL,
                                       memory_budget_mb = 1024,
-                                      normalized_laplacian = TRUE) {  # Default to TRUE
+                                      normalized_laplacian = TRUE,
+                                      rank_action = c("error", "reduce"),
+                                      rank_tol = sqrt(.Machine$double.eps)) {
   
   # Check for Matrix package needed for sparse matrices (consolidate check)
   if (!requireNamespace("Matrix", quietly = TRUE)) {
@@ -690,16 +773,45 @@ penalized_mfa_clusterwise <- function(data_list,
   }
   
   optimizer <- match.arg(optimizer)
+  rank_action <- match.arg(rank_action)
+  chk::chk_flag(normalized_laplacian)
+  if (!is.numeric(ncomp) || length(ncomp) != 1L || !is.finite(ncomp) ||
+      ncomp != floor(ncomp)) {
+    stop("`ncomp` must be a finite positive integer.", call. = FALSE)
+  }
   
   # Parameter validation using helper function (moved higher as recommended)
   validate_pmfa_args(data_list, coords_list, ncomp, lambda, max_iter, 
                      nsteps_inner, learning_rate, optimizer, beta1, beta2, 
                      adam_epsilon, tol_obj, tol_inner, verbose, memory_budget_mb)
 
+  if (!is.numeric(rank_tol) || length(rank_tol) != 1L || !is.finite(rank_tol) ||
+      rank_tol <= 0 || rank_tol >= 1) {
+    stop("`rank_tol` must be strictly between zero and one.", call. = FALSE)
+  }
+  data_list <- lapply(data_list, function(X) {
+    if (!(is.matrix(X) || inherits(X, "Matrix"))) {
+      stop("Data blocks must be nonempty finite numeric matrices.", call. = FALSE)
+    }
+    X <- as.matrix(X)
+    if (!is.numeric(X) || !nrow(X) || !ncol(X) || any(!is.finite(X))) {
+      stop("Data blocks must be nonempty finite numeric matrices.", call. = FALSE)
+    }
+    X
+  })
+  block_names <- names(data_list) %||% paste0("Block_", seq_along(data_list))
+  if (anyNA(block_names) || any(block_names == "") || anyDuplicated(block_names)) {
+    stop("Data blocks must have unique nonempty names.", call. = FALSE)
+  }
+  names(data_list) <- block_names
+
   S <- length(data_list)
 
   # Check data dimensions early using number of columns only
   k_s_vec <- sapply(data_list, ncol) # Number of columns (clusters) per subject
+  if (any(k_s_vec < 1L) || any(vapply(data_list, nrow, integer(1)) < 1L)) {
+    stop("Data blocks must be nonempty matrices.", call. = FALSE)
+  }
   if(!all(sapply(coords_list, nrow) == k_s_vec)) {
       stop("Number of rows in each coords_list element must match number of columns in corresponding data_list element.")
   }
@@ -711,19 +823,18 @@ penalized_mfa_clusterwise <- function(data_list,
                    bad_idx))
   }
   
-  # CRITICAL FIX: Handle variable-rank V_s per block
-  max_k_s <- max(k_s_vec)
-  if (ncomp > max_k_s) {
-    if (verbose) cli::cli_alert_danger("ncomp ({ncomp}) > maximum block size ({max_k_s}). Reducing ncomp to {max_k_s}.")
-    ncomp <- max_k_s
+  if (any(!vapply(coords_list, function(C) is.matrix(C) && is.numeric(C) &&
+                    all(is.finite(C)), logical(1)))) {
+    stop("Coordinates must be finite numeric matrices.", call. = FALSE)
   }
-  
-  # Set block-specific ncomp allowing variable-rank loadings
-  ncomp_block <- pmin(ncomp, k_s_vec)
-  if (verbose && !all(ncomp_block == ncomp)) {
-    cli::cli_alert_info("Using variable-rank loadings: {paste(ncomp_block, collapse=', ')} components per block.")
+  requested_ncomp <- ncomp
+  capacity <- min(k_s_vec)
+  if (ncomp > capacity && rank_action == "error") {
+    stop(sprintf("The common rank ncomp must not exceed the smallest feature count (%d).", capacity),
+         call. = FALSE)
   }
-  
+  ncomp <- as.integer(min(ncomp, capacity))
+
   # 0. Preprocessing using utility function
   # Force centering if no preprocessing is specified
   if (is.null(preproc)) {
@@ -741,14 +852,30 @@ penalized_mfa_clusterwise <- function(data_list,
       stop("Preprocessing changed the number of columns (clusters) for some blocks. This invalidates the spatial constraints. Please use preprocessing steps that preserve the number of columns.", call.=FALSE)
   }
   
+  if (any(!vapply(Xp, function(X) is.matrix(X) && is.numeric(X) && nrow(X) > 0L &&
+                    all(is.finite(X)), logical(1)))) {
+    stop("Preprocessing must produce nonempty finite numeric matrices.", call. = FALSE)
+  }
+  decompositions <- lapply(Xp, function(X) svd(X, nu = 0, nv = min(ncomp, min(dim(X)))))
+  effective_rank <- vapply(decompositions, function(decomposition) {
+    if (any(!is.finite(decomposition$d))) stop("Singular values must be finite; rescale input.", call. = FALSE)
+    sum(decomposition$d > max(decomposition$d) * rank_tol)
+  }, integer(1))
+  supported <- min(effective_rank)
+  if (supported < 1L || (ncomp > supported && rank_action == "error")) {
+    stop(sprintf("Requested common rank exceeds the minimum effective rank (%d).", supported),
+         call. = FALSE)
+  }
+  ncomp <- as.integer(min(ncomp, supported))
+  ncomp_block <- rep.int(ncomp, S)
+
   # Build graph Laplacian
-  Sadj <- cluster_graph(coords_list, adjacency_opts)
+  graph_info <- cluster_graph(coords_list, adjacency_opts, return_graph = TRUE)
+  Sadj <- graph_info$laplacian
   
   # Optional: Use normalized Laplacian (now default)
   if (normalized_laplacian) {
-    deg <- Matrix::rowSums(Sadj + Matrix::Diagonal(nrow(Sadj))) # Add diagonal to handle isolated nodes
-    D_inv_sqrt <- Matrix::Diagonal(x = 1 / sqrt(pmax(deg, 1e-10)))  # Avoid division by zero
-    Sadj <- D_inv_sqrt %*% Sadj %*% D_inv_sqrt
+    Sadj <- .pmfa_graph_laplacian(graph_info$adjacency, normalized = TRUE)
     if (verbose) cli::cli_alert_info("Using normalized Laplacian for scale-free smoothness.")
   }
   
@@ -800,48 +927,14 @@ penalized_mfa_clusterwise <- function(data_list,
       cli::cli_alert_info("Gradient/Objective: {precomputed_count} blocks using precomputed XtX, {on_the_fly_count} blocks using on-the-fly.")
   }
   
-  # Initialize loadings (handle empty blocks and padding with variable rank)
-  V_list <- vector("list", S)
-  for (s in seq_len(S)) {
-    Xs <- Xp[[s]]
-    k_s <- k_s_vec[s]
-    ncomp_s <- ncomp_block[s]
-    
-    if(k_s == 0) {
-        V_list[[s]] <- matrix(0, 0, ncomp_s) # Placeholder for empty block
-        next
-    }
-    # Perform SVD safely
-    sv <- tryCatch(svd(Xs, nu=0, nv=ncomp_s), error = function(e) {
-        if (verbose) cli::cli_alert_danger("SVD failed during initialization for block {s}: {e$message}")
-        NULL
-    })
-    
-    if (is.null(sv) || length(sv$d) == 0) {
-        if (verbose) cli::cli_alert_danger("Block {s}: SVD init failed or returned no singular values. Initializing with random orthogonal matrix.")
-        Vtemp <- pracma::orth(matrix(rnorm(k_s * ncomp_s), k_s, ncomp_s))
-    } else {
-        Vtemp <- sv$v
-    }
+  # All blocks use the same supported rank; no random or padded directions.
+  V_list <- lapply(decompositions, function(decomposition) {
+    V <- decomposition$v[, seq_len(ncomp), drop = FALSE]
+    # Preserve the historical QR orientation: spatial penalties couple the
+    # block axes, so independent sign conventions change initialization.
+    qr.Q(qr(V))[, seq_len(ncomp), drop = FALSE]
+  })
 
-    # Pad if rank < ncomp_s
-    ncomp_svd <- ncol(Vtemp)
-    if (ncomp_svd < ncomp_s) {
-      extras <- ncomp_s - ncomp_svd
-      Vextra <- matrix(rnorm(k_s * extras), k_s, extras)
-      # Orthogonalize padded part against existing Vtemp and itself
-      Q_all <- qr.Q(qr(cbind(Vtemp, Vextra)))
-      # Ensure correct dimensions even if original rank was < ncomp_svd
-      Vtemp <- Q_all[, 1:ncomp_s, drop = FALSE]
-    } else if (ncomp_svd > ncomp_s) {
-        # Should not happen with svd(nv=ncomp_s), but check
-        Vtemp <- Vtemp[, 1:ncomp_s, drop=FALSE]
-    }
-    
-    # Final orthonormalization for the initial V_list[s]
-    V_list[[s]] <- qr.Q(qr(Vtemp))[, 1:ncomp_s, drop=FALSE]
-  }
-  
   # Adam storage (initialize based on actual ncomp_block)
   if (optimizer=="adam") {
     m_list <- lapply(seq_len(S), function(s) matrix(0, k_s_vec[s], ncomp_block[s]))
@@ -849,32 +942,17 @@ penalized_mfa_clusterwise <- function(data_list,
     global_step <- 0
   }
   
-  # Helper to combine list of V_s into one big V matrix with variable ranks
   combine_loadings <- function(Vl) {
-    # Check for consistency before combining
-    if (length(Vl) != S) stop("Internal error: Vl length mismatch in combine_loadings")
-    k_s_current <- sapply(Vl, nrow)
-    if (!all(k_s_current == k_s_vec)) {
-         if (verbose) cli::cli_alert_danger("Row counts in Vl differ from expected k_s_vec. Using expected.")
+    if (length(Vl) != S ||
+        any(!vapply(seq_len(S), function(s) {
+          is.matrix(Vl[[s]]) && identical(dim(Vl[[s]]), c(k_s_vec[[s]], ncomp)) &&
+            all(is.finite(Vl[[s]]))
+        }, logical(1)))) {
+      stop("Optimizer loadings violate the common-rank contract.", call. = FALSE)
     }
-    
-    # Create Vbig using max ncomp for consistent dimensions
-    max_ncomp <- max(ncomp_block)
-    out <- matrix(0, bigK, max_ncomp)
-    for (s in seq_len(S)) {
-        idx_out <- row_indices_list[[s]]
-        ncomp_s <- ncomp_block[s]
-        # Ensure the block Vl[[s]] has the correct dimensions before assigning
-        if(length(idx_out) > 0 && !is.null(Vl[[s]]) && nrow(Vl[[s]]) == length(idx_out) && ncol(Vl[[s]]) == ncomp_s) {
-           out[idx_out, 1:ncomp_s] <- Vl[[s]]
-        } else if (length(idx_out) > 0) {
-            # If dimensions mismatch or Vl[[s]] is NULL, leave as zeros but warn
-             if (verbose) cli::cli_alert_danger("Dimension mismatch or NULL V matrix for block {s} in combine_loadings. Filling with zeros.")
-        }
-    }
-    out
+    do.call(rbind, unname(Vl))
   }
-  
+
   # Initial objective calculation requires a first pass of combine+LV
   Vbig_current <- combine_loadings(V_list)
   
@@ -944,7 +1022,8 @@ penalized_mfa_clusterwise <- function(data_list,
   }
 
   iter <- 0 # Initialize iter for trimming logic
-  for (iter in 1:max_iter) {
+  for (iteration in seq_len(if (lambda == 0) 0L else max_iter)) {
+    iter <- iteration
     
     # Capture V_list state at the BEGINNING of the iteration
     V_list_begin_iter <- V_list
@@ -1028,46 +1107,8 @@ penalized_mfa_clusterwise <- function(data_list,
 
   # Prepare results list - converting to multiblock_projector
   
-  # Concatenate V_list into a single 'v' matrix with padding for variable ranks
-  # Ensure validity first
-  valid_V_final <- sapply(V_list, function(v) !is.null(v) && is.matrix(v))
-  # Check if number of rows match k_s_vec
-  valid_rows <- mapply(function(v, k_s) { if (is.null(v)) FALSE else nrow(v) == k_s }, V_list, k_s_vec)
-  
-  if (!all(valid_V_final) || !all(valid_rows)) {
-      if (verbose) cli::cli_alert_danger("Final V_list contains invalid/inconsistent matrices. Cannot construct projector. Returning raw list.")
-      # Return the raw list if construction fails
-      return(list(
-          V_list = V_list, 
-          LV = LV_current, 
-          Sadj = Sadj, 
-          obj_values = obj_values, 
-          ncomp = ncomp,
-          lambda = lambda,
-          precompute_info = precompute_info,
-          iterations_run = iter
-      ))
-  }
-  
-  # Pad V_list to consistent dimensions for concatenation
-  max_ncomp <- max(ncomp_block)
-  V_list_padded <- lapply(seq_len(S), function(s) {
-    V_s <- V_list[[s]]
-    k_s <- k_s_vec[s]
-    ncomp_s <- ncomp_block[s]
-    
-    if (k_s == 0) return(matrix(0, 0, max_ncomp))
-    if (ncomp_s < max_ncomp) {
-      # Pad with zeros
-      V_padded <- matrix(0, k_s, max_ncomp)
-      V_padded[, 1:ncomp_s] <- V_s
-      return(V_padded)
-    }
-    return(V_s)
-  })
-  
-  v_concat <- do.call(rbind, V_list_padded)
-  
+  v_concat <- combine_loadings(V_list)
+
   # Block indices are already computed in row_indices_list
   # Ensure names are set if data_list had names
   if (!is.null(names(data_list))) {
@@ -1076,9 +1117,8 @@ penalized_mfa_clusterwise <- function(data_list,
       names(row_indices_list) <- paste0("Block_", seq_along(row_indices_list))
   }
 
-  # Create a pass() preprocessor, as this function assumes pre-processed input
-  # Fit with a dummy matrix since pass() just returns data unchanged
-  final_preproc <- multivarious::fit(multivarious::pass(), matrix(0, 1, nrow(v_concat)))
+  proclist <- .muscal_materialize_block_preprocessors(data_list, proclist)
+  final_preproc <- multivarious::concat_pre_processors(proclist, row_indices_list)
 
   # Construct the multiblock_projector and pass auxiliary results via '...'
   result_projector <- multivarious::multiblock_projector(
@@ -1086,17 +1126,110 @@ penalized_mfa_clusterwise <- function(data_list,
       preproc = final_preproc,
       block_indices = row_indices_list,
       Sadj = Sadj,
+      adjacency = graph_info$adjacency,
+      graph_degree = graph_info$degree,
+      normalized_laplacian = normalized_laplacian,
       LV = LV_current,
       obj_values = obj_values,
       lambda = lambda,
       precompute_info = precompute_info,
       iterations_run = iter,
       V_list = V_list,
-      ncomp_block = ncomp_block,  # Store block-specific ncomp
+      block_preproc = proclist,
+      feature_names = lapply(data_list, colnames),
+      ncomp_block = ncomp_block,
+      requested_ncomp = requested_ncomp,
+      effective_rank = effective_rank,
+      rank_action = rank_action,
+      rank_tol = rank_tol,
       classes = "penalized_mfa_clusterwise" # Add original class back
   )
   
-  return(result_projector)
+  .muscal_attach_fit_contract(result_projector,
+    method = "penalized_mfa_clusterwise", task = "reconstruction",
+    oos_types = c("scores", "reconstruction"), fit_call = match.call(),
+    refit_supported = FALSE)
+}
+
+#' Project Clusterwise Penalized MFA Observations
+#'
+#' @param x A current `penalized_mfa_clusterwise` fit with fitted preprocessing.
+#' @param new_data One raw matrix/data.frame with `block`, or a complete block
+#'   list. Named lists are matched by name; unnamed lists use training order.
+#' @param block Block name or index for a single matrix.
+#' @param preprocess Apply the fitted training transformation exactly once
+#'   (default TRUE); FALSE declares that the supplied rows are already transformed.
+#' @param ... Unused.
+#' @return A score matrix for a single block, or a named list of score matrices.
+#'   No shared-row consensus is inferred across independent blocks.
+#' @export
+project.penalized_mfa_clusterwise <- function(x, new_data, block = NULL,
+                                             preprocess = TRUE, ...) {
+  chk::chk_flag(preprocess)
+  if (preprocess && is.null(x$block_preproc)) {
+    stop("This fit lacks fitted block preprocessing; refit with current muscal.", call. = FALSE)
+  }
+  if (is.list(new_data) && !is.data.frame(new_data)) {
+    if (!is.null(block)) stop("Do not specify block for a complete block list.", call. = FALSE)
+    block_names <- names(x$V_list)
+    if (length(new_data) != length(block_names)) {
+      stop("Supply a complete block list.", call. = FALSE)
+    }
+    if (is.null(names(new_data))) names(new_data) <- block_names
+    if (anyNA(names(new_data)) || anyDuplicated(names(new_data)) ||
+        !setequal(names(new_data), block_names)) {
+      stop("Supply a complete block list with the fitted block names.", call. = FALSE)
+    }
+    out <- lapply(block_names, function(name) project.penalized_mfa_clusterwise(
+      x, new_data[[name]], block = name, preprocess = preprocess))
+    return(stats::setNames(out, block_names))
+  }
+  resolved <- .muscal_resolve_block_id(block, names(x$V_list))
+  name <- resolved$name
+  X <- as.matrix(new_data)
+  V <- x$V_list[[name]]
+  if (!is.numeric(X) || !length(X) || any(!is.finite(X))) {
+    stop("New block data must be nonempty finite numeric observations.", call. = FALSE)
+  }
+  if (ncol(X) != nrow(V) ||
+      (!is.null(x$feature_names[[name]]) &&
+       !identical(colnames(X), x$feature_names[[name]]))) {
+    stop(sprintf("Block '%s' feature dimensions or identities/order do not match training.", name), call. = FALSE)
+  }
+  if (preprocess) X <- multivarious::transform(x$block_preproc[[name]], X)
+  X %*% V
+}
+
+#' Predict Clusterwise Penalized MFA Scores or Reconstructions
+#'
+#' @param object A current `penalized_mfa_clusterwise` fit.
+#' @param new_data New observations; see [project.penalized_mfa_clusterwise()].
+#' @param block Block name/index for a single input matrix.
+#' @param type `"scores"` or `"reconstruction"`. Reconstruction is returned in
+#'   raw training feature units via the fitted inverse transformation.
+#' @param preprocess Whether new observations need the fitted forward transform.
+#' @param ... Unused.
+#' @return A matrix or complete named list of per-block matrices.
+#' @export
+predict.penalized_mfa_clusterwise <- function(object, new_data, block = NULL,
+                                             type = c("scores", "reconstruction"),
+                                             preprocess = TRUE, ...) {
+  type <- match.arg(type)
+  projected <- project.penalized_mfa_clusterwise(object, new_data, block, preprocess)
+  if (type == "scores") return(projected)
+  restore <- function(score, name) {
+    out <- score %*% t(object$V_list[[name]])
+    out <- multivarious::inverse_transform(object$block_preproc[[name]], out)
+    colnames(out) <- object$feature_names[[name]]
+    out
+  }
+  if (is.list(projected)) {
+    return(stats::setNames(lapply(names(projected), function(name) {
+      restore(projected[[name]], name)
+    }), names(projected)))
+  }
+  name <- .muscal_resolve_block_id(block, names(object$V_list))$name
+  restore(projected, name)
 }
 
 #' Shorter alias for penalized_mfa_clusterwise

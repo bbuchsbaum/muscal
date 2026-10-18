@@ -279,7 +279,10 @@
 #'
 #' @details
 #' The score is the mean, over estimable requested terms, of reference-weighted
-#' squared disagreement divided by the held-out effect energy. Spatial
+#' squared disagreement divided by the held-out effect energy. This measures
+#' recovery of a separately estimated design effect, not trial-response prediction.
+#' Each analysis fold derives its reference grid/weights without assessment
+#' responses, and that same target grid/weights is used for its assessment fit. Spatial
 #' generalized components are reconstructed with their dual metric loadings.
 #' Every candidate must succeed on every fold to be eligible.
 #' Failed candidate-fold fits remain visible in `fold_scores` and are aggregated
@@ -287,7 +290,7 @@
 #' candidate was excluded by a fit failure.
 #'
 #' This procedure selects hyperparameters; its minimum score is not an unbiased
-#' estimate of final performance. For an unbiased performance claim, run
+#' estimate of final performance. For outer-subject performance assessment, run
 #' `tune_design_mfa()` inside an outer subject-level resampling loop.
 #'
 #' @param Y A named list of subject trial-by-feature matrices.

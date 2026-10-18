@@ -12,6 +12,12 @@
 #' Methods without stored refit metadata will error unless an explicit `refit`
 #' specification is supplied.
 #'
+#' Observed statistics must be nonempty and finite. Replicates must have the
+#' same shape and component/feature identities as the observation; malformed
+#' statistics and sampling/refit errors are recorded in `failures`. Bootstrap
+#' uncertainty requires at least two valid replicates. Failure-dependent
+#' exclusions do not establish calibrated inference.
+#'
 #' @param object A fitted `muscal` model.
 #' @param method One of `"bootstrap"` or `"permutation"`.
 #' @param statistic One of `"sdev"` or `"loadings"`. Ignored if
@@ -44,6 +50,7 @@ infer_muscal <- function(object,
   method <- match.arg(method)
   alternative <- match.arg(alternative)
   chk::chk_count(nrep)
+  if (nrep < 1L) stop("`nrep` must be at least 1.", call. = FALSE)
   chk::chk_number(alpha)
   chk::chk_range(alpha, c(0, 1), x_name = "alpha")
   chk::chk_flag(verbose)
@@ -51,13 +58,8 @@ infer_muscal <- function(object,
   spec <- .muscal_resolve_refit_spec(object, refit = refit)
   stat_info <- .muscal_resolve_infer_statistic(statistic = statistic, statistic_fn = statistic_fn)
   observed <- stat_info$fn(object)
-
-  if (method == "permutation" && (!is.numeric(observed) || is.matrix(observed) || is.list(observed))) {
-    stop("Permutation inference currently requires a numeric vector statistic.", call. = FALSE)
-  }
-  if (method == "bootstrap" && stat_info$name == "loadings" && (!is.matrix(observed) || !is.numeric(observed))) {
-    stop("Bootstrap loading reliability requires `fit$v`-like numeric matrix output.", call. = FALSE)
-  }
+  .muscal_validate_infer_statistic(observed, method, stat_info$name,
+                                    what = "Observed statistic")
 
   if (!is.null(seed)) {
     set.seed(seed)
@@ -67,11 +69,16 @@ infer_muscal <- function(object,
   failures <- vector("list", 0L)
 
   for (i in seq_len(nrep)) {
-    sampled_data <- switch(
-      method,
-      bootstrap = spec$bootstrap_fn(spec$data),
-      permutation = spec$permutation_fn(spec$data)
+    sampled_data <- tryCatch(
+      switch(method,
+             bootstrap = spec$bootstrap_fn(spec$data),
+             permutation = spec$permutation_fn(spec$data)),
+      error = function(e) e
     )
+    if (inherits(sampled_data, "error")) {
+      failures[[length(failures) + 1L]] <- list(index = i, stage = "sample", message = conditionMessage(sampled_data))
+      next
+    }
 
     fit_i <- tryCatch(
       spec$fit_fn(sampled_data),
@@ -83,7 +90,13 @@ infer_muscal <- function(object,
     }
 
     stat_i <- tryCatch(
-      stat_info$fn(fit_i),
+      {
+        value <- stat_info$fn(fit_i)
+        .muscal_validate_infer_statistic(value, method, stat_info$name,
+                                          reference = observed,
+                                          what = "Replicate statistic")
+        value
+      },
       error = function(e) e
     )
     if (inherits(stat_i, "error")) {
@@ -98,6 +111,9 @@ infer_muscal <- function(object,
   replicate_stats <- replicate_stats[ok]
   if (length(replicate_stats) == 0L) {
     stop("All inference replicates failed.", call. = FALSE)
+  }
+  if (method == "bootstrap" && length(replicate_stats) < 2L) {
+    stop("Bootstrap uncertainty requires at least two valid replicates.", call. = FALSE)
   }
 
   if (isTRUE(verbose) && length(failures) > 0L) {
@@ -166,10 +182,38 @@ infer_muscal <- function(object,
   statistic <- match.arg(statistic, c("sdev", "loadings"))
   fn <- switch(
     statistic,
-    sdev = function(fit) as.numeric(fit$sdev),
-    loadings = function(fit) as.matrix(fit$v)
+    sdev = function(fit) fit$sdev,
+    loadings = function(fit) fit$v
   )
   list(name = statistic, fn = fn)
+}
+
+.muscal_validate_infer_statistic <- function(value, method, statistic,
+                                             reference = NULL, what) {
+  matrix_target <- method == "bootstrap" && statistic == "loadings"
+  valid_shape <- if (matrix_target) is.matrix(value) else is.null(dim(value))
+  if (!is.numeric(value) || !valid_shape || length(value) == 0L ||
+      any(!is.finite(value))) {
+    target <- if (matrix_target) "matrix statistic" else "numeric vector statistic"
+    stop(sprintf("%s must be a nonempty finite %s.", what, target), call. = FALSE)
+  }
+  if (!is.null(reference)) {
+    if (!identical(dim(value), dim(reference)) || length(value) != length(reference)) {
+      stop(sprintf("%s must match the observed statistic shape.", what), call. = FALSE)
+    }
+    same_ids <- if (matrix_target) {
+      identical(dimnames(value), dimnames(reference))
+    } else {
+      identical(names(value), names(reference))
+    }
+    if (!same_ids) {
+      stop(sprintf("%s must match the observed component/feature identities.", what), call. = FALSE)
+    }
+  }
+  if (matrix_target) {
+    .muscal_unit_loading_basis(value)
+  }
+  invisible(value)
 }
 
 .muscal_summarize_bootstrap <- function(fit,

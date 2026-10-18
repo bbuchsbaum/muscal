@@ -51,3 +51,34 @@ test_that("penalized_mfa supports preproc = NULL after shared preprocessing cons
   expect_s3_class(fit, "penalized_mfa")
   expect_s3_class(fit$preproc, "pre_processor")
 })
+
+test_that("penalized_mfa rejects unequal observation counts before preprocessing", {
+  blocks <- list(short = matrix(1:12, 3, 4), long = matrix(1:20, 5, 4))
+  for (consensus in c(FALSE, TRUE)) {
+    touched <- FALSE
+    expect_error(penalized_mfa(
+      blocks, ncomp = 1, compute_consensus = consensus,
+      preproc = { touched <- TRUE; multivarious::center() }
+    ), "equal positive row counts.*short=3.*long=5")
+    expect_false(touched)
+  }
+  expect_error(penalized_mfa(list(matrix(numeric(), 0, 2), matrix(1, 3, 2))),
+               "equal positive row counts")
+})
+
+test_that("penalized_mfa delegates shared-row validation from multidesign", {
+  md <- multidesign::multidesign(matrix(seq_len(32), 8, 4),
+                                 data.frame(subject = c(rep("a", 3), rep("b", 5))))
+  expect_error(penalized_mfa(md, subject = subject, ncomp = 1),
+               "equal positive row counts")
+})
+
+test_that("penalized_mfa rejects preprocessing that changes observation counts", {
+  testthat::local_mocked_bindings(
+    prepare_block_preprocessors = function(data_list, ...) {
+      list(Xp = lapply(data_list, function(x) x[-1, , drop = FALSE]), proclist = NULL)
+    }, .package = "muscal"
+  )
+  blocks <- list(matrix(1:12, 3, 4), matrix(13:24, 3, 4))
+  expect_error(penalized_mfa(blocks, ncomp = 1), "preserve.*observation")
+})

@@ -1,0 +1,126 @@
+During startup - Warning messages:
+1: Setting LC_CTYPE failed, using "C" 
+2: Setting LC_COLLATE failed, using "C" 
+3: Setting LC_TIME failed, using "C" 
+4: Setting LC_MESSAGES failed, using "C" 
+5: Setting LC_MONETARY failed, using "C" 
+Warning message:
+package 'testthat' was built under R version 4.5.2 
+infer-muscal: ...................................................................................1234WW56789abcdeWfghij
+
+== Warnings ====================================================================
+1. infer_muscal rejects invalid observations before sampling ('test-infer-muscal.R:493:5') - NAs introduced by coercion
+
+2. infer_muscal rejects invalid observations before sampling ('test-infer-muscal.R:493:5') - NAs introduced by coercion
+
+3. infer_muscal excludes malformed statistics without recycling ('test-infer-muscal.R:506:3') - number of columns of result is not a multiple of vector length (arg 1)
+
+== Failed ======================================================================
+-- 1. Failure ('test-infer-muscal.R:493:5'): infer_muscal rejects invalid observ
+`infer_muscal(fixture$fit, nrep = 2)` threw an error with unexpected message.
+Expected match: "Observed statistic"
+Actual message: "subscript out of bounds"
+Backtrace:
+    x
+ 1. +-testthat::expect_error(infer_muscal(fixture$fit, nrep = 2), "Observed statistic") at test-infer-muscal.R:493:5
+ 2. | \-testthat:::quasi_capture(...)
+ 3. |   +-testthat (local) .capture(...)
+ 4. |   | \-base::withCallingHandlers(...)
+ 5. |   \-rlang::eval_bare(quo_get_expr(.quo), quo_get_env(.quo))
+ 6. \-muscal::infer_muscal(fixture$fit, nrep = 2)
+ 7.   \-spec$bootstrap_fn(spec$data) at muscal/R/infer_muscal.R:70:5
+
+-- 2. Failure ('test-infer-muscal.R:494:5'): infer_muscal rejects invalid observ
+Expected `fixture$sampled()` to equal 0L.
+Differences:
+1/1 mismatches
+[1] 2 - 0 == 2
+
+-- 3. Failure ('test-infer-muscal.R:493:5'): infer_muscal rejects invalid observ
+`infer_muscal(fixture$fit, nrep = 2)` threw an error with unexpected message.
+Expected match: "Observed statistic"
+Actual message: "subscript out of bounds"
+Backtrace:
+    x
+ 1. +-testthat::expect_error(infer_muscal(fixture$fit, nrep = 2), "Observed statistic") at test-infer-muscal.R:493:5
+ 2. | \-testthat:::quasi_capture(...)
+ 3. |   +-testthat (local) .capture(...)
+ 4. |   | \-base::withCallingHandlers(...)
+ 5. |   \-rlang::eval_bare(quo_get_expr(.quo), quo_get_env(.quo))
+ 6. \-muscal::infer_muscal(fixture$fit, nrep = 2)
+ 7.   \-spec$bootstrap_fn(spec$data) at muscal/R/infer_muscal.R:70:5
+
+-- 4. Failure ('test-infer-muscal.R:494:5'): infer_muscal rejects invalid observ
+Expected `fixture$sampled()` to equal 0L.
+Differences:
+1/1 mismatches
+[1] 2 - 0 == 2
+
+-- 5. Failure ('test-infer-muscal.R:493:5'): infer_muscal rejects invalid observ
+`infer_muscal(fixture$fit, nrep = 2)` threw an error with unexpected message.
+Expected match: "Observed statistic"
+Actual message: "subscript out of bounds"
+Backtrace:
+    x
+ 1. +-testthat::expect_error(infer_muscal(fixture$fit, nrep = 2), "Observed statistic") at test-infer-muscal.R:493:5
+ 2. | \-testthat:::quasi_capture(...)
+ 3. |   +-testthat (local) .capture(...)
+ 4. |   | \-base::withCallingHandlers(...)
+ 5. |   \-rlang::eval_bare(quo_get_expr(.quo), quo_get_env(.quo))
+ 6. \-muscal::infer_muscal(fixture$fit, nrep = 2)
+ 7.   \-spec$bootstrap_fn(spec$data) at muscal/R/infer_muscal.R:70:5
+
+-- 6. Failure ('test-infer-muscal.R:494:5'): infer_muscal rejects invalid observ
+Expected `fixture$sampled()` to equal 0L.
+Differences:
+1/1 mismatches
+[1] 2 - 0 == 2
+
+-- 7. Failure ('test-infer-muscal.R:493:5'): infer_muscal rejects invalid observ
+`infer_muscal(fixture$fit, nrep = 2)` threw an error with unexpected message.
+Expected match: "Observed statistic"
+Actual message: "subscript out of bounds"
+Backtrace:
+    x
+ 1. +-testthat::expect_error(infer_muscal(fixture$fit, nrep = 2), "Observed statistic") at test-infer-muscal.R:493:5
+ 2. | \-testthat:::quasi_capture(...)
+ 3. |   +-testthat (local) .capture(...)
+ 4. |   | \-base::withCallingHandlers(...)
+ 5. |   \-rlang::eval_bare(quo_get_expr(.quo), quo_get_env(.quo))
+ 6. \-muscal::infer_muscal(fixture$fit, nrep = 2)
+ 7.   \-spec$bootstrap_fn(spec$data) at muscal/R/infer_muscal.R:70:5
+
+-- 8. Failure ('test-infer-muscal.R:494:5'): infer_muscal rejects invalid observ
+Expected `fixture$sampled()` to equal 0L.
+Differences:
+1/1 mismatches
+[1] 2 - 0 == 2
+
+-- 9. Failure ('test-infer-muscal.R:493:5'): infer_muscal rejects invalid observ
+`infer_muscal(fixture$fit, nrep = 2)` threw an error with unexpected message.
+Expected match: "Observed statistic"
+Actual message: "subscript out of bounds"
+Backtrace:
+    x
+ 1. +-testthat::expect_error(infer_muscal(fixture$fit, nrep = 2), "Observed statistic") at test-infer-muscal.R:493:5
+ 2. | \-testthat:::quasi_capture(...)
+ 3. |   +-testthat (local) .capture(...)
+ 4. |   | \-base::withCallingHandlers(...)
+ 5. |   \-rlang::eval_bare(quo_get_expr(.quo), quo_get_env(.quo))
+ 6. \-muscal::infer_muscal(fixture$fit, nrep = 2)
+ 7.   \-spec$bootstrap_fn(spec$data) at muscal/R/infer_muscal.R:70:5
+
+-- 10. Failure ('test-infer-muscal.R:494:5'): infer_muscal rejects invalid obser
+Expected `fixture$sampled()` to equal 0L.
+Differences:
+1/1 mismatches
+[1] 2 - 0 == 2
+  ... and 9 more
+
+
+Maximum number of 10 failures reached, some test results may be missing.
+
+== DONE ========================================================================
+Error:
+! Test failures.
+Execution halted

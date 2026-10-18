@@ -26,6 +26,8 @@ projection, and preprocessing.
 - `aligned_mfa()` and `aligned_mcca()` for aligned multiblock integration and
   correlation analysis.
 - `covstatis()` for lists of covariance or connectivity matrices.
+- `distatis()` for distance matrices on the same objects, including sorting
+  tasks converted with `sorting_distances()`.
 - `bada()` and `bamfa()` for barycentric and discriminant variants.
 - `bilinear_mixed()` for repeated connectivity matrices with subject- and
   design-level structure.
@@ -96,6 +98,7 @@ articles below.
 - Aligned MFA intro: [vignettes/aligned_mfa.Rmd](vignettes/aligned_mfa.Rmd)
 - Aligned MCCA intro: [vignettes/aligned_mcca.Rmd](vignettes/aligned_mcca.Rmd)
 - COVSTATIS article: [docs/articles/covstatis.md](docs/articles/covstatis.md)
+- DISTATIS intro: [vignettes/distatis.Rmd](vignettes/distatis.Rmd)
 - BaDA intro: [vignettes/bada.Rmd](vignettes/bada.Rmd)
 - Bilinear mixed-model article: [docs/articles/bilinear_mixed.md](docs/articles/bilinear_mixed.md)
 - Trialwise design-effect article: [vignettes/design_mfa.Rmd](vignettes/design_mfa.Rmd)

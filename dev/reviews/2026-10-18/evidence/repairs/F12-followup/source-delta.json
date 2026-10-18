@@ -1,0 +1,8 @@
+{
+  "baseline": "../GATE-tested-source-hashes.json",
+  "changed_source_files": [
+    "R/infer_muscal.R",
+    "tests/testthat/test-infer-muscal.R"
+  ],
+  "baseline_sha256": "268e2c10547970cbd081eecbfa605cae0796d94e3125c87b8e043eb4ac598e45"
+}

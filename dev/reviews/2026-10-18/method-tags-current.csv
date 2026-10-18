@@ -1,0 +1,83 @@
+method,tag,source_file,scope_or_reason
+aligned_interbattery,research/experimental,R/aligned_interbattery.R,Extended/adaptive/penalized latent method or conditional inference/tuning; application-specific numerical and scientific qualification required.
+aligned_mcca,research/experimental,R/aligned_mcca.R,Extended/adaptive/penalized latent method or conditional inference/tuning; application-specific numerical and scientific qualification required.
+aligned_mfa,research/experimental,R/aligned_mfa.R,Extended/adaptive/penalized latent method or conditional inference/tuning; application-specific numerical and scientific qualification required.
+aligned_rrr,research/experimental,R/aligned_rrr.R,Extended/adaptive/penalized latent method or conditional inference/tuning; application-specific numerical and scientific qualification required.
+alignment_coverage,solid,R/design_mfa.R,Declared alignment-support diagnostic.
+anchored_mcca,research/experimental,R/aligned_mcca.R,Extended/adaptive/penalized latent method or conditional inference/tuning; application-specific numerical and scientific qualification required.
+anchored_mfa,research/experimental,R/linked_mfa.R,Extended/adaptive/penalized latent method or conditional inference/tuning; application-specific numerical and scientific qualification required.
+as_multifer_adapter,research/experimental,R/multifer_feature_importance.R,External engine and method-specific null assumptions; smoke coverage is not calibration.
+bada,solid,R/all_generic.R,Point estimation only. F05 subject-refit bootstrap repaired; bootstrap coverage/exchangeability remains experimental.
+bamfa,research/experimental,R/bamfa.R,Extended/adaptive/penalized latent method or conditional inference/tuning; application-specific numerical and scientific qualification required.
+bilinear_mixed,research/experimental,R/bilinear_mixed.R,Extended/adaptive/penalized latent method or conditional inference/tuning; application-specific numerical and scientific qualification required.
+bilinear_mixed_easy,research/experimental,R/bilinear_mixed_tune.R,Extended/adaptive/penalized latent method or conditional inference/tuning; application-specific numerical and scientific qualification required.
+bilinear_mixed_recommend,research/experimental,R/bilinear_mixed_tune.R,Extended/adaptive/penalized latent method or conditional inference/tuning; application-specific numerical and scientific qualification required.
+bilinear_mixed_tune,research/experimental,R/bilinear_mixed_tune.R,Extended/adaptive/penalized latent method or conditional inference/tuning; application-specific numerical and scientific qualification required.
+check_duality,research/experimental,R/covstatis.R,An imposed shared scaling invariant is not independent scientific validation.
+components,solid,Imported generic; see NAMESPACE,Dispatch/extraction only; inherits scientific status of the fitted model.
+coordinate_feature_map,solid,R/design_mfa_maps.R,Specified coordinate-to-feature numerical mapping; registration validity remains conditional.
+coordinate_feature_maps,solid,R/design_mfa_maps.R,Specified coordinate-to-feature numerical mapping; registration validity remains conditional.
+coupled_graph_anchored_mfa,research/experimental,R/graph_anchored_mfa.R,Extended/adaptive/penalized latent method or conditional inference/tuning; application-specific numerical and scientific qualification required.
+covstatis,research/experimental,R/all_generic.R,F11 scalar-component geometry repaired and verified. Subject-space scaling/rank remain qualified; not qualified DISTATIS.
+cv_muscal,solid,R/cv_muscal.R,Split/callback evaluation wrapper; valid splits and fold-local preprocessing remain caller obligations.
+default_metrics,solid,R/performance_metrics.R,Declared descriptive metric computation.
+design_mfa,research/experimental,R/design_mfa.R,Extended/adaptive/penalized latent method or conditional inference/tuning; application-specific numerical and scientific qualification required.
+design_mfa_control,solid,R/design_mfa.R,Validated configuration constructor; does not qualify a model.
+design_mfa_example_data,solid,R/design_mfa.R,Reproducible example fixture; no scientific validation claim.
+effect_loadings,solid,R/design_mfa.R,Extraction from an existing fit; no new inference.
+effect_map,solid,R/design_mfa.R,Extraction from an existing fit; no new inference.
+effect_scores,solid,R/design_mfa.R,Extraction from an existing fit; no new inference.
+effects,solid,Imported generic; see NAMESPACE,Dispatch/extraction only; inherits scientific status of the fitted model.
+estimability,solid,R/design_mfa.R,Fixed-design rank/estimability diagnostics under the declared model.
+estimate_components,research/experimental,R/components_utils.R,F01-F04 fixed: feature counts and explicit noise/unit contract; unavailable decisions do not pass. MP edge is not an alpha-level test; optional ICC remains experimental.
+graph_anchored_mfa,research/experimental,R/graph_anchored_mfa.R,Extended/adaptive/penalized latent method or conditional inference/tuning; application-specific numerical and scientific qualification required.
+infer_aligned_rrr,research/experimental,R/aligned_rrr_multifer.R,Extended/adaptive/penalized latent method or conditional inference/tuning; application-specific numerical and scientific qualification required.
+infer_bada,research/experimental,R/bada_multifer.R,Extended/adaptive/penalized latent method or conditional inference/tuning; application-specific numerical and scientific qualification required.
+infer_covstatis,research/experimental,R/covstatis_multifer.R,Extended/adaptive/penalized latent method or conditional inference/tuning; application-specific numerical and scientific qualification required.
+infer_design_mfa,research/experimental,R/design_mfa_inference.R,Q03 conditional frozen reference target and callback schema explicit. Q05 pinned local multifer smoke passes; fetching supported upstream revision in CI remains pending. No null calibration claim.
+infer_muscal,research/experimental,R/infer_muscal.R,F12 fixed: nonempty finite target schema and accounted failed draws. Scientific inference remains conditional on the supplied sampling/refit contract.
+ipca,research/experimental,R/all_generic.R,Extended/adaptive/penalized latent method or conditional inference/tuning; application-specific numerical and scientific qualification required.
+ipca_tune_alpha,research/experimental,R/ipca.R,Extended/adaptive/penalized latent method or conditional inference/tuning; application-specific numerical and scientific qualification required.
+linked_mfa,research/experimental,R/linked_mfa.R,Extended/adaptive/penalized latent method or conditional inference/tuning; application-specific numerical and scientific qualification required.
+loading_reliability,research/experimental,R/components_utils.R,Q02 fixed: exact permutation/sign alignment and retained-root gap diagnostics; tied coordinates unavailable with subspace summaries. No interval coverage claim.
+mcca,solid,R/all_generic.R,Descriptive regularized MCCA; inference and retention helpers separately qualified.
+metric_registry,solid,R/performance_metrics.R,Declared descriptive metric computation.
+mfa,solid,R/all_generic.R,Complete-data descriptive MFA; iterative imputation is research/experimental.
+nested_tune_design_mfa,research/experimental,R/design_mfa_tune.R,Extended/adaptive/penalized latent method or conditional inference/tuning; application-specific numerical and scientific qualification required.
+orient_components,solid,R/orient_components.R,Sign orientation preserving fitted products; no matching of rotated/degenerate components.
+penalized_mfa,research/experimental,R/penalized_mfa.R,F13 row-layout boundary fixed. Optimizer and application-specific scientific qualification remain experimental.
+penalized_mfa_clusterwise,research/experimental,R/penalized_mfa_clusterwise.R,"F06-F10 graph, rank and fitted-preprocessing projection contracts repaired. Positive-lambda stationarity/descent and broader recovery milestones remain experimental."
+performance_metrics,solid,R/performance_metrics.R,Declared descriptive metric computation.
+plot_barycenters,solid,R/plot_mfa.R,Visualization of fitted quantities; inherits all input-model limitations.
+plot_block_fit,solid,R/plot_mfa.R,Visualization of fitted quantities; inherits all input-model limitations.
+plot_block_similarity,solid,R/plot_mfa.R,Visualization of fitted quantities; inherits all input-model limitations.
+plot_block_weights,solid,R/plot_mfa.R,Visualization of fitted quantities; inherits all input-model limitations.
+plot_convergence,solid,R/plot_mfa.R,Visualization of fitted quantities; inherits all input-model limitations.
+plot_coverage,solid,R/plot_mfa.R,Visualization of fitted quantities; inherits all input-model limitations.
+plot_feature_groups,solid,R/plot_mfa.R,Visualization of fitted quantities; inherits all input-model limitations.
+plot_global_local,solid,R/plot_mfa.R,Visualization of fitted quantities; inherits all input-model limitations.
+plot_loading_alignment,solid,R/plot_mfa.R,Visualization of fitted quantities; inherits all input-model limitations.
+plot_loadings,solid,R/plot_mfa.R,Visualization of fitted quantities; inherits all input-model limitations.
+plot_partial_scores,solid,R/plot_mfa.R,Visualization of fitted quantities; inherits all input-model limitations.
+plot_subjects,research/experimental,R/covstatis.R,COVSTATIS subject coordinates require rank and scaling qualification.
+plot_variance,solid,R/plot_mfa.R,Visualization of fitted quantities; inherits all input-model limitations.
+plot_variance.bada,solid,R/plot_mfa.R,Visualization of fitted quantities; inherits all input-model limitations.
+plot_variance.covstatis,solid,R/plot_mfa.R,Visualization of fitted quantities; inherits all input-model limitations.
+plot_variance.penalized_mfa,solid,R/plot_mfa.R,Visualization of fitted quantities; inherits all input-model limitations.
+pmfa_cluster,research/experimental,R/penalized_mfa_clusterwise.R,Extended/adaptive/penalized latent method or conditional inference/tuning; application-specific numerical and scientific qualification required.
+project,solid,Imported generic; see NAMESPACE,Dispatch/software contract; model-specific projection validity remains conditional.
+project_cov,research/experimental,R/all_generic.R,COVSTATIS projection inherits reviewed fitting/representation limits.
+project_covariate,research/experimental,R/all_generic.R,"COVSTATIS cosine projections; interpret as declared cosine, not automatically Pearson correlation."
+project_feature_covariate,research/experimental,R/all_generic.R,Model-specific COVSTATIS feature-space projection remains qualified.
+project_subjects,research/experimental,R/all_generic.R,COVSTATIS supplementary projection inherits subject-rank/scaling limits.
+project_table_covariate,research/experimental,R/all_generic.R,Model-specific COVSTATIS table-space projection remains qualified.
+reprocess,solid,Imported generic; see NAMESPACE,Dispatch/software contract; inherits the fitted method and preprocessing.
+response_aligned_mfa,research/experimental,R/response_aligned_mfa.R,Extended/adaptive/penalized latent method or conditional inference/tuning; application-specific numerical and scientific qualification required.
+roi_map,research/experimental,R/covstatis.R,COVSTATIS-derived output; one-component/subject-rank qualifications apply.
+significant_components,research/experimental,R/utils.R,F01-F04 fixed: explicit common-feature ICC domain and supplied-noise MP support edge. No automatic noise estimate or general finite-sample calibration.
+subject_effects,solid,R/design_mfa.R,Extraction from an existing fit; no new inference.
+synthetic_multiblock,research/experimental,R/synthdat.R,Specified low-rank Gaussian simulation fixture; no realistic-data qualification.
+tune_design_mfa,research/experimental,R/design_mfa_tune.R,Q03 held-out design-effect recovery target and fold-local reference contract explicit. Synthetic isolation tests do not establish predictive or general scientific validity.
+bootstrap.bada,research/experimental,R/bada.R,"F05 full subject-refit bootstrap with permutation/sign alignment, failure accounting and tied-root NA policy; percentile coverage and exchangeability not established."
+project.penalized_mfa_clusterwise,research/experimental,R/penalized_mfa_clusterwise.R,F08 fitted block preprocessing and schema contract locally tested; inherits experimental clusterwise estimator status.
+predict.penalized_mfa_clusterwise,research/experimental,R/penalized_mfa_clusterwise.R,F08 block score/reconstruction projection tested in raw units; inherits experimental clusterwise estimator status.

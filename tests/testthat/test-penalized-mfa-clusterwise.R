@@ -59,7 +59,8 @@ test_that("penalized MFA clusterwise handles edge cases", {
   coords_small <- lapply(1:3, function(i) cbind(runif(5), runif(5), runif(5)))
   
   suppressMessages({
-    fit_large_ncomp <- penalized_mfa_clusterwise(clist_small, coords_small, ncomp = 10, lambda = 1, max_iter = 2)
+    fit_large_ncomp <- penalized_mfa_clusterwise(clist_small, coords_small, ncomp = 10,
+      rank_action = "reduce", lambda = 1, max_iter = 2)
   })
   expect_equal(ncol(fit_large_ncomp$v), 5) # Should be reduced to max block size
   

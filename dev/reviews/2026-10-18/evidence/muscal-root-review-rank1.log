@@ -1,0 +1,16 @@
+During startup - Warning messages:
+1: Setting LC_CTYPE failed, using "C" 
+2: Setting LC_COLLATE failed, using "C" 
+3: Setting LC_TIME failed, using "C" 
+4: Setting LC_MESSAGES failed, using "C" 
+5: Setting LC_MONETARY failed, using "C" 
+Warning message:
+package 'testthat' was built under R version 4.5.2 
+$partial_ss
+  observed p_value null_mean null_sd
+1 4.836927       1  4.836927       0
+
+$singular_values
+  component observed p_value
+1         1 2.250513       1
+

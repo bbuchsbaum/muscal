@@ -1,0 +1,27 @@
+During startup - Warning messages:
+1: Setting LC_CTYPE failed, using "C" 
+2: Setting LC_COLLATE failed, using "C" 
+3: Setting LC_TIME failed, using "C" 
+4: Setting LC_MESSAGES failed, using "C" 
+5: Setting LC_MONETARY failed, using "C" 
+Warning message:
+package 'testthat' was built under R version 4.5.2 
+clusterwise-graph: ............................................................1..............
+
+== Failed ======================================================================
+-- 1. Failure ('test-clusterwise-graph.R:81:5'): clusterwise neighbor membership
+Expected `as.matrix(A)` to equal `as.matrix(reference)`.
+Differences:
+6/16 mismatches (average diff: 1)
+[3]  1 - 0 == 1
+[4]  1 - 0 == 1
+[8]  1 - 0 == 1
+[9]  1 - 0 == 1
+[13] 1 - 0 == 1
+[14] 1 - 0 == 1
+
+== DONE ========================================================================
+No one is perfect!
+Error:
+! Test failures.
+Execution halted
