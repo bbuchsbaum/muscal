@@ -9,7 +9,7 @@ multi-subject neuroimaging or spatial cluster data. Unlike standard MFA which
 encourages similarity among block loadings globally, this method uses spatial
 coordinates of clusters (e.g., brain regions, spatial locations) to construct
 a graph and enforces smoothness of loadings among spatially adjacent clusters
-via a graph Laplacian penalty."></head><body>
+via a graph Laplacian penalty."><link href="../albers.css" rel="stylesheet"><script>window.albersdownDefaults = window.albersdownDefaults || { family: "red", preset: "homage", style: "minimal" };</script><script src="../albers.js"></script></head><body>
     <a href="#main" class="visually-hidden-focusable">Skip to contents</a>
 
 
@@ -35,6 +35,8 @@ via a graph Laplacian penalty."></head><body>
     <li><a class="dropdown-item" href="../articles/bamfa.html">Barycentric MFA (BaMFA)</a></li>
     <li><a class="dropdown-item" href="../articles/bilinear_mixed.html">Bilinear Mixed Models for Repeated Connectivity Matrices</a></li>
     <li><a class="dropdown-item" href="../articles/covstatis.html">COVSTATIS Analysis</a></li>
+    <li><a class="dropdown-item" href="../articles/design_mfa.html">Find Distributed Design Effects in Trialwise Brain Fields</a></li>
+    <li><a class="dropdown-item" href="../articles/distatis.html">DISTATIS: distances and sorting tasks</a></li>
     <li><a class="dropdown-item" href="../articles/ipca.html">Integrative PCA (iPCA)</a></li>
     <li><a class="dropdown-item" href="../articles/linked_mfa.html">Anchored Multiple Factor Analysis</a></li>
     <li><a class="dropdown-item" href="../articles/mcca.html">Multiblock Canonical Correlation Analysis</a></li>
@@ -88,7 +90,9 @@ via a graph Laplacian penalty.</p>
 <span>  verbose <span class="op">=</span> <span class="cn">FALSE</span>,</span>
 <span>  preproc <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  memory_budget_mb <span class="op">=</span> <span class="fl">1024</span>,</span>
-<span>  normalized_laplacian <span class="op">=</span> <span class="cn">TRUE</span></span>
+<span>  normalized_laplacian <span class="op">=</span> <span class="cn">TRUE</span>,</span>
+<span>  rank_action <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"error"</span>, <span class="st">"reduce"</span><span class="op">)</span>,</span>
+<span>  rank_tol <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/MathFun.html" class="external-link">sqrt</a></span><span class="op">(</span><span class="va">.Machine</span><span class="op">$</span><span class="va">double.eps</span><span class="op">)</span></span>
 <span><span class="op">)</span></span>
 <span></span>
 <span><span class="fu">pmfa_cluster</span><span class="op">(</span></span>
@@ -109,7 +113,9 @@ via a graph Laplacian penalty.</p>
 <span>  verbose <span class="op">=</span> <span class="cn">FALSE</span>,</span>
 <span>  preproc <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  memory_budget_mb <span class="op">=</span> <span class="fl">1024</span>,</span>
-<span>  normalized_laplacian <span class="op">=</span> <span class="cn">TRUE</span></span>
+<span>  normalized_laplacian <span class="op">=</span> <span class="cn">TRUE</span>,</span>
+<span>  rank_action <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"error"</span>, <span class="st">"reduce"</span><span class="op">)</span>,</span>
+<span>  rank_tol <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/MathFun.html" class="external-link">sqrt</a></span><span class="op">(</span><span class="va">.Machine</span><span class="op">$</span><span class="va">double.eps</span><span class="op">)</span></span>
 <span><span class="op">)</span></span></code></pre></div>
     </div>
 
@@ -132,8 +138,7 @@ the corresponding data block. Must have exactly 3 columns.</p></dd>
 
 <dt id="arg-ncomp">ncomp<a class="anchor" aria-label="anchor" href="#arg-ncomp"></a></dt>
 <dd><p>Integer number of latent components to extract per block (default: 2).
-When a block has fewer than `ncomp` clusters, the effective rank is automatically
-reduced to match the number of clusters.</p></dd>
+One common rank must be supported by every block after preprocessing.</p></dd>
 
 
 <dt id="arg-lambda">lambda<a class="anchor" aria-label="anchor" href="#arg-lambda"></a></dt>
@@ -231,22 +236,31 @@ if memory is constrained.</p></dd>
 <dt id="arg-normalized-laplacian">normalized_laplacian<a class="anchor" aria-label="anchor" href="#arg-normalized-laplacian"></a></dt>
 <dd><p>Logical indicating whether to use the normalized graph
 Laplacian (default: TRUE). When TRUE, uses \(\mathbf{L}_{\text{sym}} = \mathbf{D}^{-1/2} \mathbf{L} \mathbf{D}^{-1/2}\)
-for scale-free smoothness that is independent of node degree. When FALSE, uses the
-unnormalized Laplacian \(\mathbf{L} = \mathbf{D} - \mathbf{A}\). Normalized is
-recommended for most applications.</p></dd>
+with degrees computed from adjacency. Isolated vertices have zero normalized
+rows and columns. When FALSE, uses the combinatorial Laplacian
+\(\mathbf{L} = \mathbf{D} - \mathbf{A}\). The choice changes the penalty.</p></dd>
+
+
+<dt id="arg-rank-action">rank_action<a class="anchor" aria-label="anchor" href="#arg-rank-action"></a></dt>
+<dd><p>`"error"` (default) rejects unsupported common ranks;
+`"reduce"` explicitly reduces the rank for every block together.</p></dd>
+
+
+<dt id="arg-rank-tol">rank_tol<a class="anchor" aria-label="anchor" href="#arg-rank-tol"></a></dt>
+<dd><p>Relative singular-value tolerance for numerical rank after
+preprocessing (default `sqrt(.Machine$double.eps)`).</p></dd>
 
 </dl></div>
     <div class="section level2">
     <h2 id="value">Value<a class="anchor" aria-label="anchor" href="#value"></a></h2>
     <p>A `multiblock_projector` object of class `"penalized_mfa_clusterwise"` with
   the following components:</p><dl><dt><code>v</code></dt>
-<dd><p>Concatenated loading matrix (total_clusters × ncomp) formed by
-      vertically stacking all block-specific loading matrices. Padded with zeros for
-      variable-rank blocks.</p></dd>
+<dd><p>Concatenated loading matrix (total_clusters &lt;c3&gt;&lt;97&gt; ncomp) formed by
+      vertically stacking all block-specific loading matrices at the common rank.</p></dd>
 
     <dt><code>preproc</code></dt>
-<dd><p>A pass-through preprocessor (identity transformation), since
-      this function expects pre-processed input.</p></dd>
+<dd><p>The concatenated fitted training preprocessors. Raw
+      block projection uses each stored fitted transformation exactly once.</p></dd>
 
     <dt><code>block_indices</code></dt>
 <dd><p>Named list indicating which rows of `v` correspond to
@@ -255,13 +269,20 @@ recommended for most applications.</p></dd>
 
 </dl><p>Additional information stored as named elements (accessible via `$`):</p><dl><dt><code>V_list</code></dt>
 <dd><p>List of length S containing the final orthonormal loading
-      matrices for each block. Each element is a \(k_s \times r_s\) matrix where
-      \(r_s = \min(\text{ncomp}, k_s)\).</p></dd>
+      matrices for each block. Each element is a \(k_s \times K\) matrix.</p></dd>
+
+    <dt><code>block_preproc, feature_names</code></dt>
+<dd><p>Fitted block transformations and
+      their original feature identities.</p></dd>
 
     <dt><code>Sadj</code></dt>
 <dd><p>The (normalized or unnormalized) graph Laplacian matrix used
       for the spatial smoothness penalty. Sparse matrix of dimension
       \(\sum_s k_s \times \sum_s k_s\).</p></dd>
+
+    <dt><code>adjacency, graph_degree, normalized_laplacian</code></dt>
+<dd><p>Retained union
+      adjacency, its degree vector, and the chosen Laplacian type.</p></dd>
 
     <dt><code>LV</code></dt>
 <dd><p>The matrix product \(\mathbf{L} \mathbf{V}\) from the final
@@ -283,10 +304,13 @@ recommended for most applications.</p></dd>
 <dd><p>Integer indicating how many outer iterations were
       completed before convergence or reaching max_iter.</p></dd>
 
+    <dt><code>requested_ncomp, effective_rank, rank_action, rank_tol</code></dt>
+<dd><p>Requested
+      common rank, each preprocessed block's numerical rank, and rank policy.</p></dd>
+
     <dt><code>ncomp_block</code></dt>
-<dd><p>Integer vector of length S containing the effective
-      number of components extracted for each block (may differ from `ncomp` for
-      blocks with fewer clusters).</p></dd>
+<dd><p>Integer vector of length S containing the common
+      resolved number of components, repeated for every block.</p></dd>
 
 
 </dl></div>
@@ -295,7 +319,7 @@ recommended for most applications.</p></dd>
     <p>## Optimization Problem</p>
 <p>For \(S\) subjects/blocks with data matrices \(\mathbf{X}_s \in \mathbb{R}^{n_s \times k_s}\)
 (where \(k_s\) is the number of clusters for subject \(s\)), we estimate
-orthonormal loading matrices \(\mathbf{V}_s \in \mathbb{R}^{k_s \times r_s}\)
+orthonormal loading matrices \(\mathbf{V}_s \in \mathbb{R}^{k_s \times K}\)
 by minimizing:</p>
 <p>$$
   \min_{\{\mathbf{V}_s\}} \sum_{s=1}^S \|\mathbf{X}_s - \mathbf{X}_s \mathbf{V}_s \mathbf{V}_s^\top\|_F^2
@@ -331,7 +355,10 @@ loading vectors \(\mathbf{v}_i\) and \(\mathbf{v}_j\) are encouraged to be simil
 <li><p>For each cluster, find its k nearest neighbors (default: k=6)</p></li>
 <li><p>Create edges between each cluster and its neighbors</p></li>
 <li><p>Symmetrize the adjacency matrix</p></li>
-</ol><p>The number of neighbors can be controlled via `adjacency_opts = list(k_nn = k)`.</p>
+</ol><p>The neighbor count can be controlled via `adjacency_opts = list(k_nn = k)`.
+Graphs pool features across coordinate blocks and symmetrize by union. The
+count is capped at available non-self vertices; zero creates no edges and
+boundary ties are all included, so degree can exceed the requested count.</p>
 <p>## Optimization Algorithm</p>
 <p>The method uses block-coordinate descent (BCD) with Riemannian optimization:</p>
 <p>1. **Initialization**: Initialize each \(\mathbf{V}_s\) via SVD of \(\mathbf{X}_s\)
@@ -351,10 +378,14 @@ this tradeoff:</p>
     Store \(\mathbf{X}_s^\top \mathbf{X}_s\) for faster gradient computation</p></li>
 <li><p>**On-the-fly mode** (otherwise): Compute gradients as needed, saving memory
     at the cost of computation time</p></li>
-</ul><p>## Variable-Rank Loadings</p>
-<p>When subjects have different numbers of clusters, each block can have a different
-effective rank. The algorithm automatically sets \(r_s = \min(\text{ncomp}, k_s)\)
-for each block and pads the concatenated loading matrix with zeros for consistency.</p>
+</ul><p>## Common-Rank Contract</p>
+<p>Every block uses the same component count K. K cannot exceed the smallest
+feature count or the minimum numerical rank after preprocessing. Unsupported
+requests error by default. `rank_action = "reduce"` explicitly reduces all
+blocks together and records the requested and supported ranks; no unsupported
+directions are padded or initialized randomly.</p>
+<p>Positive-lambda spatial fits remain experimental. Correct graph construction
+and dimensions do not establish optimizer stationarity or inferential validity.</p>
 <p>## Preprocessing</p>
 <p>Data preprocessing is crucial for reconstruction-based methods. The function
 defaults to centering each block if no preprocessing is specified. **Important:**
@@ -525,7 +556,7 @@ to independent PCA on each block. This provides a useful baseline for comparison
 <span class="r-in"><span></span></span>
 <span class="r-in"><span><span class="va">res_var</span> <span class="op">&lt;-</span> <span class="fu">pmfa_cluster</span><span class="op">(</span></span></span>
 <span class="r-in"><span>  <span class="va">data_var</span>, <span class="va">coords_var</span>,</span></span>
-<span class="r-in"><span>  ncomp <span class="op">=</span> <span class="fl">8</span>,  <span class="co"># Will be capped at 10 (smallest block)</span></span></span>
+<span class="r-in"><span>  ncomp <span class="op">=</span> <span class="fl">8</span>,  <span class="co"># Common rank below the smallest block's feature count (10)</span></span></span>
 <span class="r-in"><span>  lambda <span class="op">=</span> <span class="fl">1</span>,</span></span>
 <span class="r-in"><span>  verbose <span class="op">=</span> <span class="cn">TRUE</span></span></span>
 <span class="r-in"><span><span class="op">)</span></span></span>

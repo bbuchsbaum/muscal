@@ -34,12 +34,25 @@ ecosystem for scoring, projection, and preprocessing.
   for aligned multiblock integration and correlation analysis.
 - [`covstatis()`](https://bbuchsbaum.github.io/muscal/reference/covstatis.md)
   for lists of covariance or connectivity matrices.
+- [`distatis()`](https://bbuchsbaum.github.io/muscal/reference/distatis.md)
+  for distance matrices on the same objects, including sorting tasks
+  converted with
+  [`sorting_distances()`](https://bbuchsbaum.github.io/muscal/reference/sorting_distances.md).
 - [`bada()`](https://bbuchsbaum.github.io/muscal/reference/bada.md) and
   [`bamfa()`](https://bbuchsbaum.github.io/muscal/reference/bamfa.md)
   for barycentric and discriminant variants.
 - [`bilinear_mixed()`](https://bbuchsbaum.github.io/muscal/reference/bilinear_mixed.md)
   for repeated connectivity matrices with subject- and design-level
   structure.
+- [`design_mfa()`](https://bbuchsbaum.github.io/muscal/reference/design_mfa.md)
+  for trialwise multivariate fields decomposed by named design effects,
+  with subject-aware weighting, coordinate-derived sparse alignment, and
+  held-out or nested tuning via
+  [`tune_design_mfa()`](https://bbuchsbaum.github.io/muscal/reference/tune_design_mfa.md)
+  and
+  [`nested_tune_design_mfa()`](https://bbuchsbaum.github.io/muscal/reference/nested_tune_design_mfa.md).
+  Despite the API name, this is an ASCA+/partial-RDA-style design
+  decomposition; it does not apply MFA block normalization.
 
 ## Installation
 
@@ -115,10 +128,14 @@ to the method-specific articles below.
   [vignettes/aligned_mcca.Rmd](https://bbuchsbaum.github.io/muscal/vignettes/aligned_mcca.Rmd)
 - COVSTATIS article:
   [docs/articles/covstatis.md](https://bbuchsbaum.github.io/muscal/docs/articles/covstatis.md)
+- DISTATIS intro:
+  [vignettes/distatis.Rmd](https://bbuchsbaum.github.io/muscal/vignettes/distatis.Rmd)
 - BaDA intro:
   [vignettes/bada.Rmd](https://bbuchsbaum.github.io/muscal/vignettes/bada.Rmd)
 - Bilinear mixed-model article:
   [docs/articles/bilinear_mixed.md](https://bbuchsbaum.github.io/muscal/docs/articles/bilinear_mixed.md)
+- Trialwise design-effect article:
+  [vignettes/design_mfa.Rmd](https://bbuchsbaum.github.io/muscal/vignettes/design_mfa.Rmd)
 
 ## Package scope
 

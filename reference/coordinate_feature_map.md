@@ -1,0 +1,98 @@
+# Build a Sparse Coordinate-to-Feature Map
+
+Constructs a sparse operator that maps a field on named reference
+coordinates into a subject's observed coordinate space. Each subject row
+is connected only to its \`k\` nearest reference coordinates, found with
+a k-d tree rather than an all-pairs distance matrix.
+
+## Usage
+
+``` r
+coordinate_feature_map(
+  reference_coords,
+  subject_coords,
+  k = 4L,
+  bandwidth = NULL,
+  max_distance = Inf,
+  kernel = c("gaussian", "inverse_distance", "nearest"),
+  normalize_rows = TRUE,
+  reference_names = NULL,
+  subject_names = NULL
+)
+```
+
+## Arguments
+
+- reference_coords:
+
+  Numeric reference-feature-by-coordinate matrix.
+
+- subject_coords:
+
+  Numeric subject-feature-by-coordinate matrix.
+
+- k:
+
+  Number of nearest reference coordinates retained per subject feature.
+  Values larger than the number of reference features are truncated.
+
+- bandwidth:
+
+  Positive Gaussian bandwidth. When \`NULL\`, the median positive
+  retained-neighbor distance is used.
+
+- max_distance:
+
+  Maximum permitted coordinate distance. Subject features with no
+  retained neighbor inside this radius are rejected.
+
+- kernel:
+
+  \`"gaussian"\`, \`"inverse_distance"\`, or \`"nearest"\`.
+
+- normalize_rows:
+
+  Normalize each subject row to sum to one.
+
+- reference_names:
+
+  Optional reference feature names; otherwise row names or deterministic
+  generated names are used.
+
+- subject_names:
+
+  Optional subject feature names; otherwise row names or deterministic
+  generated names are used.
+
+## Value
+
+A sparse subject-feature-by-reference-feature matrix.
+
+## Details
+
+The returned matrix has subject features in rows and reference features
+in columns, matching the \`feature_map\` contract of \[design_mfa()\].
+Gaussian and inverse-distance kernels are row-normalized by default. The
+construction is invariant to applying the same translation or orthogonal
+transformation to both coordinate sets.
+
+Coordinates may be MNI voxels, surface coordinates, or another common
+Euclidean system. This function does not estimate anatomical
+registration; any transform into a common coordinate system must be
+applied beforehand.
+
+## Examples
+
+``` r
+reference <- cbind(x = 0:3, y = c(0, 0, 1, 1), z = 0)
+rownames(reference) <- paste0("r", 1:4)
+subject <- reference + 0.05
+rownames(subject) <- paste0("s", 1:4)
+coordinate_feature_map(reference, subject, k = 2, bandwidth = 0.2)
+#> 4 x 4 sparse Matrix of class "dgCMatrix"
+#>              r1           r2           r3           r4
+#> s1 9.999870e-01 1.300713e-05 .            .           
+#> s2 1.067703e-06 9.999989e-01 .            .           
+#> s3 .            .            9.999870e-01 1.300713e-05
+#> s4 .            .            1.067703e-06 9.999989e-01
+```

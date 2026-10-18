@@ -5,7 +5,7 @@ models. They are intentionally modular so alternative criteria (e.g., AIC,
 permutations) can be added later without changing call sites."><meta property="og:description" content="These helpers provide a common interface for component retention and loading
 reliability across bada, mfa, penalized_mfa, and related
 models. They are intentionally modular so alternative criteria (e.g., AIC,
-permutations) can be added later without changing call sites."></head><body>
+permutations) can be added later without changing call sites."><link href="../albers.css" rel="stylesheet"><script>window.albersdownDefaults = window.albersdownDefaults || { family: "red", preset: "homage", style: "minimal" };</script><script src="../albers.js"></script></head><body>
     <a href="#main" class="visually-hidden-focusable">Skip to contents</a>
 
 
@@ -31,6 +31,8 @@ permutations) can be added later without changing call sites."></head><body>
     <li><a class="dropdown-item" href="../articles/bamfa.html">Barycentric MFA (BaMFA)</a></li>
     <li><a class="dropdown-item" href="../articles/bilinear_mixed.html">Bilinear Mixed Models for Repeated Connectivity Matrices</a></li>
     <li><a class="dropdown-item" href="../articles/covstatis.html">COVSTATIS Analysis</a></li>
+    <li><a class="dropdown-item" href="../articles/design_mfa.html">Find Distributed Design Effects in Trialwise Brain Fields</a></li>
+    <li><a class="dropdown-item" href="../articles/distatis.html">DISTATIS: distances and sorting tasks</a></li>
     <li><a class="dropdown-item" href="../articles/ipca.html">Integrative PCA (iPCA)</a></li>
     <li><a class="dropdown-item" href="../articles/linked_mfa.html">Anchored Multiple Factor Analysis</a></li>
     <li><a class="dropdown-item" href="../articles/mcca.html">Multiblock Canonical Correlation Analysis</a></li>
@@ -71,7 +73,13 @@ permutations) can be added later without changing call sites.</p>
 <span>  V_list <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  n <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  tail_q <span class="op">=</span> <span class="fl">0.2</span>,</span>
-<span>  alpha <span class="op">=</span> <span class="fl">0.05</span></span>
+<span>  alpha <span class="op">=</span> <span class="fl">0.05</span>,</span>
+<span>  noise_variance <span class="op">=</span> <span class="cn">NULL</span>,</span>
+<span>  spectrum <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"unknown"</span>, <span class="st">"covariance"</span>, <span class="st">"singular"</span><span class="op">)</span>,</span>
+<span>  noise_model <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"unknown"</span>, <span class="st">"isotropic"</span><span class="op">)</span>,</span>
+<span>  n_eff <span class="op">=</span> <span class="va">n</span>,</span>
+<span>  check_icc <span class="op">=</span> <span class="cn">FALSE</span>,</span>
+<span>  common_features <span class="op">=</span> <span class="cn">NULL</span></span>
 <span><span class="op">)</span></span>
 <span></span>
 <span><span class="fu">loading_reliability</span><span class="op">(</span></span>
@@ -79,7 +87,8 @@ permutations) can be added later without changing call sites.</p>
 <span>  method <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"bootstrap"</span><span class="op">)</span>,</span>
 <span>  boot_loadings <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  alpha <span class="op">=</span> <span class="fl">0.05</span>,</span>
-<span>  V_ref <span class="op">=</span> <span class="cn">NULL</span></span>
+<span>  V_ref <span class="op">=</span> <span class="cn">NULL</span>,</span>
+<span>  gap_tol <span class="op">=</span> <span class="fl">1e-06</span></span>
 <span><span class="op">)</span></span></code></pre></div>
     </div>
 
@@ -94,7 +103,7 @@ permutations) can be added later without changing call sites.</p>
 
 <dt id="arg-method">method<a class="anchor" aria-label="anchor" href="#arg-method"></a></dt>
 <dd><p>Component or reliability method. For <code>estimate_components</code>,
-one of <code>"rmt"</code> (Marchenko–Pastur edge) or <code>"variance"</code>
+one of <code>"rmt"</code> (Marchenko&lt;e2&gt;&lt;80&gt;&lt;93&gt;Pastur edge) or <code>"variance"</code>
 (keep all non-zero). For <code>loading_reliability</code>, currently
 <code>"bootstrap"</code>.</p></dd>
 
@@ -117,12 +126,26 @@ of scores if available.</p></dd>
 
 <dt id="arg-tail-q">tail_q<a class="anchor" aria-label="anchor" href="#arg-tail-q"></a></dt>
 <dd><p>Numeric; fraction of smallest eigenvalues used to estimate
-noise variance for the RMT test (default 0.2). Only used in
-<code>estimate_components</code> when <code>method = "rmt"</code>.</p></dd>
+noise variance in the historical automatic RMT heuristic. Retained for
+compatibility; automatic noise estimation is now unavailable.</p></dd>
 
 
 <dt id="arg-alpha">alpha<a class="anchor" aria-label="anchor" href="#arg-alpha"></a></dt>
-<dd><p>Confidence level for hypothesis tests or bootstrap intervals.</p></dd>
+<dd><p>Tail probability for bootstrap intervals in `loading_reliability`.
+In `estimate_components`, a significance threshold only for explicitly
+enabled experimental ICC. Explicit alpha on an edge-only or variance-only
+call warns that it is inapplicable; it does not change an MP edge.</p></dd>
+
+
+<dt id="arg-noise-variance-spectrum-noise-model-n-eff">noise_variance, spectrum, noise_model, n_eff<a class="anchor" aria-label="anchor" href="#arg-noise-variance-spectrum-noise-model-n-eff"></a></dt>
+<dd><p>Supplied-noise RMT model and
+spectral units; see [significant_components()]. No arbitrary weighted
+compromise spectrum is assumed to satisfy the isotropic covariance model.</p></dd>
+
+
+<dt id="arg-check-icc-common-features">check_icc, common_features<a class="anchor" aria-label="anchor" href="#arg-check-icc-common-features"></a></dt>
+<dd><p>Optional experimental common-feature ICC
+criterion and required feature identity contract; see [significant_components()].</p></dd>
 
 
 <dt id="arg-boot-loadings">boot_loadings<a class="anchor" aria-label="anchor" href="#arg-boot-loadings"></a></dt>
@@ -136,6 +159,12 @@ loadings).</p></dd>
 matrix. If <code>NULL</code>, extracted from <code>fit</code> using the same logic
 as <code>V_list</code>.</p></dd>
 
+
+<dt id="arg-gap-tol">gap_tol<a class="anchor" aria-label="anchor" href="#arg-gap-tol"></a></dt>
+<dd><p>For loading reliability, a nonnegative tolerance for gaps
+between squared reference component scales, normalized by the largest scale
+squared. Reference `fit$sdev` must follow the supplied reference column order.</p></dd>
+
 </dl></div>
     <div class="section level2">
     <h2 id="value">Value<a class="anchor" aria-label="anchor" href="#value"></a></h2>
@@ -143,11 +172,21 @@ as <code>V_list</code>.</p></dd>
 
 <dl><dt>estimate_components</dt>
 <dd><p>A list with <code>keep</code>, <code>criterion</code>,
-  and <code>method_used</code>.</p></dd>
+  and <code>method_used</code>. RMT additionally returns <code>diagnostics</code> with
+  feature dimensions, applicability and criterion details. Missing model or
+  observation information yields <code>method_used="rmt_unavailable"</code>, NA
+  decisions and no retained components, never a silent variance fallback.</p></dd>
 
   <dt>loading_reliability</dt>
 <dd><p>A list with matrices <code>mean</code>, <code>sd</code>,
-  <code>lower</code>, <code>upper</code>, and <code>sign_consistency</code>.</p></dd>
+  <code>lower</code>, <code>upper</code>, and <code>sign_consistency</code>, plus <code>alignment</code>
+  diagnostics. Exact one-to-one matching uses absolute normalized loading inner
+  products, followed by sign alignment. Known tied/zero reference roots have
+  unavailable (NA) coordinate summaries and geometric subspace distances.
+  Without reference component scales, intervals are conditional on the supplied
+  reference alignment and identifiability is reported as unknown. Only the
+  retained reference gaps are checked; omitted-axis gaps and bootstrap coverage
+  are not established by these summaries.</p></dd>
 
 </dl></div>
 

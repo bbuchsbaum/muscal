@@ -16,6 +16,10 @@
   Matrices](https://bbuchsbaum.github.io/muscal/articles/bilinear_mixed.md):
 - [COVSTATIS
   Analysis](https://bbuchsbaum.github.io/muscal/articles/covstatis.md):
+- [Find Distributed Design Effects in Trialwise Brain
+  Fields](https://bbuchsbaum.github.io/muscal/articles/design_mfa.md):
+- [DISTATIS: distances and sorting
+  tasks](https://bbuchsbaum.github.io/muscal/articles/distatis.md):
 - [Integrative PCA
   (iPCA)](https://bbuchsbaum.github.io/muscal/articles/ipca.md):
 - [Anchored Multiple Factor

@@ -314,8 +314,8 @@ boot_graph$summary
 #> # A tibble: 2 × 7
 #>   component label observed  mean       sd lower upper
 #>       <int> <chr>    <dbl> <dbl>    <dbl> <dbl> <dbl>
-#> 1         1 comp1    0.169 0.168 0.000664 0.167 0.169
-#> 2         2 comp2    0.169 0.168 0.00114  0.167 0.169
+#> 1         1 comp1    0.169 0.169 0.000195 0.169 0.169
+#> 2         2 comp2    0.169 0.168 0.00142  0.166 0.169
 ```
 
 ``` r

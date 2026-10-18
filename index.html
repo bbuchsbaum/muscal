@@ -12,8 +12,10 @@
 <link href="deps/font-awesome-6.5.2/css/v4-shims.min.css" rel="stylesheet">
 <script src="deps/headroom-0.11.0/headroom.min.js"></script><script src="deps/headroom-0.11.0/jQuery.headroom.min.js"></script><script src="deps/bootstrap-toc-1.0.1/bootstrap-toc.min.js"></script><script src="deps/clipboard.js-2.0.11/clipboard.min.js"></script><script src="deps/search-1.0.0/autocomplete.jquery.min.js"></script><script src="deps/search-1.0.0/fuse.min.js"></script><script src="deps/search-1.0.0/mark.min.js"></script><!-- pkgdown --><script src="pkgdown.js"></script><link href="extra.css" rel="stylesheet">
 <script src="extra.js"></script><meta property="og:title" content="Core Multivariate Statistical Analyses and Utilities">
-<meta name="description" content="Provides core French school multivariate analysis methods including Multiple Factor Analysis (MFA), Penalized MFA, STATIS, variants of Correspondence Analysis (BADA, BAMFA), and Generalized Procrustes Analysis. Also includes essential utility functions for data simulation, testing, and processing potentially used by related statistical packages.">
-<meta property="og:description" content="Provides core French school multivariate analysis methods including Multiple Factor Analysis (MFA), Penalized MFA, STATIS, variants of Correspondence Analysis (BADA, BAMFA), and Generalized Procrustes Analysis. Also includes essential utility functions for data simulation, testing, and processing potentially used by related statistical packages.">
+<meta name="description" content="Provides core French school multivariate analysis methods including Multiple Factor Analysis (MFA), Penalized MFA, STATIS, DISTATIS, variants of Correspondence Analysis (BADA, BAMFA), and Generalized Procrustes Analysis. Also includes essential utility functions for data simulation, testing, and processing potentially used by related statistical packages.">
+<meta property="og:description" content="Provides core French school multivariate analysis methods including Multiple Factor Analysis (MFA), Penalized MFA, STATIS, DISTATIS, variants of Correspondence Analysis (BADA, BAMFA), and Generalized Procrustes Analysis. Also includes essential utility functions for data simulation, testing, and processing potentially used by related statistical packages.">
+<link href="albers.css" rel="stylesheet">
+<script>window.albersdownDefaults = window.albersdownDefaults || { family: "red", preset: "homage", style: "minimal" };</script><script src="albers.js"></script>
 </head>
 <body>
     <a href="#main" class="visually-hidden-focusable">Skip to contents</a>
@@ -43,6 +45,8 @@
     <li><a class="dropdown-item" href="articles/bamfa.html">Barycentric MFA (BaMFA)</a></li>
     <li><a class="dropdown-item" href="articles/bilinear_mixed.html">Bilinear Mixed Models for Repeated Connectivity Matrices</a></li>
     <li><a class="dropdown-item" href="articles/covstatis.html">COVSTATIS Analysis</a></li>
+    <li><a class="dropdown-item" href="articles/design_mfa.html">Find Distributed Design Effects in Trialwise Brain Fields</a></li>
+    <li><a class="dropdown-item" href="articles/distatis.html">DISTATIS: distances and sorting tasks</a></li>
     <li><a class="dropdown-item" href="articles/ipca.html">Integrative PCA (iPCA)</a></li>
     <li><a class="dropdown-item" href="articles/linked_mfa.html">Anchored Multiple Factor Analysis</a></li>
     <li><a class="dropdown-item" href="articles/mcca.html">Multiblock Canonical Correlation Analysis</a></li>
@@ -91,9 +95,13 @@
 <li>
 <code><a href="reference/covstatis.html">covstatis()</a></code> for lists of covariance or connectivity matrices.</li>
 <li>
+<code><a href="reference/distatis.html">distatis()</a></code> for distance matrices on the same objects, including sorting tasks converted with <code><a href="reference/sorting_distances.html">sorting_distances()</a></code>.</li>
+<li>
 <code><a href="reference/bada.html">bada()</a></code> and <code><a href="reference/bamfa.html">bamfa()</a></code> for barycentric and discriminant variants.</li>
 <li>
 <code><a href="reference/bilinear_mixed.html">bilinear_mixed()</a></code> for repeated connectivity matrices with subject- and design-level structure.</li>
+<li>
+<code><a href="reference/design_mfa.html">design_mfa()</a></code> for trialwise multivariate fields decomposed by named design effects, with subject-aware weighting, coordinate-derived sparse alignment, and held-out or nested tuning via <code><a href="reference/tune_design_mfa.html">tune_design_mfa()</a></code> and <code><a href="reference/nested_tune_design_mfa.html">nested_tune_design_mfa()</a></code>. Despite the API name, this is an ASCA+/partial-RDA-style design decomposition; it does not apply MFA block normalization.</li>
 </ul>
 </div>
 <div class="section level2">
@@ -162,9 +170,13 @@
 </li>
 <li>COVSTATIS article: <a href="docs/articles/covstatis.html">docs/articles/covstatis.md</a>
 </li>
+<li>DISTATIS intro: <a href="vignettes/distatis.Rmd">vignettes/distatis.Rmd</a>
+</li>
 <li>BaDA intro: <a href="vignettes/bada.Rmd">vignettes/bada.Rmd</a>
 </li>
 <li>Bilinear mixed-model article: <a href="docs/articles/bilinear_mixed.html">docs/articles/bilinear_mixed.md</a>
+</li>
+<li>Trialwise design-effect article: <a href="vignettes/design_mfa.Rmd">vignettes/design_mfa.Rmd</a>
 </li>
 </ul>
 </div>

@@ -114,7 +114,10 @@ penalized_mfa(data, subject, ...)
 - preproc:
 
   A preprocessing specification (default: \`multivarious::center()\`).
-  Can be:
+  Data blocks must share equal positive observation counts, and
+  preprocessing must preserve the shared observation rows and their
+  order. Blocks may have different feature counts where the chosen
+  penalty supports them. Can be:
 
   - A single \`pre_processor\` object applied to all blocks
 
@@ -182,8 +185,8 @@ following components:
 
 - `v`:
 
-  Concatenated loading matrix (total_features × ncomp) formed by
-  vertically stacking all block-specific loading matrices.
+  Concatenated loading matrix (total_features \<c3\>\<97\> ncomp) formed
+  by vertically stacking all block-specific loading matrices.
 
 - `preproc`:
 
@@ -201,7 +204,7 @@ Additional information is stored as attributes:
 - `V_list`:
 
   List of length S containing the final orthonormal loading matrices for
-  each block. Each element is a (p_i × ncomp) matrix.
+  each block. Each element is a (p_i \<c3\>\<97\> ncomp) matrix.
 
 - `obj_values`:
 

@@ -10,6 +10,8 @@
   : Aligned Multiple Factor Analysis (Aligned MFA)
 - [`aligned_rrr()`](https://bbuchsbaum.github.io/muscal/reference/aligned_rrr.md)
   : Aligned Reduced-Rank Regression
+- [`alignment_coverage()`](https://bbuchsbaum.github.io/muscal/reference/alignment_coverage.md)
+  : Report Reference-Feature Alignment Coverage
 - [`anchored_mcca()`](https://bbuchsbaum.github.io/muscal/reference/anchored_mcca.md)
   : Anchored Multiblock Canonical Correlation Analysis (Anchored MCCA)
 - [`as_multifer_adapter()`](https://bbuchsbaum.github.io/muscal/reference/as_multifer_adapter.md)
@@ -43,6 +45,12 @@
   : Tune Bilinear Mixed Hyperparameters via Subject-Block CV
 - [`check_duality()`](https://bbuchsbaum.github.io/muscal/reference/check_duality.md)
   : Verify duality between ROI- and RV-space coordinates
+- [`components(`*`<design_mfa>`*`)`](https://bbuchsbaum.github.io/muscal/reference/components.design_mfa.md)
+  : Summarize Components for a Design-MFA Effect
+- [`coordinate_feature_map()`](https://bbuchsbaum.github.io/muscal/reference/coordinate_feature_map.md)
+  : Build a Sparse Coordinate-to-Feature Map
+- [`coordinate_feature_maps()`](https://bbuchsbaum.github.io/muscal/reference/coordinate_feature_maps.md)
+  : Build Coordinate Maps for Several Subjects
 - [`coupled_graph_anchored_mfa()`](https://bbuchsbaum.github.io/muscal/reference/coupled_graph_anchored_mfa.md)
   : Coupled Graph-Anchored Multiple Factor Analysis
 - [`covstatis()`](https://bbuchsbaum.github.io/muscal/reference/covstatis.md)
@@ -51,6 +59,23 @@
   : Cross-Validate Muscal Models with Multidesign Folds
 - [`default_metrics()`](https://bbuchsbaum.github.io/muscal/reference/default_metrics.md)
   : Default Metrics for a Muscal Task
+- [`design_mfa()`](https://bbuchsbaum.github.io/muscal/reference/design_mfa.md)
+  : Effect-Specific Multilevel Components for Trialwise Fields
+- [`design_mfa_control()`](https://bbuchsbaum.github.io/muscal/reference/design_mfa_control.md)
+  : Control Numerical Design-MFA Calculations
+- [`design_mfa_example_data()`](https://bbuchsbaum.github.io/muscal/reference/design_mfa_example_data.md)
+  : Construct a Small Deterministic Design-MFA Example
+- [`distatis()`](https://bbuchsbaum.github.io/muscal/reference/distatis.md)
+  : DISTATIS for Multiple Distance Matrices
+- [`effect_map()`](https://bbuchsbaum.github.io/muscal/reference/effect_map.md)
+  : Extract One Effect Loading Map
+- [`effect_scores()`](https://bbuchsbaum.github.io/muscal/reference/effect_scores.md)
+  [`effect_loadings()`](https://bbuchsbaum.github.io/muscal/reference/effect_scores.md)
+  : Extract Effect Scores or Spatial Loadings
+- [`effects(`*`<design_mfa>`*`)`](https://bbuchsbaum.github.io/muscal/reference/effects.design_mfa.md)
+  : Extract Design Effects from a Design-MFA Fit
+- [`estimability()`](https://bbuchsbaum.github.io/muscal/reference/estimability.md)
+  : Report Design-MFA Estimability
 - [`estimate_components()`](https://bbuchsbaum.github.io/muscal/reference/estimate_components.md)
   [`loading_reliability()`](https://bbuchsbaum.github.io/muscal/reference/estimate_components.md)
   : Estimate the number of components and loading reliability (shared
@@ -63,6 +88,8 @@
   : Multifer Inference for BaDA
 - [`infer_covstatis()`](https://bbuchsbaum.github.io/muscal/reference/infer_covstatis.md)
   : Multifer Component Tests for COVSTATIS
+- [`infer_design_mfa()`](https://bbuchsbaum.github.io/muscal/reference/infer_design_mfa.md)
+  : Subject-Level Inference for a Design-MFA Effect
 - [`infer_muscal()`](https://bbuchsbaum.github.io/muscal/reference/infer_muscal.md)
   : Standard Resampling and Inference for Muscal Fits
 - [`ipca()`](https://bbuchsbaum.github.io/muscal/reference/ipca.md) :
@@ -80,6 +107,8 @@
   : Plotting Functions for MFA and Linked MFA
 - [`mfa()`](https://bbuchsbaum.github.io/muscal/reference/mfa.md) :
   Multiple Factor Analysis (generic)
+- [`nested_tune_design_mfa()`](https://bbuchsbaum.github.io/muscal/reference/nested_tune_design_mfa.md)
+  : Nested Held-Out-Subject Evaluation for Design-MFA Tuning
 - [`orient_components()`](https://bbuchsbaum.github.io/muscal/reference/orient_components.md)
   : Orient Component Signs for Fitted muscal Models
 - [`penalized_mfa()`](https://bbuchsbaum.github.io/muscal/reference/penalized_mfa.md)
@@ -95,6 +124,14 @@
   : Plot BaMFA Results
 - [`plot(`*`<covstatis>`*`)`](https://bbuchsbaum.github.io/muscal/reference/plot.covstatis.md)
   : Plot COVSTATIS Results
+- [`plot(`*`<design_mfa>`*`)`](https://bbuchsbaum.github.io/muscal/reference/plot.design_mfa.md)
+  : Plot a Design-Effect Component Trajectory
+- [`plot(`*`<distatis>`*`)`](https://bbuchsbaum.github.io/muscal/reference/plot.distatis.md)
+  [`autoplot(`*`<distatis>`*`)`](https://bbuchsbaum.github.io/muscal/reference/plot.distatis.md)
+  [`plot_partial_scores(`*`<distatis>`*`)`](https://bbuchsbaum.github.io/muscal/reference/plot.distatis.md)
+  [`plot_block_weights(`*`<distatis>`*`)`](https://bbuchsbaum.github.io/muscal/reference/plot.distatis.md)
+  [`plot_block_similarity(`*`<distatis>`*`)`](https://bbuchsbaum.github.io/muscal/reference/plot.distatis.md)
+  : Plot DISTATIS Object and Assessor Maps
 - [`plot(`*`<linked_mfa>`*`)`](https://bbuchsbaum.github.io/muscal/reference/plot.linked_mfa.md)
   : Plot Linked MFA Scores
 - [`plot(`*`<mfa>`*`)`](https://bbuchsbaum.github.io/muscal/reference/plot.mfa.md)
@@ -130,6 +167,8 @@
   [`plot_variance.bada()`](https://bbuchsbaum.github.io/muscal/reference/plot_variance.md)
   [`plot_variance.penalized_mfa()`](https://bbuchsbaum.github.io/muscal/reference/plot_variance.md)
   : Plot Variance Explained (Scree Plot)
+- [`plot_variance.distatis()`](https://bbuchsbaum.github.io/muscal/reference/plot_variance.distatis.md)
+  : DISTATIS Inertia Plot
 - [`predict(`*`<aligned_interbattery>`*`)`](https://bbuchsbaum.github.io/muscal/reference/predict.aligned_interbattery.md)
   : Predict from an Aligned Interbattery Fit
 - [`predict(`*`<aligned_mfa>`*`)`](https://bbuchsbaum.github.io/muscal/reference/predict.aligned_mfa.md)
@@ -142,6 +181,8 @@
   : Predict method for BaMFA objects
 - [`predict(`*`<coupled_graph_anchored_mfa>`*`)`](https://bbuchsbaum.github.io/muscal/reference/predict.coupled_graph_anchored_mfa.md)
   : Predict from a Coupled Graph-Anchored MFA Fit
+- [`predict(`*`<design_mfa>`*`)`](https://bbuchsbaum.github.io/muscal/reference/predict.design_mfa.md)
+  : Predict Group-Average Activation Fields
 - [`predict(`*`<graph_anchored_mfa>`*`)`](https://bbuchsbaum.github.io/muscal/reference/predict.graph_anchored_mfa.md)
   : Predict from a Graph-Anchored MFA Fit
 - [`predict(`*`<ipca>`*`)`](https://bbuchsbaum.github.io/muscal/reference/predict.ipca.md)
@@ -150,6 +191,8 @@
   : Predict from an MCCA Fit
 - [`predict(`*`<mfa>`*`)`](https://bbuchsbaum.github.io/muscal/reference/predict.mfa.md)
   : Predict from a Multiple Factor Analysis Fit
+- [`predict(`*`<penalized_mfa_clusterwise>`*`)`](https://bbuchsbaum.github.io/muscal/reference/predict.penalized_mfa_clusterwise.md)
+  : Predict Clusterwise Penalized MFA Scores or Reconstructions
 - [`predict(`*`<response_aligned_mfa>`*`)`](https://bbuchsbaum.github.io/muscal/reference/predict.response_aligned_mfa.md)
   : Predict from a Response-Aligned MFA Fit
 - [`print(`*`<bamfa>`*`)`](https://bbuchsbaum.github.io/muscal/reference/print.bamfa.md)
@@ -171,8 +214,12 @@
   : Project New Rows into an Anchored MFA Space
 - [`project(`*`<coupled_graph_anchored_mfa>`*`)`](https://bbuchsbaum.github.io/muscal/reference/project.coupled_graph_anchored_mfa.md)
   : Project New Rows into a Coupled Graph-Anchored MFA Space
+- [`project(`*`<design_mfa_effect>`*`)`](https://bbuchsbaum.github.io/muscal/reference/project.design_mfa_effect.md)
+  : Project New Fields onto a Design-Effect Basis
 - [`project(`*`<graph_anchored_mfa>`*`)`](https://bbuchsbaum.github.io/muscal/reference/project.graph_anchored_mfa.md)
   : Project New Rows into a Graph-Anchored MFA Space
+- [`project(`*`<penalized_mfa_clusterwise>`*`)`](https://bbuchsbaum.github.io/muscal/reference/project.penalized_mfa_clusterwise.md)
+  : Project Clusterwise Penalized MFA Observations
 - [`project(`*`<response_aligned_mfa>`*`)`](https://bbuchsbaum.github.io/muscal/reference/project.response_aligned_mfa.md)
   : Project New Rows into a Response-Aligned MFA Space
 - [`project_cov()`](https://bbuchsbaum.github.io/muscal/reference/project_cov.md)
@@ -181,16 +228,35 @@
   [`project_table_covariate()`](https://bbuchsbaum.github.io/muscal/reference/project_covariate.md)
   [`project_feature_covariate()`](https://bbuchsbaum.github.io/muscal/reference/project_covariate.md)
   : Project a Table- or Feature-Level Covariate (generic)
+- [`project_covariate(`*`<distatis>`*`)`](https://bbuchsbaum.github.io/muscal/reference/project_covariate.distatis.md)
+  : Project Covariates onto DISTATIS Maps
+- [`project_distance()`](https://bbuchsbaum.github.io/muscal/reference/project_distance.md)
+  [`project(`*`<distatis>`*`)`](https://bbuchsbaum.github.io/muscal/reference/project_distance.md)
+  [`project_cov(`*`<distatis>`*`)`](https://bbuchsbaum.github.io/muscal/reference/project_distance.md)
+  : Project a Supplementary Assessor's Distances
 - [`project_subjects()`](https://bbuchsbaum.github.io/muscal/reference/project_subjects.md)
   : Project and Summarize New Subject Data (generic)
+- [`project_subjects(`*`<distatis>`*`)`](https://bbuchsbaum.github.io/muscal/reference/project_subjects.distatis.md)
+  : Supplementary Assessor Maps and Diagnostics for DISTATIS
 - [`reconstruct(`*`<covstatis>`*`)`](https://bbuchsbaum.github.io/muscal/reference/reconstruct.covstatis.md)
   : Low-rank reconstruction of the compromise matrix
+- [`reconstruct(`*`<distatis>`*`)`](https://bbuchsbaum.github.io/muscal/reference/reconstruct.distatis.md)
+  : Reconstruct the Normalized DISTATIS Compromise
 - [`response_aligned_mfa()`](https://bbuchsbaum.github.io/muscal/reference/response_aligned_mfa.md)
   : Response-Aligned Multiple Factor Analysis
 - [`roi_map()`](https://bbuchsbaum.github.io/muscal/reference/roi_map.md)
   : Extract ROI map for a compromise dimension
+- [`scores(`*`<distatis>`*`)`](https://bbuchsbaum.github.io/muscal/reference/scores.distatis.md)
+  [`sdev(`*`<distatis>`*`)`](https://bbuchsbaum.github.io/muscal/reference/scores.distatis.md)
+  : Scores from a DISTATIS Model
 - [`significant_components()`](https://bbuchsbaum.github.io/muscal/reference/significant_components.md)
   : Identify Significant Components via RMT and Inter-block Coherence
   Tests
+- [`sorting_distances()`](https://bbuchsbaum.github.io/muscal/reference/sorting_distances.md)
+  : Convert Sorting Partitions to Distance Matrices
+- [`subject_effects()`](https://bbuchsbaum.github.io/muscal/reference/subject_effects.md)
+  : Extract Subject-Specific Design Effects
 - [`synthetic_multiblock()`](https://bbuchsbaum.github.io/muscal/reference/synthetic_multiblock.md)
   : Generate synthetic multiblock data
+- [`tune_design_mfa()`](https://bbuchsbaum.github.io/muscal/reference/tune_design_mfa.md)
+  : Tune Design-MFA Components with Held-Out Subjects

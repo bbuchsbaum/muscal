@@ -124,7 +124,7 @@ if (requireNamespace("genpca", quietly = TRUE)) {
 } else {
   "Package 'genpca' not installed; skipping direct MFA reduction check."
 }
-#> [1] 1.153297e-05
+#> [1] 1.78459e-05
 ```
 
 That reduction check is important: it confirms that you are getting a

@@ -29,7 +29,9 @@ penalized_mfa_clusterwise(
   verbose = FALSE,
   preproc = NULL,
   memory_budget_mb = 1024,
-  normalized_laplacian = TRUE
+  normalized_laplacian = TRUE,
+  rank_action = c("error", "reduce"),
+  rank_tol = sqrt(.Machine$double.eps)
 )
 
 pmfa_cluster(
@@ -50,7 +52,9 @@ pmfa_cluster(
   verbose = FALSE,
   preproc = NULL,
   memory_budget_mb = 1024,
-  normalized_laplacian = TRUE
+  normalized_laplacian = TRUE,
+  rank_action = c("error", "reduce"),
+  rank_tol = sqrt(.Machine$double.eps)
 )
 ```
 
@@ -73,8 +77,7 @@ pmfa_cluster(
 - ncomp:
 
   Integer number of latent components to extract per block (default: 2).
-  When a block has fewer than \`ncomp\` clusters, the effective rank is
-  automatically reduced to match the number of clusters.
+  One common rank must be supported by every block after preprocessing.
 
 - lambda:
 
@@ -191,10 +194,20 @@ pmfa_cluster(
 
   Logical indicating whether to use the normalized graph Laplacian
   (default: TRUE). When TRUE, uses \\\mathbf{L}\_{\text{sym}} =
-  \mathbf{D}^{-1/2} \mathbf{L} \mathbf{D}^{-1/2}\\ for scale-free
-  smoothness that is independent of node degree. When FALSE, uses the
-  unnormalized Laplacian \\\mathbf{L} = \mathbf{D} - \mathbf{A}\\.
-  Normalized is recommended for most applications.
+  \mathbf{D}^{-1/2} \mathbf{L} \mathbf{D}^{-1/2}\\ with degrees computed
+  from adjacency. Isolated vertices have zero normalized rows and
+  columns. When FALSE, uses the combinatorial Laplacian \\\mathbf{L} =
+  \mathbf{D} - \mathbf{A}\\. The choice changes the penalty.
+
+- rank_action:
+
+  \`"error"\` (default) rejects unsupported common ranks; \`"reduce"\`
+  explicitly reduces the rank for every block together.
+
+- rank_tol:
+
+  Relative singular-value tolerance for numerical rank after
+  preprocessing (default \`sqrt(.Machine\$double.eps)\`).
 
 ## Value
 
@@ -203,14 +216,14 @@ A \`multiblock_projector\` object of class
 
 - `v`:
 
-  Concatenated loading matrix (total_clusters × ncomp) formed by
-  vertically stacking all block-specific loading matrices. Padded with
-  zeros for variable-rank blocks.
+  Concatenated loading matrix (total_clusters \<c3\>\<97\> ncomp) formed
+  by vertically stacking all block-specific loading matrices at the
+  common rank.
 
 - `preproc`:
 
-  A pass-through preprocessor (identity transformation), since this
-  function expects pre-processed input.
+  The concatenated fitted training preprocessors. Raw block projection
+  uses each stored fitted transformation exactly once.
 
 - `block_indices`:
 
@@ -222,14 +235,22 @@ Additional information stored as named elements (accessible via \`\$\`):
 - `V_list`:
 
   List of length S containing the final orthonormal loading matrices for
-  each block. Each element is a \\k_s \times r_s\\ matrix where \\r_s =
-  \min(\text{ncomp}, k_s)\\.
+  each block. Each element is a \\k_s \times K\\ matrix.
+
+- `block_preproc, feature_names`:
+
+  Fitted block transformations and their original feature identities.
 
 - `Sadj`:
 
   The (normalized or unnormalized) graph Laplacian matrix used for the
   spatial smoothness penalty. Sparse matrix of dimension \\\sum_s k_s
   \times \sum_s k_s\\.
+
+- `adjacency, graph_degree, normalized_laplacian`:
+
+  Retained union adjacency, its degree vector, and the chosen Laplacian
+  type.
 
 - `LV`:
 
@@ -256,11 +277,15 @@ Additional information stored as named elements (accessible via \`\$\`):
   Integer indicating how many outer iterations were completed before
   convergence or reaching max_iter.
 
+- `requested_ncomp, effective_rank, rank_action, rank_tol`:
+
+  Requested common rank, each preprocessed block's numerical rank, and
+  rank policy.
+
 - `ncomp_block`:
 
-  Integer vector of length S containing the effective number of
-  components extracted for each block (may differ from \`ncomp\` for
-  blocks with fewer clusters).
+  Integer vector of length S containing the common resolved number of
+  components, repeated for every block.
 
 ## Details
 
@@ -269,7 +294,7 @@ Additional information stored as named elements (accessible via \`\$\`):
 For \\S\\ subjects/blocks with data matrices \\\mathbf{X}\_s \in
 \mathbb{R}^{n_s \times k_s}\\ (where \\k_s\\ is the number of clusters
 for subject \\s\\), we estimate orthonormal loading matrices
-\\\mathbf{V}\_s \in \mathbb{R}^{k_s \times r_s}\\ by minimizing:
+\\\mathbf{V}\_s \in \mathbb{R}^{k_s \times K}\\ by minimizing:
 
 \$\$ \min\_{\\\mathbf{V}\_s\\} \sum\_{s=1}^S \\\mathbf{X}\_s -
 \mathbf{X}\_s \mathbf{V}\_s \mathbf{V}\_s^\top\\\_F^2 + \lambda
@@ -327,8 +352,11 @@ The spatial adjacency graph is built using k-nearest neighbors (k-NN) in
 
 4.  Symmetrize the adjacency matrix
 
-The number of neighbors can be controlled via \`adjacency_opts =
-list(k_nn = k)\`.
+The neighbor count can be controlled via \`adjacency_opts = list(k_nn =
+k)\`. Graphs pool features across coordinate blocks and symmetrize by
+union. The count is capped at available non-self vertices; zero creates
+no edges and boundary ties are all included, so degree can exceed the
+requested count.
 
 \## Optimization Algorithm
 
@@ -359,12 +387,18 @@ For large datasets, computing and storing \\\mathbf{X}\_s^\top
 - \*\*On-the-fly mode\*\* (otherwise): Compute gradients as needed,
   saving memory at the cost of computation time
 
-\## Variable-Rank Loadings
+\## Common-Rank Contract
 
-When subjects have different numbers of clusters, each block can have a
-different effective rank. The algorithm automatically sets \\r_s =
-\min(\text{ncomp}, k_s)\\ for each block and pads the concatenated
-loading matrix with zeros for consistency.
+Every block uses the same component count K. K cannot exceed the
+smallest feature count or the minimum numerical rank after
+preprocessing. Unsupported requests error by default. \`rank_action =
+"reduce"\` explicitly reduces all blocks together and records the
+requested and supported ranks; no unsupported directions are padded or
+initialized randomly.
+
+Positive-lambda spatial fits remain experimental. Correct graph
+construction and dimensions do not establish optimizer stationarity or
+inferential validity.
 
 \## Preprocessing
 
@@ -556,7 +590,7 @@ coords_var <- list(
 
 res_var <- pmfa_cluster(
   data_var, coords_var,
-  ncomp = 8,  # Will be capped at 10 (smallest block)
+  ncomp = 8,  # Common rank below the smallest block's feature count (10)
   lambda = 1,
   verbose = TRUE
 )

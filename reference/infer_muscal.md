@@ -86,3 +86,10 @@ the concatenated loading matrix \`fit\$v\` (bootstrap only)
 
 Methods without stored refit metadata will error unless an explicit
 \`refit\` specification is supplied.
+
+Observed statistics must be nonempty and finite. Replicates must have
+the same shape and component/feature identities as the observation;
+malformed statistics and sampling/refit errors are recorded in
+\`failures\`. Bootstrap uncertainty requires at least two valid
+replicates. Failure-dependent exclusions do not establish calibrated
+inference.

@@ -12,6 +12,8 @@
 <link href="../deps/font-awesome-6.5.2/css/v4-shims.min.css" rel="stylesheet">
 <script src="../deps/headroom-0.11.0/headroom.min.js"></script><script src="../deps/headroom-0.11.0/jQuery.headroom.min.js"></script><script src="../deps/bootstrap-toc-1.0.1/bootstrap-toc.min.js"></script><script src="../deps/clipboard.js-2.0.11/clipboard.min.js"></script><script src="../deps/search-1.0.0/autocomplete.jquery.min.js"></script><script src="../deps/search-1.0.0/fuse.min.js"></script><script src="../deps/search-1.0.0/mark.min.js"></script><!-- pkgdown --><script src="../pkgdown.js"></script><link href="../extra.css" rel="stylesheet">
 <script src="../extra.js"></script><meta property="og:title" content="Aligned Multiple Factor Analysis">
+<link href="../albers.css" rel="stylesheet">
+<script>window.albersdownDefaults = window.albersdownDefaults || { family: "red", preset: "homage", style: "minimal" };</script><script src="../albers.js"></script>
 </head>
 <body>
     <a href="#main" class="visually-hidden-focusable">Skip to contents</a>
@@ -41,6 +43,8 @@
     <li><a class="dropdown-item" href="../articles/bamfa.html">Barycentric MFA (BaMFA)</a></li>
     <li><a class="dropdown-item" href="../articles/bilinear_mixed.html">Bilinear Mixed Models for Repeated Connectivity Matrices</a></li>
     <li><a class="dropdown-item" href="../articles/covstatis.html">COVSTATIS Analysis</a></li>
+    <li><a class="dropdown-item" href="../articles/design_mfa.html">Find Distributed Design Effects in Trialwise Brain Fields</a></li>
+    <li><a class="dropdown-item" href="../articles/distatis.html">DISTATIS: distances and sorting tasks</a></li>
     <li><a class="dropdown-item" href="../articles/ipca.html">Integrative PCA (iPCA)</a></li>
     <li><a class="dropdown-item" href="../articles/linked_mfa.html">Anchored Multiple Factor Analysis</a></li>
     <li><a class="dropdown-item" href="../articles/mcca.html">Multiblock Canonical Correlation Analysis</a></li>
@@ -184,7 +188,7 @@ latent row 21, they contribute to the same shared score vector.</p>
 <span><span class="op">}</span> <span class="kw">else</span> <span class="op">{</span></span>
 <span>  <span class="st">"Package 'genpca' not installed; skipping direct MFA reduction check."</span></span>
 <span><span class="op">}</span></span>
-<span><span class="co">#&gt; [1] 1.153297e-05</span></span></code></pre></div>
+<span><span class="co">#&gt; [1] 1.78459e-05</span></span></code></pre></div>
 <p>That reduction check is important: it confirms that you are getting a
 genuine extension of MFA rather than a separate, incompatible factor
 model.</p>

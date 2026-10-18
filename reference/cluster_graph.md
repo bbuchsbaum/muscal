@@ -5,7 +5,7 @@ Build a cluster graph from spatial coordinates
 ## Usage
 
 ``` r
-cluster_graph(coords_list, adjacency_opts = list())
+cluster_graph(coords_list, adjacency_opts = list(), return_graph = FALSE)
 ```
 
 ## Arguments
@@ -18,6 +18,11 @@ cluster_graph(coords_list, adjacency_opts = list())
 
   Options for adjacency construction
 
+- return_graph:
+
+  Return adjacency, adjacency degrees, and combinatorial Laplacian
+  together instead of only the Laplacian (default FALSE).
+
 ## Value
 
-Sparse adjacency matrix
+A sparse combinatorial Laplacian, or graph data if requested.
