@@ -19,7 +19,16 @@ test_that("penalized MFA clusterwise reduces objective", {
   
   # Test with lambda = 0 (should revert to independent PCA per block)
   fit0 <- penalized_mfa_clusterwise(clist, coords, ncomp = 2, lambda = 0, max_iter = 5)
-  expect_true(tail(fit0$obj_values, 1) <= head(fit0$obj_values, 1))
+  objective_tol <- 100 * .Machine$double.eps *
+    sum(vapply(clist, function(x) sum(x^2), numeric(1)))
+  expect_lte(tail(fit0$obj_values, 1), head(fit0$obj_values, 1) + objective_tol)
+  # Check the objective against explicit independent-PCA reconstruction errors.
+  pca_objective <- sum(vapply(clist, function(x) {
+    pc <- stats::prcomp(x, center = TRUE, scale. = FALSE, rank. = 2)
+    reconstruction <- tcrossprod(pc$x, pc$rotation)
+    sum((sweep(x, 2L, pc$center) - reconstruction)^2)
+  }, numeric(1)))
+  expect_true(all(abs(fit0$obj_values - pca_objective) <= objective_tol))
   
   # Test with lambda > 0 (spatial smoothness penalty) - relax convergence expectation
   fitS <- penalized_mfa_clusterwise(clist, coords, ncomp = 2, lambda = 1, max_iter = 10)
