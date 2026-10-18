@@ -2,6 +2,7 @@
 /Meta/
 
 # Local build and scratch artifacts
+.DS_Store
 .albersdown.bak/
 .omc/
 figure/
