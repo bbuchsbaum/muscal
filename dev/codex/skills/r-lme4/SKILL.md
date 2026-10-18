@@ -1,15 +1,15 @@
 ---
 name: r-lme4
-description: Use the R package lme4 for its core workflows (Linear Mixed-Effects Models using 'Eigen' and S4). Trigger on requests to write, review, or debug R code that uses lme4, including selecting functions, interpreting outputs, and troubleshooting common errors.
+description: "Write, review, or debug R mixed-effects workflows that use lme4."
 ---
 
 # lme4 (R)
 
-## Quick start
+## Package context
 
-1. Confirm install/version: `packageVersion("lme4")`
-2. Load: `library(lme4)`
-3. Find entrypoints: see `references/help-index.txt` and `references/exports.txt`
+Check the installed version when behavior may be version-sensitive. Use
+`references/help-index.txt` or `references/exports.txt` only when the task needs
+API discovery beyond the workflows below.
 
 ## Common workflows
 
