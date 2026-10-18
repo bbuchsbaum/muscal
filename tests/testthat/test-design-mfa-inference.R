@@ -299,6 +299,11 @@ test_that("failed inference replicates warn and enter the permutation denominato
 })
 
 test_that("serial inference progress and optional future refits keep the contract", {
+  local_mocked_bindings(
+    .dmfa_multifer_effect_contract_available = function() FALSE,
+    .dmfa_multifer_stability_contract_available = function() FALSE,
+    .package = "muscal"
+  )
   sim <- .sim_design_mfa(n_subjects = 4, trials = 22, p = 5, seed = 50)
   fit <- design_mfa(sim$Y, sim$design, ~ saliency, rank = 1)
 
@@ -321,6 +326,7 @@ test_that("serial inference progress and optional future refits keep the contrac
     use_future = TRUE
   )
   expect_equal(fut$n_success, 3)
+  expect_identical(fut$engine, "native")
   expect_s3_class(fut, "design_mfa_inference")
   expect_error(
     infer_design_mfa(fit, "saliency", nrep = 3, use_future = NA),

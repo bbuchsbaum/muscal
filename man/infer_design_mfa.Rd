@@ -43,9 +43,9 @@ the scientific validity of the null transformation.}
 
 \item{verbose}{Emit per-replicate progress. Failed replicates always warn.}
 
-\item{use_future}{If `TRUE`, run independent refits with
-[furrr::future_map()]. The default serial loop keeps seeded results
-bit-identical to previous versions.}
+\item{use_future}{If `TRUE` and the multifer path is unavailable, run
+independent native refits with [furrr::future_map()]. Multifer
+permutation and bootstrap stay sequential.}
 
 \item{...}{Unused.}
 }
@@ -73,6 +73,12 @@ Permutation p-values use successful replicates only:
 `(1 + b) / (n_success + 1)`. Failed refits are not treated as null draws.
 If `n_success < nrep`, the resolution is `1 / (n_success + 1)` and a
 warning is issued.
+
+When a multifer build with `effect_significance` is available, serial
+permutation calls `multifer::infer()`. When the statistic-stability
+sidecar is also available, bootstrap calls `multifer::bootstrap_fits()`
+and maps percentile intervals from that sidecar. `use_future = TRUE`
+no longer starts a local `furrr` loop on those paths.
 }
 \examples{
 \donttest{

@@ -175,6 +175,12 @@
 #' If `n_success < nrep`, the resolution is `1 / (n_success + 1)` and a
 #' warning is issued.
 #'
+#' When a multifer build with `effect_significance` is available, serial
+#' permutation calls `multifer::infer()`. When the statistic-stability
+#' sidecar is also available, bootstrap calls `multifer::bootstrap_fits()`
+#' and maps percentile intervals from that sidecar. `use_future = TRUE`
+#' no longer starts a local `furrr` loop on those paths.
+#'
 #' @param x A fitted [design_mfa()] object.
 #' @param term One estimable design term.
 #' @param method `"bootstrap"` or `"permutation"`.
@@ -190,9 +196,9 @@
 #'   and `replicate` and returning a complete refit-data list. The callback owns
 #'   the scientific validity of the null transformation.
 #' @param verbose Emit per-replicate progress. Failed replicates always warn.
-#' @param use_future If `TRUE`, run independent refits with
-#'   [furrr::future_map()]. The default serial loop keeps seeded results
-#'   bit-identical to previous versions.
+#' @param use_future If `TRUE` and the multifer path is unavailable, run
+#'   independent native refits with [furrr::future_map()]. Multifer
+#'   permutation and bootstrap stay sequential.
 #' @param ... Unused.
 #'
 #' @return A `design_mfa_inference` object containing observed statistics,
@@ -260,6 +266,11 @@ infer_design_mfa <- function(x,
   if (!identical(spec$resample_unit, "subjects")) {
     stop("The fitted refit contract is not subject-clustered.", call. = FALSE)
   }
+  the_call <- match.call()
+  use_multifer_permutation <- identical(method, "permutation") &&
+    .dmfa_multifer_effect_contract_available()
+  use_multifer_bootstrap <- identical(method, "bootstrap") &&
+    .dmfa_multifer_stability_contract_available()
   if (!is.null(seed)) {
     if (!is.numeric(seed) || length(seed) != 1L || !is.finite(seed) ||
         abs(seed - round(seed)) > sqrt(.Machine$double.eps)) {
@@ -278,6 +289,37 @@ infer_design_mfa <- function(x,
       }
     }, add = TRUE)
     set.seed(seed)
+  }
+
+  if (isTRUE(use_multifer_permutation)) {
+    out <- .dmfa_infer_permutation_via_multifer(
+      x = x,
+      term = term,
+      statistics = statistics,
+      nrep = nrep,
+      alpha = alpha,
+      seed = seed,
+      exchangeability = exchangeability,
+      spec = spec,
+      effect = effect
+    )
+    out$call <- the_call
+    return(out)
+  }
+  if (isTRUE(use_multifer_bootstrap)) {
+    out <- .dmfa_infer_bootstrap_via_multifer(
+      x = x,
+      term = term,
+      statistics = statistics,
+      nrep = nrep,
+      alpha = alpha,
+      seed = seed,
+      spec = spec,
+      effect = effect,
+      verbose = verbose
+    )
+    out$call <- the_call
+    return(out)
   }
 
   reference_loadings <- effect$loadings
@@ -402,7 +444,8 @@ infer_design_mfa <- function(x,
       nrep = nrep,
       n_success = length(replicate_values),
       failures = failures,
-      validity = if (identical(method, "bootstrap")) "subject_cluster_bootstrap" else "user_supplied_exchangeability"
+      validity = if (identical(method, "bootstrap")) "subject_cluster_bootstrap" else "user_supplied_exchangeability",
+      engine = "native"
     ),
     class = c("design_mfa_inference", "muscal_inference_result", "list")
   )

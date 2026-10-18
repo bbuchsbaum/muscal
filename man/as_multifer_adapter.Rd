@@ -15,9 +15,10 @@ as_multifer_adapter(x, ...)
 A `multifer_adapter`.
 }
 \description{
-Returns the `multifer` adapter used to expose feature-importance hooks for
-fitted `muscal` methods. The returned adapter can be passed directly to
-`multifer::feature_importance_from_fit()`,
-`multifer::check_feature_importance_adapter()`, and, when the fit/data expose
-refitting hooks, `multifer::feature_importance_pvalues()`.
+Returns the `multifer` adapter for a fitted `muscal` method. Design-MFA
+exposes `effect_significance` with a caller-owned null. Other methods
+currently expose feature-importance and component-significance hooks
+that can be passed to `multifer::feature_importance_from_fit()`,
+`multifer::check_feature_importance_adapter()`, and, when the fit/data
+expose refitting hooks, `multifer::feature_importance_pvalues()`.
 }
