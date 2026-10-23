@@ -82,6 +82,10 @@ covstatis <- function(data, ncomp = 2, normalize = TRUE, dcenter = TRUE, ...) {
 #' principal component analysis for multi‑table and multi‑block data sets*.
 #' **Wiley Interdisciplinary Reviews: Computational Statistics, 5**(2), 149–179.
 #'
+#' Josse, J., & Husson, F. (2012). Handling missing values in exploratory
+#' multivariate data analysis methods. *Journal de la Société Française de
+#' Statistique, 153*(2), 79–99.
+#'
 #' @export
 #' @rdname mfa
 mfa <- function(data, preproc, ncomp = 2, normalization = "MFA", A = NULL, M = NULL, ...) {
