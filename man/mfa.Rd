@@ -50,13 +50,13 @@ methods for details).}
 
 \item{...}{Additional arguments passed to the method.}
 
-\item{missing}{Missing-data handling mode. \code{"error"} preserves the historical
-complete-data contract. \code{"regularized"} and \code{"em"} run iterative MFA
-imputation before the final complete-data MFA fit. \code{"nipals"} is reserved
-for a future direct available-data backend.}
+\item{missing}{Missing-data handling mode. \code{"error"} (default) rejects \code{NA}
+values. \code{"regularized"} and \code{"em"} run iterative MFA imputation before the
+final complete-data MFA fit (see the \emph{Missing data} section). \code{"nipals"}
+is reserved for a future direct available-data backend.}
 
 \item{ncp_impute}{Integer; number of MFA components used inside the iterative
-imputation loop.}
+imputation loop. Values above \code{min(n - 2, p - 1)} are capped.}
 
 \item{missing_tol}{Numeric convergence tolerance for iterative imputation.}
 
@@ -90,6 +90,32 @@ Normalization options include:
 \item \code{custom}: Uses custom weight matrices provided via A and M parameters
 }
 }
+\section{Missing data}{
+
+With \code{missing = "regularized"} or \code{"em"}, \code{NA}/\code{NaN} cells are imputed by
+iterative MFA (Josse & Husson, 2012; the algorithm of
+\code{missMDA::imputeMFA()}), and the returned model is an ordinary MFA fit to
+the completed blocks. Missing cells start at their column means; each
+iteration then refits the preprocessing, block weights, and an
+\code{ncp_impute}-component MFA to the current completed data and replaces only
+the missing cells with the low-rank reconstruction. \code{"em"} uses the plain
+rank-\code{ncp_impute} reconstruction; \code{"regularized"} shrinks each retained
+singular value \code{d_k} to \code{(d_k^2 - sigma2) / d_k}, where \code{sigma2} is the
+residual inertia per residual degree of freedom, which guards against
+overfitting when data are noisy or many cells are missing.
+
+Rows may be missing entire blocks, but every column needs at least one
+observed value, blocks must share the same rows (see \code{\link[=linked_mfa]{linked_mfa()}} for
+blocks observed on different row sets), and infinite values are rejected.
+\code{ncp_impute} is capped at \code{min(n - 2, p - 1)} with a warning, and a warning
+is issued if the imputation does not converge within \code{missing_maxiter}
+iterations. Convergence is the root-mean-square change of the imputed cells,
+in units of each variable's observed standard deviation, falling below
+\code{missing_tol}. Imputed cells influence the final scores and loadings, so
+choose \code{ncp_impute} with care (it defaults to \code{ncomp}). The result records
+\code{missing = list(method, ncp_impute, iterations, converged, delta, mask)}.
+}
+
 \examples{
 \donttest{
 # Apply MFA to a list of matrices
@@ -124,4 +150,8 @@ pred2 <- predict(cfier2, X[[2]][1:2,])
 Abdi, H., Williams, L. J., & Valentin, D. (2013). *Multiple factor analysis:
 principal component analysis for multi‑table and multi‑block data sets*.
 **Wiley Interdisciplinary Reviews: Computational Statistics, 5**(2), 149–179.
+
+Josse, J., & Husson, F. (2012). Handling missing values in exploratory
+multivariate data analysis methods. *Journal de la Société Française de
+Statistique, 153*(2), 79–99.
 }

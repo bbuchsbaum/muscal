@@ -190,7 +190,7 @@ test_that("mfa regularized missing path imputes and preserves observed cells", {
       ncomp = 2,
       missing = "regularized",
       ncp_impute = 2,
-      missing_maxiter = 25,
+      missing_maxiter = 100,
       return_imputed = TRUE
     )
   )
@@ -198,7 +198,7 @@ test_that("mfa regularized missing path imputes and preserves observed cells", {
   expect_s3_class(fit, "mfa")
   expect_true(is.list(fit$missing))
   expect_equal(fit$missing$method, "regularized")
-  expect_lte(fit$missing$iterations, 25)
+  expect_lte(fit$missing$iterations, 100)
   expect_true(is.finite(fit$missing$delta))
   expect_false(anyNA(do.call(cbind, fit$imputed_data)))
   expect_true(anyNA(do.call(cbind, fit$fit_spec$refit$data)))
@@ -361,13 +361,13 @@ test_that("mfa regularized missing path is finite across randomized masks", {
         missing = "regularized",
         ncp_impute = 2,
         missing_tol = 1e-5,
-        missing_maxiter = 20,
+        missing_maxiter = 100,
         return_imputed = TRUE
       )
     )
 
     expect_equal(fit$missing$mask, masks)
-    expect_lte(fit$missing$iterations, 20)
+    expect_lte(fit$missing$iterations, 100)
     expect_true(is.finite(fit$missing$delta))
     expect_true(all(is.finite(fit$sdev)))
     expect_true(all(is.finite(fit$s)))
@@ -402,7 +402,7 @@ test_that("mfa missing paths handle custom positive row weights", {
         missing = method,
         ncp_impute = 2,
         missing_tol = 1e-6,
-        missing_maxiter = 30,
+        missing_maxiter = 100,
         return_imputed = TRUE
       )
     )
@@ -415,7 +415,7 @@ test_that("mfa missing paths handle custom positive row weights", {
         missing = method,
         ncp_impute = 2,
         missing_tol = 1e-6,
-        missing_maxiter = 30,
+        missing_maxiter = 100,
         return_imputed = TRUE
       )
     )
@@ -567,4 +567,268 @@ test_that("mfa latent recovery degrades as noise increases", {
 
   expect_lt(rel_low, rel_high)
   expect_lt(rel_low, 0.15)
+})
+
+# Classical regularized iterative MFA on centered blocks (Josse & Husson, 2012),
+# written directly with base::svd as an independent reference.
+.ref_impute_mfa <- function(blocks, ncp, method, tol = 1e-12, maxiter = 5000) {
+  X <- do.call(cbind, blocks)
+  miss <- is.na(X)
+  grp <- rep(seq_along(blocks), vapply(blocks, ncol, integer(1L)))
+  X[miss] <- colMeans(X, na.rm = TRUE)[col(X)[miss]]
+  n <- nrow(X)
+  p <- ncol(X)
+  for (it in seq_len(maxiter)) {
+    mu <- colMeans(X)
+    Xc <- sweep(X, 2L, mu)
+    w <- vapply(seq_along(blocks), function(b) {
+      svd(Xc[, grp == b, drop = FALSE], nu = 0, nv = 0)$d[[1L]]
+    }, numeric(1L))
+    s <- svd(sweep(Xc, 2L, w[grp], `/`))
+    d <- s$d
+    sigma2 <- if (identical(method, "em")) {
+      0
+    } else {
+      min(
+        n * p / min(p, n - 1) * sum(d[-seq_len(ncp)]^2) / ((n - 1 - ncp) * (p - ncp)),
+        d[[ncp + 1L]]^2
+      )
+    }
+    keep <- seq_len(ncp)
+    fitted <- s$u[, keep, drop = FALSE] %*%
+      diag((d[keep]^2 - sigma2) / d[keep], nrow = ncp) %*%
+      t(s$v[, keep, drop = FALSE])
+    fitted <- sweep(sweep(fitted, 2L, w[grp], `*`), 2L, mu, `+`)
+    delta <- max(abs(fitted[miss] - X[miss]))
+    X[miss] <- fitted[miss]
+    if (delta < tol) break
+  }
+  X
+}
+
+.sim_mfa_scaled_blocks <- function(n, k, p_vec, scales, shifts, noise_sd = 0) {
+  Z <- matrix(rnorm(n * k), nrow = n, ncol = k)
+  blocks <- Map(function(p, sc, sh) {
+    signal <- Z %*% matrix(rnorm(k * p), nrow = k, ncol = p)
+    (signal + matrix(rnorm(n * p, sd = noise_sd), nrow = n, ncol = p)) * sc + sh
+  }, p_vec, scales, shifts)
+  names(blocks) <- paste0("X", seq_along(blocks))
+  blocks
+}
+
+.mfa_std_rmse <- function(estimate, truth_blocks, masks) {
+  truth <- .mfa_missing_values(truth_blocks, masks)
+  scale <- unlist(Map(function(b, m) apply(b, 2L, stats::sd)[col(m)[m]], truth_blocks, masks),
+                  use.names = FALSE)
+  sqrt(mean(((estimate - truth) / scale)^2))
+}
+
+test_that("mfa reconstruction back-projects in the data metric under MFA block weights", {
+  set.seed(601)
+  blocks <- list(
+    X1 = matrix(rnorm(100, sd = 3), nrow = 20),
+    X2 = matrix(rnorm(100, sd = 30), nrow = 20),
+    X3 = matrix(rnorm(100, sd = 0.3), nrow = 20)
+  )
+  Xc <- do.call(cbind, blocks)
+  fit <- suppressMessages(mfa(blocks, ncomp = 2))
+  gsvd_rank2 <- sweep(
+    as.matrix(fit$ou) %*% diag(fit$sdev, nrow = 2) %*% t(as.matrix(fit$ov)),
+    2L, colMeans(Xc), `+`
+  )
+
+  expect_equal(multivarious::reconstruct(fit), gsvd_rank2, tolerance = 1e-10)
+  expect_equal(
+    multivarious::reconstruct(fit, rowind = 3:7, colind = 4:12),
+    gsvd_rank2[3:7, 4:12],
+    tolerance = 1e-10
+  )
+  expect_equal(predict(fit, Xc, type = "reconstruction"), gsvd_rank2, tolerance = 1e-10)
+
+  fit_full <- suppressMessages(mfa(blocks, ncomp = 15))
+  expect_equal(predict(fit_full, Xc, type = "reconstruction"), Xc, tolerance = 1e-8)
+})
+
+test_that("mfa EM imputation recovers noiseless low-rank entries under MFA block weighting", {
+  set.seed(602)
+  blocks <- .sim_mfa_scaled_blocks(
+    n = 50, k = 2, p_vec = c(6, 7, 5),
+    scales = c(1, 100, 0.01), shifts = c(0, 500, -2)
+  )
+  masks <- lapply(blocks, .mfa_mask_random, prop = 0.12)
+  masks$X2[3:5, ] <- TRUE
+  missing_blocks <- Map(function(b, m) { b[m] <- NA_real_; b }, blocks, masks)
+
+  fit <- suppressMessages(
+    mfa(
+      missing_blocks,
+      ncomp = 2,
+      missing = "em",
+      ncp_impute = 2,
+      missing_tol = 1e-10,
+      missing_maxiter = 2000,
+      return_imputed = TRUE
+    )
+  )
+  estimated <- .mfa_missing_values(fit$imputed_data, masks)
+  baseline <- .mfa_missing_values(.mfa_mean_init(missing_blocks), masks)
+
+  expect_true(fit$missing$converged)
+  expect_lt(.mfa_std_rmse(estimated, blocks, masks), 1e-5)
+  expect_lt(.mfa_std_rmse(estimated, blocks, masks), 1e-4 * .mfa_std_rmse(baseline, blocks, masks))
+  .mfa_assert_observed_preserved(missing_blocks, fit$imputed_data)
+})
+
+test_that("mfa iterative imputation matches a reference regularized iterative MFA", {
+  set.seed(603)
+  blocks <- .sim_mfa_scaled_blocks(
+    n = 40, k = 2, p_vec = c(5, 6, 4),
+    scales = c(1, 20, 0.1), shifts = c(0, 10, 3), noise_sd = 0.5
+  )
+  masks <- lapply(blocks, .mfa_mask_random, prop = 0.15)
+  masks$X3[7:9, ] <- TRUE
+  missing_blocks <- Map(function(b, m) { b[m] <- NA_real_; b }, blocks, masks)
+  all_masks <- do.call(cbind, masks)
+
+  for (method in c("regularized", "em")) {
+    fit <- suppressMessages(
+      mfa(
+        missing_blocks,
+        ncomp = 2,
+        missing = method,
+        ncp_impute = 2,
+        missing_tol = 1e-11,
+        missing_maxiter = 5000,
+        return_imputed = TRUE
+      )
+    )
+    reference <- .ref_impute_mfa(missing_blocks, ncp = 2, method = method)
+    scale <- apply(do.call(cbind, blocks), 2L, stats::sd)[col(all_masks)[all_masks]]
+
+    expect_true(fit$missing$converged)
+    expect_lt(
+      max(abs(do.call(cbind, fit$imputed_data)[all_masks] - reference[all_masks]) / scale),
+      1e-6
+    )
+  }
+})
+
+test_that("mfa regularized imputation beats mean imputation on noisy low-rank data", {
+  set.seed(604)
+  blocks <- .sim_mfa_scaled_blocks(
+    n = 60, k = 2, p_vec = c(8, 6, 10),
+    scales = c(1, 50, 0.01), shifts = c(0, 100, -3), noise_sd = 0.5
+  )
+  masks <- lapply(blocks, .mfa_mask_random, prop = 0.2)
+  missing_blocks <- Map(function(b, m) { b[m] <- NA_real_; b }, blocks, masks)
+
+  fit <- suppressMessages(
+    mfa(missing_blocks, ncomp = 2, missing = "regularized", return_imputed = TRUE)
+  )
+  rmse_reg <- .mfa_std_rmse(.mfa_missing_values(fit$imputed_data, masks), blocks, masks)
+  rmse_mean <- .mfa_std_rmse(
+    .mfa_missing_values(.mfa_mean_init(missing_blocks), masks), blocks, masks
+  )
+
+  expect_true(fit$missing$converged)
+  expect_lt(rmse_reg, 0.7 * rmse_mean)
+})
+
+test_that("mfa imputation is equivariant to rescaling and shifting a block", {
+  set.seed(605)
+  blocks <- .sim_mfa_scaled_blocks(
+    n = 30, k = 2, p_vec = c(5, 5), scales = c(1, 1), shifts = c(0, 0), noise_sd = 0.3
+  )
+  masks <- lapply(blocks, .mfa_mask_random, prop = 0.15)
+  missing_blocks <- Map(function(b, m) { b[m] <- NA_real_; b }, blocks, masks)
+  shifted <- missing_blocks
+  shifted$X2 <- shifted$X2 * 1000 + 250
+
+  for (method in c("regularized", "em")) {
+    fit <- suppressMessages(mfa(missing_blocks, ncomp = 2, missing = method, return_imputed = TRUE))
+    fit_shifted <- suppressMessages(mfa(shifted, ncomp = 2, missing = method, return_imputed = TRUE))
+
+    expect_equal(fit_shifted$missing$iterations, fit$missing$iterations)
+    expect_equal(fit_shifted$imputed_data$X1, fit$imputed_data$X1, tolerance = 1e-8)
+    expect_equal(fit_shifted$imputed_data$X2, fit$imputed_data$X2 * 1000 + 250, tolerance = 1e-8)
+  }
+})
+
+test_that("mfa regularized shrinkage follows the residual-variance formula", {
+  d <- c(10, 6, 2, 1, 0.5)
+  n <- 20
+  p <- 5
+  total <- sum(d^2)
+  shrink <- muscal:::.mfa_regularized_shrinkage(d, ncp = 2, n = n, p = p, total_inertia = total)
+  sigma2 <- n * p / min(p, n - 1) * sum(d[3:5]^2) / ((n - 1 - 2) * (p - 2))
+  sigma2 <- min(sigma2, d[[3]]^2)
+
+  expect_equal(shrink, (d[1:2]^2 - sigma2) / d[1:2]^2)
+  expect_true(all(shrink > 0 & shrink <= 1))
+  # A large residual is capped at the next singular value.
+  capped <- muscal:::.mfa_regularized_shrinkage(d, ncp = 2, n = n, p = p, total_inertia = 1e4)
+  expect_equal(capped, (d[1:2]^2 - d[[3]]^2) / d[1:2]^2)
+})
+
+test_that("mfa missing path warns when imputation does not converge", {
+  set.seed(606)
+  blocks <- list(X1 = matrix(rnorm(60), nrow = 12), X2 = matrix(rnorm(48), nrow = 12))
+  blocks$X1[cbind(c(1, 4, 9), c(1, 3, 5))] <- NA_real_
+
+  expect_warning(
+    fit <- suppressMessages(mfa(blocks, ncomp = 2, missing = "em", missing_maxiter = 1)),
+    "did not converge"
+  )
+  expect_false(fit$missing$converged)
+  expect_equal(fit$missing$iterations, 1L)
+})
+
+test_that("mfa missing path caps ncp_impute at the identifiable rank", {
+  set.seed(607)
+  blocks <- list(X1 = matrix(rnorm(20), nrow = 5), X2 = matrix(rnorm(20), nrow = 5))
+  blocks$X1[2, 1] <- NA_real_
+
+  expect_warning(
+    fit <- suppressMessages(
+      mfa(blocks, ncomp = 2, missing = "regularized", ncp_impute = 10, missing_maxiter = 500)
+    ),
+    "too large"
+  )
+  expect_true(fit$missing$converged)
+  expect_equal(fit$missing$ncp_impute, 3L)
+  # The refit contract stores the capped value, so refits do not warn again.
+  expect_no_warning(
+    refit <- suppressMessages(fit$fit_spec$refit$fit_fn(fit$fit_spec$refit$data))
+  )
+  expect_equal(refit$missing$ncp_impute, 3L)
+})
+
+test_that("mfa missing path flags rows with no observed data and rejects bad inputs", {
+  set.seed(608)
+  blocks <- list(X1 = matrix(rnorm(60), nrow = 12), X2 = matrix(rnorm(48), nrow = 12))
+  empty <- blocks
+  empty$X1[3, ] <- NA_real_
+  empty$X2[3, ] <- NA_real_
+  expect_warning(
+    suppressMessages(mfa(empty, ncomp = 2, missing = "em", missing_maxiter = 500)),
+    "no observed values"
+  )
+
+  infinite <- blocks
+  infinite$X1[1, 1] <- NA_real_
+  infinite$X2[2, 2] <- Inf
+  expect_error(
+    suppressMessages(mfa(infinite, ncomp = 2, missing = "em")),
+    "infinite values"
+  )
+
+  ragged <- list(X1 = matrix(rnorm(60), nrow = 12), X2 = matrix(rnorm(44), nrow = 11))
+  ragged$X1[1, 1] <- NA_real_
+  expect_error(
+    suppressMessages(muscal:::.mfa_impute_iterative(
+      ragged, preproc = multivarious::center(), ncp = 2, normalization = "MFA",
+      A = NULL, M = NULL, method = "em"
+    )),
+    "same number of rows"
+  )
 })
