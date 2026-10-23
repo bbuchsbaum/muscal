@@ -401,6 +401,9 @@ installs and the GitHub Pages build path works.
   : Low-rank reconstruction of the compromise matrix
 - [`reconstruct(`*`<distatis>`*`)`](https://bbuchsbaum.github.io/muscal/reference/reconstruct.distatis.md)
   : Reconstruct the Normalized DISTATIS Compromise
+- [`reconstruct(`*`<mfa>`*`)`](https://bbuchsbaum.github.io/muscal/reference/reconstruct.mfa.md)
+  [`reconstruct_new(`*`<mfa>`*`)`](https://bbuchsbaum.github.io/muscal/reference/reconstruct.mfa.md)
+  : Reconstruct Data from an MFA Fit
 - [`response_aligned_mfa()`](https://bbuchsbaum.github.io/muscal/reference/response_aligned_mfa.md)
   : Response-Aligned Multiple Factor Analysis
 - [`roi_map()`](https://bbuchsbaum.github.io/muscal/reference/roi_map.md)

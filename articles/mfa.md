@@ -343,10 +343,10 @@ res_cv <- cv_muscal(
 
 res_cv$scores
 #> # A tibble: 2 × 4
-#>      mse  rmse      r2 .fold
-#>    <dbl> <dbl>   <dbl> <int>
-#> 1 0.101  0.318 -0.0364     1
-#> 2 0.0911 0.302 -0.0233     2
+#>      mse  rmse       r2 .fold
+#>    <dbl> <dbl>    <dbl> <int>
+#> 1 0.0979 0.313 -0.00214     1
+#> 2 0.0885 0.298  0.00521     2
 ```
 
 ``` r
