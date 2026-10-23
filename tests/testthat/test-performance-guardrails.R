@@ -55,16 +55,17 @@ test_that("mfa representative missing-data fit stays within a soft runtime budge
     X2 = mask_random(X2, 0.05)
   )
 
+  # The iteration cap fixes the work being timed; convergence is not the point.
   elapsed <- .perf_guardrail_time(
     function() {
-      mfa(
+      suppressWarnings(mfa(
         blocks,
         ncomp = 3,
         missing = "regularized",
         ncp_impute = 3,
         missing_tol = 1e-5,
         missing_maxiter = 8
-      )
+      ))
     },
     iterations = 2L
   )
