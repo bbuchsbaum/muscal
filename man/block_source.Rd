@@ -9,7 +9,14 @@
 \alias{read_block}
 \title{Out-of-Core Block Sources}
 \usage{
-block_source(loader, nrow, ncol, names = NULL, chunk_size = 5000L)
+block_source(
+  loader,
+  nrow,
+  ncol,
+  names = NULL,
+  colnames = NULL,
+  chunk_size = 5000L
+)
 
 as_block_source(x, ...)
 
@@ -31,6 +38,10 @@ in the same order. Missing and infinite values are not supported.}
 each block.}
 
 \item{names}{Optional block names; defaults to `names(nrow)` or `X1, X2, ...`.}
+
+\item{colnames}{Optional list of column-name vectors, one per block (each
+`NULL` or of length `ncol[k]`). Needed for `feature_groups = "colnames"` or
+for feature groups that refer to features by name.}
 
 \item{chunk_size}{Maximum number of columns read per call to `loader`. Peak
 memory per read is about `8 * nrow[k] * chunk_size` bytes.}
