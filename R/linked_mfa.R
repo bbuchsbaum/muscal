@@ -838,15 +838,45 @@ linked_mfa <- function(Y,
 }
 
 .lmfa_parse_feature_groups <- function(feature_groups, X_list, feature_lambda) {
-  # X_list is preprocessed X blocks (list of matrices), not including Y
+  # X_list is preprocessed X blocks (list of matrices), not including Y; only
+  # their column counts and names are used.
+  #
+  # Returns per-block group labels (`by_block`), integer indices into `groups`
+  # (`group_id`, NA for ungrouped features), and per-feature weights. Groups
+  # that link fewer than two features are dropped.
+  disabled <- list(
+    enabled = FALSE,
+    feature_lambda = 0,
+    by_block = lapply(X_list, function(X) rep.int(NA_character_, ncol(X))),
+    group_id = lapply(X_list, function(X) rep.int(NA_integer_, ncol(X))),
+    weights_by_block = lapply(X_list, function(X) rep.int(1, ncol(X))),
+    groups = character(0)
+  )
   if (is.null(feature_groups) || isTRUE(feature_lambda == 0)) {
-    return(list(
-      enabled = FALSE,
-      feature_lambda = 0,
-      by_block = lapply(X_list, function(X) rep.int(NA_character_, ncol(X))),
-      weights_by_block = lapply(X_list, function(X) rep.int(1, ncol(X))),
-      members = list()
-    ))
+    return(disabled)
+  }
+
+  finish <- function(block, feature, group, weight) {
+    counts <- table(group)
+    groups <- unique(group[group %in% names(counts)[counts >= 2L]])
+    if (length(groups) == 0L) return(disabled)
+    keep <- group %in% groups
+    by_block <- disabled$by_block
+    weights_by_block <- disabled$weights_by_block
+    for (k in unique(block)) {
+      rows <- which(block == k)
+      weights_by_block[[k]][feature[rows]] <- weight[rows]
+      rows <- rows[keep[rows]]
+      by_block[[k]][feature[rows]] <- group[rows]
+    }
+    list(
+      enabled = TRUE,
+      feature_lambda = feature_lambda,
+      by_block = by_block,
+      group_id = lapply(by_block, match, table = groups),
+      weights_by_block = weights_by_block,
+      groups = groups
+    )
   }
 
   if (identical(feature_groups, "colnames")) {
@@ -855,40 +885,19 @@ linked_mfa <- function(Y,
     if (any(vapply(cn_all, is.null, logical(1)))) {
       stop("feature_groups='colnames' requires non-NULL colnames for every X block.", call. = FALSE)
     }
-    name_to_members <- new.env(parent = emptyenv())
-    for (k in seq_along(X_list)) {
-      for (j in seq_len(ncol(X_list[[k]]))) {
-        nm <- cn_all[[k]][j]
-        cur <- if (exists(nm, envir = name_to_members, inherits = FALSE)) {
-          get(nm, envir = name_to_members, inherits = FALSE)
-        } else {
-          list()
-        }
-        cur[[length(cur) + 1L]] <- list(block = k, feature = j, weight = 1)
-        assign(nm, cur, envir = name_to_members)
-      }
+    block <- rep(seq_along(X_list), lengths(cn_all))
+    feature <- unlist(lapply(cn_all, seq_along), use.names = FALSE)
+    group <- unlist(cn_all, use.names = FALSE)
+    out <- finish(block, feature, group, rep(1, length(group)))
+    if (isTRUE(out$enabled)) {
+      out$groups <- sort(out$groups)
+      out$group_id <- lapply(out$by_block, match, table = out$groups)
+    } else {
+      # Historical behaviour: the prior stays enabled even if no names match.
+      out$enabled <- TRUE
+      out$feature_lambda <- feature_lambda
     }
-    groups <- ls(envir = name_to_members)
-    members <- lapply(groups, function(g) get(g, envir = name_to_members, inherits = FALSE))
-    names(members) <- groups
-    # Keep only groups that link at least two features.
-    keep <- vapply(members, length, integer(1)) >= 2L
-    members <- members[keep]
-    groups <- names(members)
-
-    by_block <- lapply(X_list, function(X) rep.int(NA_character_, ncol(X)))
-    for (g in groups) {
-      for (m in members[[g]]) {
-        by_block[[m$block]][m$feature] <- g
-      }
-    }
-    return(list(
-      enabled = TRUE,
-      feature_lambda = feature_lambda,
-      by_block = by_block,
-      weights_by_block = lapply(X_list, function(X) rep.int(1, ncol(X))),
-      members = members
-    ))
+    return(out)
   }
 
   if (!is.data.frame(feature_groups)) {
@@ -903,109 +912,99 @@ linked_mfa <- function(Y,
     feature_groups$weight <- 1
   }
 
-  by_block <- lapply(X_list, function(X) rep.int(NA_character_, ncol(X)))
-  weights_by_block <- lapply(X_list, function(X) rep.int(1, ncol(X)))
-
-  # Helpers to resolve block + feature indices
   x_names <- names(X_list)
-  resolve_block <- function(b) {
-    if (is.numeric(b) || is.integer(b)) {
-      bi <- as.integer(b)
-      if (bi < 1L || bi > length(X_list)) stop("feature_groups$block out of range.", call. = FALSE)
-      return(bi)
+  b <- feature_groups$block
+  block <- if (is.numeric(b)) {
+    bi <- as.integer(b)
+    if (any(is.na(bi) | bi < 1L | bi > length(X_list))) {
+      stop("feature_groups$block out of range.", call. = FALSE)
     }
-    b <- as.character(b)
-    bi <- match(b, x_names)
-    if (is.na(bi)) stop("feature_groups$block not found in names(X).", call. = FALSE)
+    bi
+  } else {
+    bi <- match(as.character(b), x_names)
+    if (anyNA(bi)) stop("feature_groups$block not found in names(X).", call. = FALSE)
     bi
   }
-  resolve_feature <- function(k, f) {
-    if (is.numeric(f) || is.integer(f)) {
-      fi <- as.integer(f)
-      if (fi < 1L || fi > ncol(X_list[[k]])) stop("feature_groups$feature out of range.", call. = FALSE)
-      return(fi)
+
+  f <- feature_groups$feature
+  feature <- integer(length(f))
+  for (k in unique(block)) {
+    rows <- which(block == k)
+    if (is.numeric(f)) {
+      fi <- as.integer(f[rows])
+      if (any(is.na(fi) | fi < 1L | fi > ncol(X_list[[k]]))) {
+        stop("feature_groups$feature out of range.", call. = FALSE)
+      }
+    } else {
+      cn <- colnames(X_list[[k]])
+      if (is.null(cn)) stop("feature_groups uses feature names but X block has NULL colnames.", call. = FALSE)
+      fi <- match(as.character(f[rows]), cn)
+      if (anyNA(fi)) stop("feature_groups$feature name not found in X block colnames.", call. = FALSE)
     }
-    f <- as.character(f)
-    cn <- colnames(X_list[[k]])
-    if (is.null(cn)) stop("feature_groups uses feature names but X block has NULL colnames.", call. = FALSE)
-    fi <- match(f, cn)
-    if (is.na(fi)) stop("feature_groups$feature name not found in X block colnames.", call. = FALSE)
-    fi
+    feature[rows] <- fi
   }
 
-  seen <- new.env(parent = emptyenv())
-  members <- list()
-  for (i in seq_len(nrow(feature_groups))) {
-    k <- resolve_block(feature_groups$block[[i]])
-    j <- resolve_feature(k, feature_groups$feature[[i]])
-    g <- as.character(feature_groups$group[[i]])
-    w <- as.numeric(feature_groups$weight[[i]])
-    if (!is.finite(w) || w < 0) stop("feature_groups$weight must be finite and non-negative.", call. = FALSE)
-
-    key <- paste(k, j, sep = ":")
-    if (exists(key, envir = seen, inherits = FALSE)) {
-      stop("Duplicate (block, feature) entries in feature_groups.", call. = FALSE)
-    }
-    assign(key, TRUE, envir = seen)
-
-    by_block[[k]][j] <- g
-    weights_by_block[[k]][j] <- w
-    if (is.null(members[[g]])) members[[g]] <- list()
-    members[[g]][[length(members[[g]]) + 1L]] <- list(block = k, feature = j, weight = w)
+  weight <- as.numeric(feature_groups$weight)
+  if (any(!is.finite(weight) | weight < 0)) {
+    stop("feature_groups$weight must be finite and non-negative.", call. = FALSE)
+  }
+  if (anyDuplicated(paste(block, feature, sep = ":"))) {
+    stop("Duplicate (block, feature) entries in feature_groups.", call. = FALSE)
   }
 
-  # Drop singleton groups (they don't link across features/blocks).
-  keep <- vapply(members, length, integer(1)) >= 2L
-  members <- members[keep]
-  if (length(members) == 0) {
-    return(list(
-      enabled = FALSE,
-      feature_lambda = 0,
-      by_block = lapply(X_list, function(X) rep.int(NA_character_, ncol(X))),
-      weights_by_block = lapply(X_list, function(X) rep.int(1, ncol(X))),
-      members = list()
-    ))
-  }
-
-  # Clear group labels for any features that ended up in dropped groups.
-  valid_groups <- names(members)
-  for (k in seq_along(by_block)) {
-    by_block[[k]][!(by_block[[k]] %in% valid_groups)] <- NA_character_
-  }
-
-  list(
-    enabled = TRUE,
-    feature_lambda = feature_lambda,
-    by_block = by_block,
-    weights_by_block = weights_by_block,
-    members = members
-  )
+  finish(block, feature, as.character(feature_groups$group), weight)
 }
 
 .lmfa_group_centers <- function(V_list, fg, block_weights = NULL) {
-  if (!isTRUE(fg$enabled) || length(fg$members) == 0) return(NULL)
-  groups <- names(fg$members)
-  if (is.null(groups)) groups <- seq_along(fg$members)
+  if (!isTRUE(fg$enabled) || length(fg$groups) == 0) return(NULL)
+  n_groups <- length(fg$groups)
   kdim <- ncol(V_list[[1]])
   if (is.null(block_weights)) {
     block_weights <- rep(1, length(V_list))
   }
-  centers <- matrix(0, nrow = length(fg$members), ncol = kdim)
-  denom <- numeric(length(fg$members))
-  rownames(centers) <- groups
-  for (gi in seq_along(fg$members)) {
-    mem <- fg$members[[gi]]
-    for (m in mem) {
-      bw <- block_weights[m$block]
-      if (!is.finite(bw) || bw <= 0) next
-      v <- V_list[[m$block]][m$feature, , drop = TRUE]
-      w <- bw * m$weight
-      centers[gi, ] <- centers[gi, ] + w * v
-      denom[gi] <- denom[gi] + w
-    }
-    if (denom[gi] > 0) centers[gi, ] <- centers[gi, ] / denom[gi]
+  num <- matrix(0, nrow = n_groups, ncol = kdim)
+  denom <- numeric(n_groups)
+  for (k in seq_along(V_list)) {
+    gid <- fg$group_id[[k]]
+    ok <- which(!is.na(gid))
+    bw <- block_weights[k]
+    if (length(ok) == 0L || !is.finite(bw) || bw <= 0) next
+    w <- bw * fg$weights_by_block[[k]][ok]
+    num <- num + .lmfa_rowsum_full(w * V_list[[k]][ok, , drop = FALSE], gid[ok], n_groups)
+    denom <- denom + .lmfa_rowsum_full(matrix(w, ncol = 1L), gid[ok], n_groups)[, 1L]
   }
+  centers <- num
+  nz <- denom > 0
+  centers[nz, ] <- num[nz, , drop = FALSE] / denom[nz]
+  rownames(centers) <- fg$groups
   list(centers = centers, denom = denom)
+}
+
+# rowsum() into a fixed number of rows (groups absent from `g` stay zero).
+.lmfa_rowsum_full <- function(M, g, n) {
+  out <- matrix(0, nrow = n, ncol = ncol(M))
+  rs <- rowsum(M, g, reorder = FALSE)
+  out[as.integer(rownames(rs)), ] <- rs
+  out
+}
+
+# Feature-group penalty  lambda * sum_k sum_j w_kj ||V_k[j, ] - c_g(kj)||^2,
+# shared by the anchored, aligned, and response-aligned MFA objectives.
+.lmfa_feature_group_penalty <- function(V_list, fg, centers, feature_lambda) {
+  if (!isTRUE(feature_lambda > 0) || !isTRUE(fg$enabled) || is.null(centers) ||
+      length(fg$groups) == 0) {
+    return(0)
+  }
+  pen <- 0
+  for (k in seq_along(V_list)) {
+    gid <- fg$group_id[[k]]
+    ok <- which(!is.na(gid))
+    if (length(ok) == 0L) next
+    ci <- match(fg$groups[gid[ok]], rownames(centers$centers))
+    D <- V_list[[k]][ok, , drop = FALSE] - centers$centers[ci, , drop = FALSE]
+    pen <- pen + sum(fg$weights_by_block[[k]][ok] * rowSums(D^2))
+  }
+  feature_lambda * pen
 }
 
 .lmfa_update_V_block <- function(Sk,
@@ -1036,36 +1035,17 @@ linked_mfa <- function(Y,
   V <- t(Vt0)               # p x K
 
   if (isTRUE(feature_lambda > 0) && !is.null(fg_block) && !all(is.na(fg_block)) && !is.null(centers)) {
-    # Cache cholesky factors per lambda value to avoid repeated decompositions.
-    chol_cache <- new.env(parent = emptyenv())
-    get_chol <- function(lam) {
-      key <- format(lam, scientific = TRUE, digits = 10)
-      if (exists(key, envir = chol_cache, inherits = FALSE)) {
-        return(get(key, envir = chol_cache, inherits = FALSE))
-      }
-      R <- chol(G0 + lam * diag(K))
-      assign(key, R, envir = chol_cache)
-      R
-    }
-    solve_spd <- function(R, b) {
-      backsolve(R, forwardsolve(t(R), b))
-    }
-
-    for (j in seq_len(p)) {
-      g <- fg_block[j]
-      if (is.na(g)) next
-      gi <- match(g, rownames(centers$centers))
-      if (is.na(gi)) next
-      lam <- feature_lambda * weights_block[j]
-      if (!is.finite(lam) || lam <= 0) next
-      center <- centers$centers[gi, , drop = TRUE]
-      rhs <- rhs_all[, j, drop = FALSE] + lam * matrix(center, nrow = K)
-      R <- get_chol(lam)
-      vj <- solve_spd(R, rhs)
-      V[j, ] <- as.numeric(vj)
+    # Grouped features: ridge LS toward the group center, solved in batches of
+    # features that share the same penalty weight.
+    gi <- match(fg_block, rownames(centers$centers))
+    lam <- feature_lambda * weights_block
+    sel <- which(!is.na(gi) & is.finite(lam) & lam > 0)
+    for (l in unique(lam[sel])) {
+      js <- sel[lam[sel] == l]
+      rhs <- rhs_all[, js, drop = FALSE] + l * t(centers$centers[gi[js], , drop = FALSE])
+      V[js, ] <- t(solve(G0 + l * diag(K), rhs))
     }
   }
-
   V
 }
 
@@ -1190,22 +1170,7 @@ linked_mfa <- function(Y,
     err_x <- err_x + alpha_blocks[k] * .lmfa_reconstruction_sse(X_list[[k]], Sk, V_list[[k]])
   }
 
-  pen <- 0
-  if (isTRUE(feature_lambda > 0) && isTRUE(fg$enabled) && !is.null(centers) && length(fg$members) > 0) {
-    # group penalty: Σ w ||v - center||^2
-    groups <- names(fg$members)
-    if (is.null(groups)) groups <- seq_along(fg$members)
-    for (gi in seq_along(fg$members)) {
-      gname <- groups[gi]
-      cvec <- centers$centers[match(gname, rownames(centers$centers)), , drop = TRUE]
-      for (m in fg$members[[gi]]) {
-        v <- V_list[[m$block]][m$feature, , drop = TRUE]
-        w <- m$weight
-        pen <- pen + w * sum((v - cvec)^2)
-      }
-    }
-    pen <- feature_lambda * pen
-  }
+  pen <- .lmfa_feature_group_penalty(V_list, fg, centers, feature_lambda)
 
   ridge_pen <- ridge * (sum(S^2) + sum(B^2) + sum(vapply(V_list, function(V) sum(V^2), numeric(1))))
 
