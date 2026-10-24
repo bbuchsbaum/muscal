@@ -23,7 +23,9 @@
 #' of grouped features toward a shared group center.
 #'
 #' @param X A list of numeric matrices/data.frames. Each element `X[[k]]` is
-#'   `n_k × p_k`.
+#'   `n_k × p_k`. Alternatively a [block_source()], which is read one column
+#'   chunk at a time so the blocks never need to be in memory together (see
+#'   *Out-of-core fitting*).
 #' @param row_index A list of integer vectors. `row_index[[k]]` has length `n_k`
 #'   and maps rows of `X[[k]]` to shared rows in `1..N`.
 #' @param N Optional integer specifying the number of shared rows. If `NULL`
@@ -55,7 +57,37 @@
 #'   available. The main alternating-least-squares loop is intrinsically
 #'   sequential and is unaffected. Accepted here primarily for interface parity
 #'   with [aligned_mcca()] and [anchored_mfa()].
+#' @param strategy How the data are accessed. `"auto"` (default) fits in memory
+#'   when `X` is a list and uses the Gram path when `X` is a [block_source()].
+#'   `"in_memory"` loads every block (reading a block source in full).
+#'   `"gram"` uses the out-of-core Gram path for either input.
+#' @param gram_tol Relative eigenvalue tolerance used to drop numerically null
+#'   directions when compressing each block's Gram matrix (Gram path only).
 #' @param ... Unused (reserved for future extensions).
+#'
+#' @section Out-of-core fitting:
+#' Without a feature prior, the alternating least-squares fit depends on each
+#' preprocessed block `X_k` only through its row Gram matrix
+#' `G_k = X_k X_k^T` (`n_k × n_k`): the loadings are ridge regressions on the
+#' scores and so lie in the row space of `X_k`, and the MFA weight is the
+#' inverse of the largest eigenvalue of `G_k`. The Gram path therefore
+#' (1) reads each block once, chunk by chunk, to accumulate its column-local
+#' preprocessing statistics and `G_k`; (2) runs the ordinary fit on compressed
+#' blocks `R_k` with `R_k R_k^T = G_k` (at most `n_k` columns each); and
+#' (3) reads each block once more to compute the feature-space loadings
+#' `V_k = X_k^T S_k (S_k^T S_k + (ridge / alpha_k) I)^{-1}` from the final
+#' scores. Peak memory is one chunk plus the Gram matrices (`sum(n_k^2)`
+#' values) and the loadings. The scores match the in-memory fit; with
+#' `score_constraint = "none"` they can differ by a rotation within the same
+#' subspace because that initialization depends on an SVD sign. The returned
+#' loadings are the ridge regressions on the final scores rather than the last
+#' alternating update, which differ only by the convergence tolerance.
+#'
+#' The Gram path supports column-local preprocessing only (`NULL`,
+#' `multivarious::pass()`, `center()`, `standardize()`) and does not yet
+#' support the feature prior (`feature_lambda > 0` with `feature_groups`), which
+#' couples features across blocks and needs a streaming fit. Resampling
+#' (bootstrap/permutation) is not yet available for block-source fits.
 #'
 #' @return An object inheriting from `multivarious::multiblock_biprojector` with
 #'   additional class `"aligned_mfa"`. The object contains global scores in `s`,
@@ -91,11 +123,34 @@ aligned_mfa <- function(X,
                         ridge = 1e-8,
                         verbose = FALSE,
                         use_future = FALSE,
+                        strategy = c("auto", "in_memory", "gram"),
+                        gram_tol = 1e-10,
                         ...) {
   fit_call <- match.call(expand.dots = FALSE)
   fit_dots <- list(...)
   normalization <- match.arg(normalization)
   score_constraint <- match.arg(score_constraint)
+  strategy <- match.arg(strategy)
+  is_source <- inherits(X, "muscal_block_source")
+  if (identical(strategy, "auto")) {
+    strategy <- if (is_source) "gram" else "in_memory"
+  }
+  if (identical(strategy, "gram")) {
+    return(.amfa_fit_gram(
+      src = as_block_source(X),
+      row_index = row_index, N = N, preproc = preproc, ncomp = ncomp,
+      normalization = normalization, alpha = alpha,
+      score_constraint = score_constraint, feature_groups = feature_groups,
+      feature_lambda = feature_lambda, max_iter = max_iter, tol = tol,
+      ridge = ridge, verbose = verbose, use_future = use_future,
+      gram_tol = gram_tol, fit_call = fit_call, fit_dots = fit_dots
+    ))
+  }
+  if (is_source) {
+    src_names <- names(X)
+    X <- lapply(seq_along(src_names), function(k) read_block(X, k))
+    names(X) <- src_names
+  }
   chk::chk_flag(use_future)
   if (isTRUE(use_future) && !requireNamespace("furrr", quietly = TRUE)) {
     stop("use_future = TRUE requires the 'furrr' package.", call. = FALSE)
@@ -595,4 +650,210 @@ aligned_mfa <- function(X,
   }
 
   err_x + pen
+}
+
+# ---------------------------------------------------------------------------
+# Out-of-core Gram path (see the "Out-of-core fitting" section of ?aligned_mfa)
+# ---------------------------------------------------------------------------
+
+.amfa_fit_gram <- function(src,
+                           row_index,
+                           N,
+                           preproc,
+                           ncomp,
+                           normalization,
+                           alpha,
+                           score_constraint,
+                           feature_groups,
+                           feature_lambda,
+                           max_iter,
+                           tol,
+                           ridge,
+                           verbose,
+                           use_future,
+                           gram_tol,
+                           fit_call,
+                           fit_dots) {
+  if (!is.null(feature_groups) && isTRUE(feature_lambda > 0)) {
+    stop(
+      "The out-of-core Gram path does not support the feature prior yet ",
+      "(feature_groups with feature_lambda > 0).",
+      call. = FALSE
+    )
+  }
+  chk::chk_number(gram_tol)
+  chk::chk_gte(gram_tol, 0)
+  n_blocks <- length(src$names)
+  chk::chk_true(n_blocks >= 2)
+  chk::chk_list(row_index)
+  chk::chk_equal(length(row_index), n_blocks)
+  if (is.null(names(row_index))) {
+    names(row_index) <- src$names
+  } else {
+    row_index <- .lmfa_align_named_index_list(row_index, src$names, what = "row_index")
+  }
+  for (k in seq_len(n_blocks)) {
+    if (length(row_index[[k]]) != src$nrow[[k]]) {
+      stop(sprintf("row_index[['%s']] has length %d but the block has %d rows.",
+                   src$names[[k]], length(row_index[[k]]), src$nrow[[k]]), call. = FALSE)
+    }
+  }
+
+  # Pass 1: preprocessing statistics and Gram matrices, then compress.
+  kinds <- .muscal_stream_preproc_kinds(preproc, n_blocks)
+  gram <- .muscal_stream_gram(src, kinds)
+  R_list <- lapply(gram$G, .muscal_gram_root, tol = gram_tol)
+  names(R_list) <- src$names
+
+  inner <- aligned_mfa(
+    X = R_list,
+    row_index = row_index,
+    N = N,
+    preproc = NULL,
+    ncomp = ncomp,
+    normalization = normalization,
+    alpha = alpha,
+    score_constraint = score_constraint,
+    max_iter = max_iter,
+    tol = tol,
+    ridge = ridge,
+    verbose = verbose,
+    use_future = use_future,
+    strategy = "in_memory"
+  )
+  S <- multivarious::scores(inner)
+  row_index <- inner$row_index
+  N <- inner$N
+  alpha_blocks <- inner$alpha_blocks
+  K <- ncol(S)
+
+  # Pass 2: feature-space loadings V_k = Xp_k' M_k and column/score
+  # cross-products for correlation loadings, in one read.
+  M_list <- lapply(seq_len(n_blocks), function(k) {
+    Sk <- S[row_index[[k]], , drop = FALSE]
+    a <- alpha_blocks[[k]]
+    Mk <- if (a > 0) {
+      a * Sk %*% solve(a * crossprod(Sk) + ridge * diag(K))
+    } else {
+      matrix(0, nrow(Sk), K)
+    }
+    cbind(Mk, sweep(Sk, 2L, colMeans(Sk)))
+  })
+  cp <- .muscal_stream_crossprod(src, kinds, gram$prep, M_list)
+  V_list <- lapply(cp, function(P) P[, seq_len(K), drop = FALSE])
+  M_list <- lapply(M_list, function(M) M[, seq_len(K), drop = FALSE])
+  names(V_list) <- src$names
+
+  # Everything else follows from G_k, M_k and the pass-2 cross-products.
+  partial_scores <- lapply(seq_len(n_blocks), function(k) {
+    Vk <- V_list[[k]]
+    (gram$G[[k]] %*% M_list[[k]]) %*% solve(crossprod(Vk) + ridge * diag(K))
+  })
+  names(partial_scores) <- src$names
+
+  cor_loadings <- do.call(rbind, lapply(seq_len(n_blocks), function(k) {
+    Sk <- S[row_index[[k]], , drop = FALSE]
+    s_norm <- sqrt(colSums(sweep(Sk, 2L, colMeans(Sk))^2))
+    Ck <- cp[[k]][, K + seq_len(K), drop = FALSE] / outer(sqrt(gram$prep[[k]]$col_ss), s_norm)
+    Ck[!is.finite(Ck)] <- 0
+    Ck
+  }))
+
+  block_fit <- do.call(rbind, lapply(seq_len(n_blocks), function(k) {
+    Sk <- S[row_index[[k]], , drop = FALSE]
+    G <- gram$G[[k]]
+    M <- M_list[[k]]
+    tss <- sum(diag(G))
+    sse <- tss - 2 * sum(diag(crossprod(M, G) %*% Sk)) +
+      sum(diag(crossprod(Sk) %*% crossprod(M, G %*% M)))
+    data.frame(
+      block = src$names[[k]],
+      n = src$nrow[[k]],
+      p = src$ncol[[k]],
+      sse = max(sse, 0),
+      tss = tss,
+      r2 = if (tss > 0) 1 - max(sse, 0) / tss else NA_real_
+    )
+  }))
+
+  block_indices <- list()
+  current <- 1L
+  for (k in seq_len(n_blocks)) {
+    block_indices[[k]] <- current:(current + src$ncol[[k]] - 1L)
+    current <- current + src$ncol[[k]]
+  }
+  names(block_indices) <- src$names
+  fitted_proclist <- lapply(seq_len(n_blocks), function(k) {
+    .muscal_stream_fitted_preproc(kinds[[k]], gram$prep[[k]], src$ncol[[k]])
+  })
+  names(fitted_proclist) <- src$names
+
+  fit <- multivarious::multiblock_biprojector(
+    v = do.call(rbind, V_list),
+    s = S,
+    sdev = apply(S, 2, stats::sd),
+    preproc = multivarious::concat_pre_processors(fitted_proclist, block_indices),
+    block_indices = block_indices,
+    V_list = V_list,
+    row_index = row_index,
+    alpha_blocks = alpha_blocks,
+    normalization = normalization,
+    feature_groups = NULL,
+    feature_lambda = 0,
+    objective_trace = inner$objective_trace,
+    partial_scores = partial_scores,
+    cor_loadings = cor_loadings,
+    block_fit = block_fit,
+    N = N,
+    block_preproc = fitted_proclist,
+    ridge = ridge,
+    strategy = "gram",
+    gram_rank = vapply(R_list, ncol, integer(1L)),
+    classes = "aligned_mfa"
+  )
+
+  resample_unavailable <- function(data) {
+    stop("Bootstrap and permutation resampling are not yet available for block-source fits.",
+         call. = FALSE)
+  }
+  .muscal_attach_fit_contract(
+    fit,
+    method = "aligned_mfa",
+    task = "row_alignment",
+    oos_types = c("scores", "reconstruction"),
+    fit_call = fit_call,
+    refit_supported = TRUE,
+    prediction_target = "blocks",
+    refit = .muscal_make_refit_spec(
+      data = list(X = src, row_index = row_index, N = N),
+      fit_fn = function(data) {
+        do.call(
+          aligned_mfa,
+          c(
+            list(
+              X = data$X,
+              row_index = data$row_index,
+              N = data$N,
+              preproc = preproc,
+              ncomp = ncomp,
+              normalization = normalization,
+              alpha = alpha,
+              score_constraint = score_constraint,
+              max_iter = max_iter,
+              tol = tol,
+              ridge = ridge,
+              verbose = FALSE,
+              use_future = use_future,
+              strategy = "gram",
+              gram_tol = gram_tol
+            ),
+            fit_dots
+          )
+        )
+      },
+      bootstrap_fn = resample_unavailable,
+      permutation_fn = resample_unavailable,
+      resample_unit = "latent_rows"
+    )
+  )
 }
