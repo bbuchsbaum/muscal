@@ -1040,28 +1040,6 @@ response_aligned_mfa <- function(Y,
   )
 }
 
-.lmfa_feature_group_penalty <- function(V_list,
-                                        fg,
-                                        centers,
-                                        feature_lambda) {
-  if (!isTRUE(feature_lambda > 0) || !isTRUE(fg$enabled) || is.null(centers) || length(fg$members) == 0) {
-    return(0)
-  }
-
-  pen <- 0
-  groups <- names(fg$members)
-  if (is.null(groups)) groups <- seq_along(fg$members)
-  for (gi in seq_along(fg$members)) {
-    gname <- groups[gi]
-    cvec <- centers$centers[match(gname, rownames(centers$centers)), , drop = TRUE]
-    for (m in fg$members[[gi]]) {
-      v <- V_list[[m$block]][m$feature, , drop = TRUE]
-      pen <- pen + m$weight * sum((v - cvec)^2)
-    }
-  }
-
-  feature_lambda * pen
-}
 
 .muscal_fit_common_space_engine <- function(engine = c("response", "hard_anchor", "coupled_anchor"),
                                             X_list,
@@ -1101,8 +1079,9 @@ response_aligned_mfa <- function(Y,
     fg <- list(
       enabled = FALSE,
       by_block = lapply(X_list, function(X) rep.int(NA_character_, ncol(X))),
+      group_id = lapply(X_list, function(X) rep.int(NA_integer_, ncol(X))),
       weights_by_block = lapply(X_list, function(X) rep.int(1, ncol(X))),
-      members = list()
+      groups = character(0)
     )
   }
 
@@ -1845,19 +1824,7 @@ response_aligned_mfa <- function(Y,
     LS <- score_graph_laplacian %*% S
     pen <- pen + score_graph_lambda * sum(LS * S)
   }
-  if (isTRUE(feature_lambda > 0) && isTRUE(fg$enabled) && !is.null(centers) && length(fg$members) > 0) {
-    groups <- names(fg$members)
-    if (is.null(groups)) groups <- seq_along(fg$members)
-    for (gi in seq_along(fg$members)) {
-      gname <- groups[gi]
-      cvec <- centers$centers[match(gname, rownames(centers$centers)), , drop = TRUE]
-      for (m in fg$members[[gi]]) {
-        v <- V_list[[m$block]][m$feature, , drop = TRUE]
-        pen <- pen + m$weight * sum((v - cvec)^2)
-      }
-    }
-    pen <- feature_lambda * pen
-  }
+  pen <- pen + .lmfa_feature_group_penalty(V_list, fg, centers, feature_lambda)
 
   ridge_pen <- ridge * (
     sum(B^2) +

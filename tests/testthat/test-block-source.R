@@ -178,8 +178,9 @@ test_that("aligned_mfa Gram path rejects unsupported settings", {
   sim <- .bs_sim(seed = 16)
   src <- as_block_source(sim$X)
   expect_error(
-    aligned_mfa(src, sim$idx, N = sim$N, ncomp = 2, feature_groups = "colnames", feature_lambda = 1),
-    "feature prior"
+    aligned_mfa(src, sim$idx, N = sim$N, ncomp = 2, feature_groups = "colnames",
+                feature_lambda = 1, strategy = "gram"),
+    "cannot use the feature prior"
   )
   expect_error(
     aligned_mfa(src, sim$idx, N = sim$N, ncomp = 2, preproc = multivarious::colscale(type = "unit")),
@@ -188,4 +189,114 @@ test_that("aligned_mfa Gram path rejects unsupported settings", {
   bad_idx <- sim$idx
   bad_idx$S1 <- bad_idx$S1[-1]
   expect_error(aligned_mfa(src, bad_idx, N = sim$N, ncomp = 2), "has length")
+})
+
+# Blocks with shared feature names, so feature groups link features across blocks.
+.bs_sim_named <- function(seed = 21, N = 36, K = 2, n_k = c(18, 22, 15), p = 60) {
+  sim <- .bs_sim(seed = seed, N = N, K = K, n_k = n_k, p_k = rep(p, length(n_k)))
+  sim$X <- lapply(sim$X, function(x) { colnames(x) <- paste0("f", seq_len(ncol(x))); x })
+  sim
+}
+
+test_that("streaming path reproduces the in-memory fit with a feature prior", {
+  sim <- .bs_sim_named()
+  counted <- .bs_counting_source(sim$X, chunk_size = 23)
+  counted$src$colnames <- lapply(sim$X, colnames)
+  args <- list(feature_groups = "colnames", feature_lambda = 2, score_constraint = "orthonormal")
+
+  fit_mem <- do.call(.bs_fit, c(list(sim$X, sim$idx, sim$N, sim$K), args))
+  fit_str <- do.call(.bs_fit, c(list(counted$src, sim$idx, sim$N, sim$K), args))
+
+  expect_equal(fit_str$strategy, "stream")
+  expect_equal(multivarious::scores(fit_str), multivarious::scores(fit_mem), tolerance = 1e-8)
+  expect_equal(fit_str$objective_trace, unname(fit_mem$objective_trace), tolerance = 1e-8)
+  expect_equal(fit_str$alpha_blocks, fit_mem$alpha_blocks, tolerance = 1e-10)
+  expect_equal(unname(fit_str$V_list), unname(fit_mem$V_list), tolerance = 1e-8)
+  expect_equal(fit_str$block_fit$r2, fit_mem$block_fit$r2, tolerance = 1e-8)
+  expect_equal(unname(fit_str$cor_loadings), unname(fit_mem$cor_loadings), tolerance = 1e-8)
+  expect_equal(unname(fit_str$partial_scores), unname(fit_mem$partial_scores), tolerance = 1e-8)
+
+  # The prior matters: it changes the fit relative to no prior.
+  fit_none <- .bs_fit(sim$X, sim$idx, sim$N, sim$K, score_constraint = "orthonormal")
+  expect_gt(max(abs(unlist(fit_none$V_list) - unlist(fit_mem$V_list))), 1e-3)
+
+  # One read of the data per iteration plus three fixed passes.
+  n_chunks <- sum(ceiling(vapply(sim$X, ncol, integer(1L)) / 23))
+  expect_equal(fit_str$passes, length(fit_str$objective_trace) + 3L)
+  expect_equal(length(counted$log$reads), fit_str$passes * n_chunks)
+  expect_true(all(vapply(counted$log$reads, function(r) length(r$cols), integer(1L)) <= 23))
+})
+
+test_that("streaming path matches in memory without a prior, with explicit groups, and at max_iter", {
+  sim <- .bs_sim_named(seed = 22)
+  src <- as_block_source(sim$X, chunk_size = 17)
+
+  fit_mem <- .bs_fit(sim$X, sim$idx, sim$N, sim$K, score_constraint = "orthonormal")
+  fit_str <- .bs_fit(src, sim$idx, sim$N, sim$K, score_constraint = "orthonormal", strategy = "stream")
+  expect_equal(multivarious::scores(fit_str), multivarious::scores(fit_mem), tolerance = 1e-8)
+
+  groups <- data.frame(
+    block = rep(c("S1", "S2", "S3"), each = 10),
+    feature = rep(paste0("f", 1:10), 3),
+    group = rep(paste0("g", 1:10), 3),
+    weight = rep(c(1, 0.5, 2), each = 10)
+  )
+  capped <- list(feature_groups = groups, feature_lambda = 1, max_iter = 4, tol = 0,
+                 score_constraint = "orthonormal")
+  fit_mem <- suppressMessages(do.call(aligned_mfa, c(list(sim$X, sim$idx, N = sim$N, ncomp = sim$K), capped)))
+  fit_str <- suppressMessages(do.call(aligned_mfa, c(list(src, sim$idx, N = sim$N, ncomp = sim$K), capped)))
+  expect_length(fit_str$objective_trace, 4L)
+  expect_equal(fit_str$objective_trace, unname(fit_mem$objective_trace), tolerance = 1e-8)
+})
+
+test_that("streaming path with score_constraint = 'none' lands where in-memory fits do", {
+  # With a feature prior the "none" path converges slowly and its end point
+  # depends on the random start (in memory too), so compare against the spread
+  # of in-memory fits rather than one of them.
+  sim <- .bs_sim_named(seed = 23)
+  src <- as_block_source(sim$X, chunk_size = 25)
+  args <- list(N = sim$N, ncomp = sim$K, feature_groups = "colnames", feature_lambda = 1,
+               max_iter = 60)
+  mem_obj <- vapply(1:4, function(seed) {
+    set.seed(seed)
+    tail(suppressMessages(do.call(aligned_mfa, c(list(sim$X, sim$idx), args)))$objective_trace, 1)
+  }, numeric(1L))
+  set.seed(1)
+  fit_str <- suppressMessages(do.call(aligned_mfa, c(list(src, sim$idx), args)))
+
+  expect_equal(fit_str$strategy, "stream")
+  expect_true(all(is.finite(fit_str$objective_trace)))
+  expect_lt(tail(fit_str$objective_trace, 1), max(mem_obj) * 1.01)
+  expect_gt(tail(fit_str$objective_trace, 1), min(mem_obj) * 0.99)
+})
+
+test_that("streaming fits project, predict and refit", {
+  sim <- .bs_sim_named(seed = 24)
+  src <- as_block_source(sim$X, chunk_size = 30)
+  fit <- .bs_fit(src, sim$idx, sim$N, sim$K, feature_groups = "colnames", feature_lambda = 1,
+                 score_constraint = "orthonormal")
+  fit_mem <- .bs_fit(sim$X, sim$idx, sim$N, sim$K, feature_groups = "colnames", feature_lambda = 1,
+                     score_constraint = "orthonormal")
+  new_rows <- sim$X$S1[1:4, , drop = FALSE]
+  expect_equal(project(fit, new_rows, block = "S1"), project(fit_mem, new_rows, block = "S1"),
+               tolerance = 1e-8)
+
+  refit <- suppressMessages(fit$fit_spec$refit$fit_fn(fit$fit_spec$refit$data))
+  expect_equal(refit$strategy, "stream")
+  expect_equal(multivarious::scores(refit), multivarious::scores(fit), tolerance = 1e-10)
+})
+
+test_that("block_source column names are validated and needed for named groups", {
+  X <- list(A = matrix(rnorm(20), 5), B = matrix(rnorm(30), 5))
+  expect_error(
+    block_source(function(k, cols) X[[k]][, cols, drop = FALSE], nrow = c(5, 5), ncol = c(4, 6),
+                 colnames = list(letters[1:3], NULL)),
+    "must have length"
+  )
+  src <- block_source(function(k, cols) X[[k]][, cols, drop = FALSE], nrow = c(5, 5), ncol = c(4, 6))
+  expect_error(
+    suppressMessages(aligned_mfa(src, list(1:5, 1:5), ncomp = 1, feature_groups = "colnames",
+                                 feature_lambda = 1)),
+    "colnames"
+  )
 })

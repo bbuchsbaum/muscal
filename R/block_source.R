@@ -18,6 +18,9 @@
 #' @param nrow,ncol Integer vectors giving the number of rows and columns of
 #'   each block.
 #' @param names Optional block names; defaults to `names(nrow)` or `X1, X2, ...`.
+#' @param colnames Optional list of column-name vectors, one per block (each
+#'   `NULL` or of length `ncol[k]`). Needed for `feature_groups = "colnames"` or
+#'   for feature groups that refer to features by name.
 #' @param chunk_size Maximum number of columns read per call to `loader`. Peak
 #'   memory per read is about `8 * nrow[k] * chunk_size` bytes.
 #' @param x An object to convert: a list of matrices/data frames, or an
@@ -34,7 +37,8 @@
 #' )
 #' src
 #' @export
-block_source <- function(loader, nrow, ncol, names = NULL, chunk_size = 5000L) {
+block_source <- function(loader, nrow, ncol, names = NULL, colnames = NULL,
+                         chunk_size = 5000L) {
   chk::chk_function(loader)
   nrow <- as.integer(nrow)
   ncol <- as.integer(ncol)
@@ -55,6 +59,20 @@ block_source <- function(loader, nrow, ncol, names = NULL, chunk_size = 5000L) {
   if (length(names) != length(nrow) || anyDuplicated(names)) {
     stop("`names` must be unique and have one entry per block.", call. = FALSE)
   }
+  if (is.null(colnames)) {
+    colnames <- vector("list", length(nrow))
+  }
+  if (!is.list(colnames) || length(colnames) != length(nrow)) {
+    stop("`colnames` must be a list with one entry per block.", call. = FALSE)
+  }
+  for (k in seq_along(colnames)) {
+    if (!is.null(colnames[[k]]) && length(colnames[[k]]) != ncol[[k]]) {
+      stop(sprintf("`colnames[[%d]]` must have length ncol[%d] = %d.", k, k, ncol[[k]]),
+           call. = FALSE)
+    }
+    if (!is.null(colnames[[k]])) colnames[[k]] <- as.character(colnames[[k]])
+  }
+  names(colnames) <- names
 
   structure(
     list(
@@ -62,6 +80,7 @@ block_source <- function(loader, nrow, ncol, names = NULL, chunk_size = 5000L) {
       nrow = stats::setNames(nrow, names),
       ncol = stats::setNames(ncol, names),
       names = names,
+      colnames = colnames,
       chunk_size = chunk_size
     ),
     class = "muscal_block_source"
@@ -90,6 +109,7 @@ as_block_source.list <- function(x, ...) {
     nrow = vapply(x, nrow, integer(1L)),
     ncol = vapply(x, ncol, integer(1L)),
     names = nms,
+    colnames = lapply(x, colnames),
     ...
   )
 }
@@ -242,10 +262,11 @@ length.muscal_block_source <- function(x) {
 
 # One pass: column-local preprocessing statistics and the row Gram matrix
 # G_k = Xp_k Xp_k' of every block. Each chunk holds all rows of its columns, so
-# its means and SDs are exact.
-.muscal_stream_gram <- function(src, kinds) {
+# its means and SDs are exact. With `keep_gram = FALSE` only one block's Gram
+# matrix exists at a time and it is handed to `on_gram(k, G)` instead.
+.muscal_stream_gram <- function(src, kinds, keep_gram = TRUE, on_gram = NULL) {
   n_blocks <- length(src$names)
-  G <- lapply(seq_len(n_blocks), function(k) matrix(0, src$nrow[[k]], src$nrow[[k]]))
+  G <- vector("list", n_blocks)
   prep <- lapply(seq_len(n_blocks), function(k) {
     list(center = numeric(src$ncol[[k]]), scale = rep(1, src$ncol[[k]]),
          col_ss = numeric(src$ncol[[k]]))
@@ -253,6 +274,7 @@ length.muscal_block_source <- function(x) {
   n_bad_sd <- 0L
 
   for (k in seq_len(n_blocks)) {
+    Gk <- matrix(0, src$nrow[[k]], src$nrow[[k]])
     for (cols in .muscal_source_chunks(src, k)) {
       X <- .muscal_source_read(src, k, cols)
       if (!identical(kinds[[k]], "none")) {
@@ -268,16 +290,19 @@ length.muscal_block_source <- function(x) {
       }
       Xp <- .muscal_stream_apply_prep(X, kinds[[k]], prep[[k]]$center[cols], prep[[k]]$scale[cols])
       prep[[k]]$col_ss[cols] <- colSums(sweep(Xp, 2L, colMeans(Xp))^2)
-      G[[k]] <- G[[k]] + tcrossprod(Xp)
+      Gk <- Gk + tcrossprod(Xp)
     }
-    G[[k]] <- (G[[k]] + t(G[[k]])) / 2
+    Gk <- (Gk + t(Gk)) / 2
+    prep[[k]]$tss <- sum(diag(Gk))
+    if (!is.null(on_gram)) on_gram(k, Gk)
+    if (isTRUE(keep_gram)) G[[k]] <- Gk
   }
   if (n_bad_sd > 0L) {
     warning(sprintf("%d column(s) have zero or non-finite standard deviation; scale set to 1.",
                     n_bad_sd), call. = FALSE)
   }
   names(G) <- names(prep) <- src$names
-  list(G = G, prep = prep)
+  list(G = if (isTRUE(keep_gram)) G else NULL, prep = prep)
 }
 
 # One pass: Xp_k' M_k for a list of n_k x m matrices M_k (p_k x m results).

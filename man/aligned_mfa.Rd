@@ -20,7 +20,7 @@ aligned_mfa(
   ridge = 1e-08,
   verbose = FALSE,
   use_future = FALSE,
-  strategy = c("auto", "in_memory", "gram"),
+  strategy = c("auto", "in_memory", "gram", "stream"),
   gram_tol = 1e-10,
   ...
 )
@@ -77,9 +77,10 @@ sequential and is unaffected. Accepted here primarily for interface parity
 with [aligned_mcca()] and [anchored_mfa()].}
 
 \item{strategy}{How the data are accessed. `"auto"` (default) fits in memory
-when `X` is a list and uses the Gram path when `X` is a [block_source()].
-`"in_memory"` loads every block (reading a block source in full).
-`"gram"` uses the out-of-core Gram path for either input.}
+when `X` is a list; for a [block_source()] it uses the Gram path, or the
+streaming path when a feature prior is supplied. `"in_memory"` loads every
+block (reading a block source in full). `"gram"` and `"stream"` force the
+corresponding out-of-core path for either input.}
 
 \item{gram_tol}{Relative eigenvalue tolerance used to drop numerically null
 directions when compressing each block's Gram matrix (Gram path only).}
@@ -134,10 +135,19 @@ subspace because that initialization depends on an SVD sign. The returned
 loadings are the ridge regressions on the final scores rather than the last
 alternating update, which differ only by the convergence tolerance.
 
-The Gram path supports column-local preprocessing only (`NULL`,
-`multivarious::pass()`, `center()`, `standardize()`) and does not yet
-support the feature prior (`feature_lambda > 0` with `feature_groups`), which
-couples features across blocks and needs a streaming fit. Resampling
+The feature prior (`feature_lambda > 0` with `feature_groups`) couples
+features across blocks, so the Gram shortcut does not apply. The streaming
+path instead runs the same alternating least squares as the in-memory fit
+with one read of the data per iteration: for each chunk it updates the
+loadings (feature-wise, given the group centers) and accumulates
+`X_k V_k` for the score step, evaluating the previous iteration's objective
+in the same read. It holds the loadings (two copies) and the per-row normal
+equations but never the data, and needs about `iterations + 3` passes.
+Feature groups given by name need column names on the source
+(`block_source(colnames = )`).
+
+Both out-of-core paths support column-local preprocessing only (`NULL`,
+`multivarious::pass()`, `center()`, `standardize()`). Resampling
 (bootstrap/permutation) is not yet available for block-source fits.
 }
 
