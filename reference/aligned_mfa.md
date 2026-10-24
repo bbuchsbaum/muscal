@@ -29,6 +29,8 @@ aligned_mfa(
   ridge = 1e-08,
   verbose = FALSE,
   use_future = FALSE,
+  strategy = c("auto", "in_memory", "gram", "stream"),
+  gram_tol = 1e-10,
   ...
 )
 ```
@@ -38,7 +40,9 @@ aligned_mfa(
 - X:
 
   A list of numeric matrices/data.frames. Each element \`X\[\[k\]\]\` is
-  \`n_k × p_k\`.
+  \`n_k × p_k\`. Alternatively a \[block_source()\], which is read one
+  column chunk at a time so the blocks never need to be in memory
+  together (see \*Out-of-core fitting\*).
 
 - row_index:
 
@@ -114,6 +118,20 @@ aligned_mfa(
   sequential and is unaffected. Accepted here primarily for interface
   parity with \[aligned_mcca()\] and \[anchored_mfa()\].
 
+- strategy:
+
+  How the data are accessed. \`"auto"\` (default) fits in memory when
+  \`X\` is a list; for a \[block_source()\] it uses the Gram path, or
+  the streaming path when a feature prior is supplied. \`"in_memory"\`
+  loads every block (reading a block source in full). \`"gram"\` and
+  \`"stream"\` force the corresponding out-of-core path for either
+  input.
+
+- gram_tol:
+
+  Relative eigenvalue tolerance used to drop numerically null directions
+  when compressing each block's Gram matrix (Gram path only).
+
 - ...:
 
   Unused (reserved for future extensions).
@@ -138,6 +156,42 @@ contributions are aggregated in the score updates.
 \`feature_groups\` is supplied, Aligned MFA applies the same
 group-shrinkage penalty as \[anchored_mfa()\], pulling loading vectors
 of grouped features toward a shared group center.
+
+## Out-of-core fitting
+
+Without a feature prior, the alternating least-squares fit depends on
+each preprocessed block \`X_k\` only through its row Gram matrix \`G_k =
+X_k X_k^T\` (\`n_k × n_k\`): the loadings are ridge regressions on the
+scores and so lie in the row space of \`X_k\`, and the MFA weight is the
+inverse of the largest eigenvalue of \`G_k\`. The Gram path therefore
+(1) reads each block once, chunk by chunk, to accumulate its
+column-local preprocessing statistics and \`G_k\`; (2) runs the ordinary
+fit on compressed blocks \`R_k\` with \`R_k R_k^T = G_k\` (at most
+\`n_k\` columns each); and (3) reads each block once more to compute the
+feature-space loadings \`V_k = X_k^T S_k (S_k^T S_k + (ridge / alpha_k)
+I)^-1\` from the final scores. Peak memory is one chunk plus the Gram
+matrices (\`sum(n_k^2)\` values) and the loadings. The scores match the
+in-memory fit; with \`score_constraint = "none"\` they can differ by a
+rotation within the same subspace because that initialization depends on
+an SVD sign. The returned loadings are the ridge regressions on the
+final scores rather than the last alternating update, which differ only
+by the convergence tolerance.
+
+The feature prior (\`feature_lambda \> 0\` with \`feature_groups\`)
+couples features across blocks, so the Gram shortcut does not apply. The
+streaming path instead runs the same alternating least squares as the
+in-memory fit with one read of the data per iteration: for each chunk it
+updates the loadings (feature-wise, given the group centers) and
+accumulates \`X_k V_k\` for the score step, evaluating the previous
+iteration's objective in the same read. It holds the loadings (two
+copies) and the per-row normal equations but never the data, and needs
+about \`iterations + 3\` passes. Feature groups given by name need
+column names on the source (\`block_source(colnames = )\`).
+
+Both out-of-core paths support column-local preprocessing only
+(\`NULL\`, \`multivarious::pass()\`, \`center()\`, \`standardize()\`).
+Resampling (bootstrap/permutation) is not yet available for block-source
+fits.
 
 ## Examples
 

@@ -202,6 +202,10 @@ installs and the GitHub Pages build path works.
   : Recommend Practical Defaults for Bilinear Mixed
 - [`bilinear_mixed_tune()`](https://bbuchsbaum.github.io/muscal/reference/bilinear_mixed_tune.md)
   : Tune Bilinear Mixed Hyperparameters via Subject-Block CV
+- [`block_source()`](https://bbuchsbaum.github.io/muscal/reference/block_source.md)
+  [`as_block_source()`](https://bbuchsbaum.github.io/muscal/reference/block_source.md)
+  [`read_block()`](https://bbuchsbaum.github.io/muscal/reference/block_source.md)
+  : Out-of-Core Block Sources
 - [`check_duality()`](https://bbuchsbaum.github.io/muscal/reference/check_duality.md)
   : Verify duality between ROI- and RV-space coordinates
 - [`components(`*`<design_mfa>`*`)`](https://bbuchsbaum.github.io/muscal/reference/components.design_mfa.md)
