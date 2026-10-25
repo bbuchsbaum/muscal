@@ -421,21 +421,25 @@ test_that("aligned_interbattery decorrelate penalty reduces within-side score co
   sim <- .sim_aib_data_correlated(seed = 17, subject_sizes = c(S1 = 18, S2 = 17, S3 = 16), noise = 0.04)
   # Compare after the early transient: the objective falls ~60-fold over the
   # first iterations, and at 10 iterations the comparison reflects the path
-  # from the starting point rather than the penalty.
+  # from the starting point rather than the penalty. The penalty is exercised
+  # in the unconstrained parameterisation; with orthonormal side scores each
+  # subject's scores here are already uncorrelated.
 
   fit_base <- aligned_interbattery(
     X = sim$X,
     Y = sim$Y,
     ncomp = 2,
     decorrelate = 0,
-    max_iter = 30
+    max_iter = 30,
+    side_constraint = "none"
   )
   fit_decor <- aligned_interbattery(
     X = sim$X,
     Y = sim$Y,
     ncomp = 2,
     decorrelate = 10,
-    max_iter = 30
+    max_iter = 30,
+    side_constraint = "none"
   )
 
   off_x_base <- .aib_offdiag_cov_norm(fit_base$x_scores)
@@ -450,6 +454,8 @@ test_that("aligned_interbattery decorrelate penalty reduces within-side score co
 })
 
 test_that("aligned_interbattery supports whitening-based decorrelation with coherent orientation", {
+  # Whitening only acts on unconstrained side scores (orthonormal ones are
+  # already white).
   sim <- .sim_aib_data_correlated(seed = 117, subject_sizes = c(S1 = 18, S2 = 17, S3 = 16), noise = 0.04)
 
   fit_white <- aligned_interbattery(
@@ -458,7 +464,8 @@ test_that("aligned_interbattery supports whitening-based decorrelation with cohe
     ncomp = 2,
     decorrelate = 0.8,
     decorrelate_type = "whiten",
-    max_iter = 10
+    max_iter = 10,
+    side_constraint = "none"
   )
   fit_white_flip <- orient_components(fit_white, signs = c(-1, 1))
 
@@ -635,4 +642,48 @@ test_that("aligned_interbattery start does not depend on the random state", {
     expect_equal(sweep(multivarious::scores(f), 2L, sg, `*`), multivarious::scores(ref),
                  tolerance = 1e-10)
   }
+})
+
+test_that("orthonormal side scores make aligned_interbattery converge", {
+  set.seed(11)
+  K <- 2
+  n <- 25
+  mk <- function(Z, W) Z %*% W + matrix(rnorm(nrow(Z) * ncol(W), sd = 0.5), nrow(Z))
+  Zs <- list(S1 = matrix(rnorm(n * K), n), S2 = matrix(rnorm(n * K), n))
+  Wx <- list(fmri = matrix(rnorm(K * 60), K), eeg = matrix(rnorm(K * 30), K))
+  Wy <- matrix(rnorm(K * 8), K)
+  X <- list(S1_fmri = mk(Zs$S1, Wx$fmri), S1_eeg = mk(Zs$S1, Wx$eeg),
+            S2_fmri = mk(Zs$S2, Wx$fmri), S2_eeg = mk(Zs$S2, Wx$eeg))
+  Y <- list(S1_beh = mk(Zs$S1, Wy), S2_beh = mk(Zs$S2, Wy))
+  xi <- data.frame(block = names(X), subject = c("S1", "S1", "S2", "S2"),
+                   domain = c("fmri", "eeg", "fmri", "eeg"))
+  yi <- data.frame(block = names(Y), subject = c("S1", "S2"), domain = "beh")
+  fit <- function(...) {
+    suppressMessages(aligned_interbattery(X, Y, x_block_info = xi, y_block_info = yi,
+                                          ncomp = K, tol = 1e-9, ...))
+  }
+
+  short <- fit(max_iter = 100)
+  long <- fit(max_iter = 2000)
+  expect_equal(short$side_constraint, "orthonormal")
+  expect_lt(length(short$objective_trace), 100)
+  expect_equal(long$objective_trace, short$objective_trace)
+  expect_true(all(diff(short$objective_trace) <= 1e-10))
+  for (side in c("x_scores", "y_scores")) {
+    stacked <- do.call(rbind, short[[side]])
+    expect_equal(crossprod(stacked), diag(K), tolerance = 1e-8)
+  }
+
+  # The unconstrained model has no minimiser: the Y-side scores keep shrinking
+  # while the Y loadings grow, so the result depends on the iteration budget.
+  nrm <- function(L) sqrt(sum(vapply(L, function(x) sum(x^2), numeric(1))))
+  free_short <- fit(max_iter = 100, side_constraint = "none")
+  free_long <- fit(max_iter = 1000, side_constraint = "none")
+  expect_lt(nrm(free_long$y_scores), 0.7 * nrm(free_short$y_scores))
+  expect_gt(nrm(free_long$y_loadings), 1.5 * nrm(free_short$y_loadings))
+
+  expect_warning(
+    fit(max_iter = 20, decorrelate = 0.8, decorrelate_type = "whiten"),
+    "already white"
+  )
 })

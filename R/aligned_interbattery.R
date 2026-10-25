@@ -68,6 +68,20 @@
 #'   whitening operator inside the common-to-side coupling.
 #' @param max_iter Maximum ALS iterations.
 #' @param tol Relative convergence tolerance on the objective.
+#' @param side_constraint How the scale of the side scores `U_s` and `V_s` is
+#'   fixed. `"orthonormal"` (default) constrains each side's stacked scores to
+#'   be orthonormal, as the common scores `T_s` are; the loadings carry the
+#'   scale, the fit converges, and results do not depend on `max_iter`.
+#'   `"none"` reproduces the earlier unconstrained updates. There the data fit
+#'   is unchanged by `U -> cU`, loadings `-> loadings / c` while the coupling
+#'   term shrinks like `c^2`, so the objective has no minimiser: side scores
+#'   drift toward zero, loadings grow, and the result depends on where
+#'   `max_iter` stops. Under `"orthonormal"` the pooled side scores are already
+#'   white, so `decorrelate_type = "whiten"` is ignored with a warning; the
+#'   decorrelation penalty still acts on each subject's own score covariance.
+#'   On noisy data the drifting `"none"` fit can predict slightly better
+#'   because the drift gradually weakens the coupling; with `"orthonormal"`
+#'   that trade-off is set explicitly through `couple_x` / `couple_y`.
 #' @param ridge Non-negative ridge stabilization for score/loadings updates.
 #' @param verbose Logical; if `TRUE`, print iteration diagnostics.
 #' @param use_future Logical; if `TRUE`, block-wise computations that do not
@@ -106,6 +120,7 @@ aligned_interbattery <- function(X,
                                  couple_y = 1,
                                  decorrelate = 0,
                                  decorrelate_type = c("penalty", "whiten"),
+                                 side_constraint = c("orthonormal", "none"),
                                  max_iter = 50,
                                  tol = 1e-6,
                                  ridge = 1e-8,
@@ -120,6 +135,7 @@ aligned_interbattery <- function(X,
   }
   row_graph_form <- match.arg(row_graph_form)
   decorrelate_type <- match.arg(decorrelate_type)
+  side_constraint <- match.arg(side_constraint)
   chk::chk_flag(use_future)
   if (isTRUE(use_future) && !requireNamespace("furrr", quietly = TRUE)) {
     stop("use_future = TRUE requires the 'furrr' package.", call. = FALSE)
@@ -144,6 +160,17 @@ aligned_interbattery <- function(X,
   }
   decor_penalty <- if (identical(decorrelate_type, "penalty")) as.numeric(decorrelate) else 0
   whiten_gamma <- if (identical(decorrelate_type, "whiten")) as.numeric(decorrelate) else 0
+  if (identical(side_constraint, "orthonormal") && whiten_gamma > 0) {
+    # Orthonormal pooled side scores are already white; the whitener would
+    # reduce to a scalar that only rescales the coupling strength.
+    warning(
+      "decorrelate_type = 'whiten' has no role with side_constraint = 'orthonormal' ",
+      "(the pooled side scores are already white) and is ignored; use ",
+      "side_constraint = 'none' for the previous behaviour.",
+      call. = FALSE
+    )
+    whiten_gamma <- 0
+  }
   max_iter <- as.integer(max_iter)
   chk::chk_integer(max_iter)
   chk::chk_gte(max_iter, 1)
@@ -307,7 +334,9 @@ aligned_interbattery <- function(X,
       subject_sizes = subject_sizes,
       subject_names = subject_names,
       decorrelate = decor_penalty,
-      ridge = ridge
+      ridge = ridge,
+      constraint = side_constraint,
+      S_prev = U_list
     )
     V_list <- .aib_update_side_scores(
       blocks = Yp,
@@ -322,7 +351,9 @@ aligned_interbattery <- function(X,
       subject_sizes = subject_sizes,
       subject_names = subject_names,
       decorrelate = decor_penalty,
-      ridge = ridge
+      ridge = ridge,
+      constraint = side_constraint,
+      S_prev = V_list
     )
 
     T_prev <- .aib_stack_subject_scores(T_list, subject_names)
@@ -521,6 +552,7 @@ aligned_interbattery <- function(X,
     y_unwhitener = W_y_inv,
     decorrelate = as.numeric(decorrelate),
     decorrelate_type = decorrelate_type,
+    side_constraint = side_constraint,
     objective_trace = objective_trace,
     block_fit = block_fit,
     partial_scores = partial_scores,
@@ -1064,6 +1096,61 @@ aligned_interbattery <- function(X,
   out
 }
 
+# Per-row normal equations of one side's score subproblem: for row i of
+# subject s, minimise u' A_i u - 2 b_i' u with A_i, b_i collecting the
+# block-weighted data terms, the coupling to the common scores, and the ridge.
+.aib_side_row_system <- function(blocks,
+                                 row_map,
+                                 block_info,
+                                 loading_id,
+                                 loadings,
+                                 block_weight,
+                                 target_scores,
+                                 couple_transform,
+                                 couple,
+                                 subject_sizes,
+                                 subject_names,
+                                 ridge) {
+  block_subject <- setNames(as.character(block_info$subject), block_info$block)
+  K <- ncol(target_scores[[subject_names[[1]]]])
+  I_K <- diag(K)
+  couple_gram <- couple_transform %*% t(couple_transform)
+
+  out <- lapply(subject_names, function(subj) {
+    N_subj <- as.integer(subject_sizes[[subj]])
+    subj_blocks <- names(block_subject)[block_subject == subj]
+    target_subj <- target_scores[[subj]]
+    block_contrib <- lapply(subj_blocks, function(block_name) {
+      L <- loadings[[loading_id[[block_name]]]]
+      agg <- .muscal_rowsum_counts(blocks[[block_name]] %*% L, row_map[[block_name]], N_subj)
+      list(PtP = crossprod(L), sums = agg$sums, counts = agg$counts,
+           weight = as.numeric(block_weight[[block_name]]))
+    })
+    A_list <- vector("list", N_subj)
+    rhs <- matrix(0, nrow = N_subj, ncol = K)
+    for (i in seq_len(N_subj)) {
+      A_i <- ridge * I_K
+      b_i <- rep(0, K)
+      if (couple > 0) {
+        A_i <- A_i + couple * couple_gram
+        b_i <- b_i + couple * drop(target_subj[i, , drop = FALSE] %*% t(couple_transform))
+      }
+      for (bc in block_contrib) {
+        cnt <- bc$counts[[i]]
+        if (cnt == 0L) next
+        A_i <- A_i + bc$weight * cnt * bc$PtP
+        b_i <- b_i + bc$weight * bc$sums[i, ]
+      }
+      A_list[[i]] <- A_i
+      rhs[i, ] <- b_i
+    }
+    list(A_list = A_list, rhs = rhs, has_blocks = length(subj_blocks) > 0L,
+         blocks = subj_blocks)
+  })
+  names(out) <- subject_names
+  out
+}
+
 .aib_update_side_scores <- function(blocks,
                                     row_map,
                                     block_info,
@@ -1076,62 +1163,46 @@ aligned_interbattery <- function(X,
                                     subject_sizes,
                                     subject_names,
                                     decorrelate = 0,
-                                    ridge = 1e-8) {
+                                    ridge = 1e-8,
+                                    constraint = c("none", "orthonormal"),
+                                    S_prev = NULL) {
+  constraint <- match.arg(constraint)
+  K <- ncol(target_scores[[subject_names[[1]]]])
+  system <- .aib_side_row_system(
+    blocks = blocks, row_map = row_map, block_info = block_info,
+    loading_id = loading_id, loadings = loadings, block_weight = block_weight,
+    target_scores = target_scores, couple_transform = couple_transform,
+    couple = couple, subject_sizes = subject_sizes, subject_names = subject_names,
+    ridge = ridge
+  )
+
+  if (identical(constraint, "orthonormal")) {
+    return(.aib_update_side_scores_orthonormal(
+      system = system, blocks = blocks, row_map = row_map, loading_id = loading_id,
+      loadings = loadings, block_weight = block_weight, target_scores = target_scores,
+      couple_transform = couple_transform, couple = couple, subject_sizes = subject_sizes,
+      subject_names = subject_names, decorrelate = decorrelate, ridge = ridge,
+      S_prev = S_prev
+    ))
+  }
+
   out <- vector("list", length(subject_names))
   names(out) <- subject_names
-  block_subject <- setNames(as.character(block_info$subject), block_info$block)
-  K <- ncol(target_scores[[subject_names[[1]]]])
-  I_K <- diag(K)
-  couple_gram <- couple_transform %*% t(couple_transform)
-
   for (subj in subject_names) {
+    sys <- system[[subj]]
     N_subj <- as.integer(subject_sizes[[subj]])
-    subj_blocks <- names(block_subject)[block_subject == subj]
     target_subj <- target_scores[[subj]]
-
-    if (length(subj_blocks) == 0L) {
+    if (!sys$has_blocks) {
       out[[subj]] <- if (couple > 0) target_subj else matrix(0, nrow = N_subj, ncol = K)
       next
     }
-
-    block_contrib <- lapply(subj_blocks, function(block_name) {
-      L <- loadings[[loading_id[[block_name]]]]
-      agg <- .muscal_rowsum_counts(
-        blocks[[block_name]] %*% L,
-        row_map[[block_name]],
-        N_subj
-      )
-      list(
-        PtP = crossprod(L),
-        sums = agg$sums,
-        counts = agg$counts,
-        weight = as.numeric(block_weight[[block_name]])
-      )
-    })
-
     S_subj <- matrix(0, nrow = N_subj, ncol = K)
     for (i in seq_len(N_subj)) {
-      A_i <- ridge * I_K
-      b_i <- rep(0, K)
-      if (couple > 0) {
-        A_i <- A_i + couple * couple_gram
-        b_i <- b_i + couple * drop(target_subj[i, , drop = FALSE] %*% t(couple_transform))
-      }
-
-      for (bc in block_contrib) {
-        cnt <- bc$counts[[i]]
-        if (cnt == 0L) next
-        A_i <- A_i + bc$weight * cnt * bc$PtP
-        b_i <- b_i + bc$weight * bc$sums[i, ]
-      }
-
-      if (all(abs(b_i) < 1e-14)) {
-        S_subj[i, ] <- 0
-      } else {
-        S_subj[i, ] <- solve(A_i, b_i)
-      }
+      b_i <- sys$rhs[i, ]
+      S_subj[i, ] <- if (all(abs(b_i) < 1e-14)) 0 else solve(sys$A_list[[i]], b_i)
     }
     if (decorrelate > 0) {
+      subj_blocks <- sys$blocks
       S_subj <- .aib_refine_side_scores_decorrelation(
         S = S_subj,
         blocks = blocks[subj_blocks],
@@ -1150,6 +1221,63 @@ aligned_interbattery <- function(X,
   }
 
   out
+}
+
+# Side scores with the stacked score matrix constrained to be orthonormal (the
+# same identification as the common scores T). Without it the model leaves the
+# side-score scale free: U -> cU, loadings -> loadings / c keeps the data fit
+# while the coupling term shrinks like c^2, so the objective has no minimiser.
+# The stacked row system is solved on the Stiefel manifold, warm-started from
+# the previous side scores; the per-subject decorrelation penalty, which is not
+# row-separable, is handled by a projected-gradient Stiefel step instead.
+.aib_update_side_scores_orthonormal <- function(system,
+                                                blocks,
+                                                row_map,
+                                                loading_id,
+                                                loadings,
+                                                block_weight,
+                                                target_scores,
+                                                couple_transform,
+                                                couple,
+                                                subject_sizes,
+                                                subject_names,
+                                                decorrelate,
+                                                ridge,
+                                                S_prev) {
+  A_list <- do.call(c, lapply(system, `[[`, "A_list"))
+  rhs <- do.call(rbind, lapply(system, `[[`, "rhs"))
+  subject_index <- .aib_make_subject_index(subject_sizes[subject_names])
+  start <- if (!is.null(S_prev)) {
+    .aib_stack_subject_scores(S_prev, subject_names)
+  } else {
+    .aib_stack_subject_scores(target_scores, subject_names)
+  }
+
+  S_stack <- if (decorrelate > 0) {
+    penalty <- function(S) {
+      sum(vapply(subject_index, function(idx) {
+        .aib_score_offdiag_penalty(S[idx, , drop = FALSE])
+      }, numeric(1L)))
+    }
+    penalty_grad <- function(S) {
+      G <- matrix(0, nrow(S), ncol(S))
+      for (idx in subject_index) G[idx, ] <- .aib_score_offdiag_gradient(S[idx, , drop = FALSE])
+      G
+    }
+    .muscal_stiefel_optimize(
+      S = start,
+      objective_fn = function(S) {
+        .muscal_score_objective_from_system(S, A_list, rhs) + decorrelate * penalty(S)
+      },
+      gradient_fn = function(S) {
+        2 * (.muscal_apply_row_operator(S, A_list) - rhs) + decorrelate * penalty_grad(S)
+      },
+      max_iter = 50
+    )$S
+  } else {
+    .muscal_stiefel_mm(S = start, A_list = A_list, rhs = rhs, max_iter = 50)$S
+  }
+  .aib_split_subject_scores(S_stack, subject_index)
 }
 
 .aib_parse_row_graph <- function(row_graph,
