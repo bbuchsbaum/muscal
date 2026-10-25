@@ -59,6 +59,10 @@
 #'   available. The main alternating-least-squares loop is intrinsically
 #'   sequential and is unaffected. Accepted here primarily for interface parity
 #'   with [anchored_mcca()].
+#' @param gram_rank,gram_tol Used when `X` is a [block_source()]: the fit is
+#'   then made out of core through each block's row Gram matrix (exact, up to
+#'   component signs; column-local preprocessing only; options that act on
+#'   individual features are rejected). See [mfa()].
 #' @param ... Unused (reserved for future extensions).
 #'
 #' @return An object inheriting from `multivarious::multiblock_biprojector` with
@@ -98,9 +102,14 @@ anchored_mfa <- function(Y,
                          ridge = 1e-8,
                          verbose = FALSE,
                          use_future = FALSE,
+                         gram_rank = NULL,
+                         gram_tol = 1e-10,
                          ...) {
   fit_call <- match.call(expand.dots = FALSE)
   fit_dots <- list(...)
+  if (inherits(X, "muscal_block_source")) {
+    return(.anmfa_fit_gram(.muscal_gram_args(), fit_call, fit_dots))
+  }
   normalization <- match.arg(normalization)
   score_constraint <- match.arg(score_constraint)
   chk::chk_flag(use_future)

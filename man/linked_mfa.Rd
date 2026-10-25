@@ -21,6 +21,8 @@ anchored_mfa(
   ridge = 1e-08,
   verbose = FALSE,
   use_future = FALSE,
+  gram_rank = NULL,
+  gram_tol = 1e-10,
   ...
 )
 
@@ -92,6 +94,11 @@ final partial-scores assembly) are performed via `furrr::future_map()` when
 available. The main alternating-least-squares loop is intrinsically
 sequential and is unaffected. Accepted here primarily for interface parity
 with [anchored_mcca()].}
+
+\item{gram_rank, gram_tol}{Used when `X` is a [block_source()]: the fit is
+then made out of core through each block's row Gram matrix (exact, up to
+component signs; column-local preprocessing only; options that act on
+individual features are rejected). See [mfa()].}
 
 \item{...}{Unused (reserved for future extensions).}
 }

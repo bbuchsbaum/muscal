@@ -126,6 +126,10 @@
 #' @param ridge Non-negative ridge stabilization applied to score and loading
 #'   updates.
 #' @param verbose Logical; if `TRUE`, prints iteration diagnostics.
+#' @param gram_rank,gram_tol Used when `X` is a [block_source()]: the fit is
+#'   then made out of core through each block's row Gram matrix (exact, up to
+#'   component signs; column-local preprocessing only; options that act on
+#'   individual features are rejected). See [mfa()].
 #' @param ... Unused (reserved for future extensions).
 #'
 #' @return An object inheriting from `multivarious::multiblock_biprojector` with
@@ -185,9 +189,14 @@ response_aligned_mfa <- function(Y,
                                  ridge = 1e-8,
                                  verbose = FALSE,
                                  use_future = FALSE,
+                                 gram_rank = NULL,
+                                 gram_tol = 1e-10,
                                  ...) {
   fit_call <- match.call(expand.dots = FALSE)
   fit_dots <- list(...)
+  if (inherits(X, "muscal_block_source")) {
+    return(.ramfa_fit_gram(.muscal_gram_args(), fit_call, fit_dots))
+  }
   chk::chk_flag(use_future)
   if (isTRUE(use_future) && !requireNamespace("furrr", quietly = TRUE)) {
     stop("use_future = TRUE requires the 'furrr' package.", call. = FALSE)

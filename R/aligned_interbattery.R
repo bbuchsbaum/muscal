@@ -75,6 +75,11 @@
 #'   available. The main alternating-least-squares loop is intrinsically
 #'   sequential and is unaffected. Accepted here primarily for interface parity
 #'   with the rest of the aligned/anchored family.
+#' @param gram_rank,gram_tol Used when `X` and/or `Y` is a flat
+#'   [block_source()]: each domain (the blocks that share a loading matrix) is
+#'   read as one row-stacked block, compressed through its row Gram matrix, and
+#'   fitted out of core (exact, up to component signs; column-local
+#'   preprocessing only). Gram truncation (`gram_rank`) is not supported here.
 #' @param ... Unused; reserved for future extensions.
 #'
 #' @return An object inheriting from `multivarious::multiblock_biprojector` with
@@ -106,8 +111,13 @@ aligned_interbattery <- function(X,
                                  ridge = 1e-8,
                                  verbose = FALSE,
                                  use_future = FALSE,
+                                 gram_rank = NULL,
+                                 gram_tol = 1e-10,
                                  ...) {
   fit_call <- match.call(expand.dots = FALSE)
+  if (inherits(X, "muscal_block_source") || inherits(Y, "muscal_block_source")) {
+    return(.aib_fit_gram(.muscal_gram_args(), fit_call, list(...)))
+  }
   row_graph_form <- match.arg(row_graph_form)
   decorrelate_type <- match.arg(decorrelate_type)
   chk::chk_flag(use_future)

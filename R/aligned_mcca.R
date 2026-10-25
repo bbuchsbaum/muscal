@@ -65,6 +65,9 @@
 #'   performed via `furrr::future_map()` when available.
 #' @param block_weights Deprecated alias for `alpha`. When supplied, implicitly
 #'   sets `normalization = "custom"` unless `normalization` is already explicit.
+#' @param gram_rank,gram_tol Used when `X` is a [block_source()]: the fit is
+#'   then made out of core through each block's row Gram matrix (exact, up to
+#'   component signs; column-local preprocessing only). See [mfa()].
 #' @param ... Unused (reserved for future extensions).
 #'
 #' @return An object inheriting from `multivarious::multiblock_biprojector` with
@@ -104,9 +107,14 @@ aligned_mcca <- function(X,
                          verbose = FALSE,
                          use_future = FALSE,
                          block_weights = NULL,
+                         gram_rank = NULL,
+                         gram_tol = 1e-10,
                          ...) {
   fit_call <- match.call(expand.dots = FALSE)
   fit_dots <- list(...)
+  if (inherits(X, "muscal_block_source")) {
+    return(.amcca_fit_gram(.muscal_gram_args(), fit_call, fit_dots))
+  }
   normalization_missing <- missing(normalization)
   normalization <- match.arg(normalization)
 
@@ -534,6 +542,9 @@ aligned_mcca <- function(X,
 #'   via `furrr::future_map()` when available.
 #' @param block_weights Deprecated alias for `alpha`. When supplied, implicitly
 #'   sets `normalization = "custom"` unless `normalization` is already explicit.
+#' @param gram_rank,gram_tol Used when `X` is a [block_source()]: the fit is
+#'   then made out of core through each block's row Gram matrix (exact, up to
+#'   component signs; column-local preprocessing only). See [mfa()].
 #' @param ... Unused (reserved for future extensions).
 #'
 #' @return An object of class `"anchored_mcca"` (and `"aligned_mcca"`,
@@ -574,9 +585,14 @@ anchored_mcca <- function(Y,
                           verbose = FALSE,
                           use_future = FALSE,
                           block_weights = NULL,
+                          gram_rank = NULL,
+                          gram_tol = 1e-10,
                           ...) {
   fit_call <- match.call(expand.dots = FALSE)
   fit_dots <- list(...)
+  if (inherits(X, "muscal_block_source")) {
+    return(.anmcca_fit_gram(.muscal_gram_args(), fit_call, fit_dots))
+  }
   normalization_missing <- missing(normalization)
   normalization <- match.arg(normalization)
 

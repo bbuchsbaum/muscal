@@ -88,16 +88,19 @@
 #' (1) reads each block once, chunk by chunk, to accumulate its column-local
 #' preprocessing statistics and `G_k`; (2) runs the ordinary fit on compressed
 #' blocks `R_k` with `R_k R_k^T = G_k` (at most `n_k` columns each); and
-#' (3) reads each block once more to compute the feature-space loadings
-#' `V_k = X_k^T S_k (S_k^T S_k + (ridge / alpha_k) I)^{-1}` from the final
-#' scores. Peak memory is one chunk, one block's Gram matrix (`n_k^2` values,
-#' built and compressed one block at a time), the compressed blocks, and the
-#' loadings; `gram_rank` caps the compressed blocks for subjects with many
-#' rows. The scores match the in-memory fit; with
-#' `score_constraint = "none"` they can differ by a rotation within the same
-#' subspace because that initialization depends on an SVD sign. The returned
-#' loadings are the ridge regressions on the final scores rather than the last
-#' alternating update, which differ only by the convergence tolerance.
+#' (3) reads each block once more to map the fitted loadings and correlation
+#' loadings back to the original features (with `X_k = U_k D_k W_k^T`, loadings
+#' `V_R` on `R_k = U_k D_k` become `W_k V_R`). Peak memory is one chunk, one
+#' block's Gram matrix (`n_k^2` values, built and compressed one block at a
+#' time), the compressed blocks, and the loadings; `gram_rank` caps the
+#' compressed blocks for subjects with many rows. Scores, loadings, and
+#' diagnostics match the in-memory fit; with `score_constraint = "none"` they
+#' can differ by a rotation within the same subspace because that
+#' initialization depends on an SVD sign. The same engine serves the other
+#' methods that accept block sources (`mfa()`, `mcca()`, `aligned_mcca()`,
+#' `anchored_mcca()`, `anchored_mfa()`, `graph_anchored_mfa()`,
+#' `coupled_graph_anchored_mfa()`, `response_aligned_mfa()`,
+#' `aligned_interbattery()`).
 #'
 #' The feature prior (`feature_lambda > 0` with `feature_groups`) couples
 #' features across blocks, so the Gram shortcut does not apply. The streaming
@@ -796,8 +799,8 @@ aligned_mfa <- function(X,
           c(list(X = data$X, row_index = data$row_index, N = data$N), refit_args, fit_dots)
         )
       },
-      bootstrap_fn = .muscal_bootstrap_aligned_source,
-      permutation_fn = .muscal_permute_aligned_data,
+      bootstrap_fn = .muscal_source_resampler(.muscal_bootstrap_aligned_data),
+      permutation_fn = .muscal_source_resampler(.muscal_permute_aligned_data),
       resample_unit = "latent_rows"
     )
   )
@@ -816,47 +819,20 @@ aligned_mfa <- function(X,
       call. = FALSE
     )
   }
-  chk::chk_number(gram_tol)
-  chk::chk_gte(gram_tol, 0)
   ri <- .amfa_source_row_index(src, row_index, N)
-  row_index <- ri$row_index
-  n_blocks <- length(src$names)
-  if (!is.null(gram_rank)) {
-    gram_rank <- as.integer(gram_rank)
-    if (length(gram_rank) == 1L) gram_rank <- rep(gram_rank, n_blocks)
-    if (length(gram_rank) != n_blocks || anyNA(gram_rank) || any(gram_rank < 1L)) {
-      stop("`gram_rank` must be NULL or positive integers (one, or one per block).",
-           call. = FALSE)
-    }
-  }
+  comp <- .muscal_gram_compress(src, .muscal_gram_kinds(preproc, length(src$names)),
+                                gram_rank = gram_rank, gram_tol = gram_tol)
 
-  # Pass 1: preprocessing statistics, compressing each block as soon as its
-  # Gram matrix is complete, so only one n_k x n_k matrix exists at a time.
-  kinds <- .muscal_stream_preproc_kinds(preproc, n_blocks)
-  R_list <- vector("list", n_blocks)
-  lead <- numeric(n_blocks)
-  gram <- .muscal_stream_gram(src, kinds, keep_gram = FALSE, on_gram = function(k, Gk) {
-    R_list[[k]] <<- .muscal_gram_root(Gk, tol = gram_tol, max_rank = gram_rank[k])
-    lead[[k]] <<- max(attr(R_list[[k]], "lead"), 0)
-  })
-  # MFA weights from the exact leading eigenvalue of each G_k; a randomized
-  # first-singular-value solver on the small compressed blocks would make the
-  # fit depend on the random seed.
-  if (identical(normalization, "MFA")) {
-    alpha <- 1 / (lead + ridge)
-  }
-  discarded <- vapply(R_list, attr, numeric(1L), which = "discarded")
-  R_list <- lapply(R_list, function(R) { attr(R, "discarded") <- attr(R, "lead") <- NULL; R })
-  names(R_list) <- names(discarded) <- src$names
-
+  # MFA weights from the exact leading eigenvalue of each G_k.
+  inner_alpha <- if (identical(normalization, "MFA")) 1 / (comp$lead + ridge) else alpha
   inner <- aligned_mfa(
-    X = R_list,
-    row_index = row_index,
+    X = comp$R,
+    row_index = ri$row_index,
     N = ri$N,
     preproc = NULL,
     ncomp = ncomp,
     normalization = if (identical(normalization, "MFA")) "custom" else normalization,
-    alpha = alpha,
+    alpha = inner_alpha,
     score_constraint = score_constraint,
     max_iter = max_iter,
     tol = tol,
@@ -865,52 +841,24 @@ aligned_mfa <- function(X,
     use_future = use_future,
     strategy = "in_memory"
   )
-  S <- multivarious::scores(inner)
-  alpha_blocks <- inner$alpha_blocks
-  K <- ncol(S)
-
-  # Pass 2: loadings V_k = Xp_k' M_k from the final scores, plus Xp_k V_k, the
-  # residual cross-term, and the score cross-products for correlation loadings,
-  # all read from the data so they stay exact when the Gram matrices were
-  # truncated.
-  S_blocks <- lapply(row_index, function(idx) S[idx, , drop = FALSE])
-  rhs_list <- lapply(seq_len(n_blocks), function(k) {
-    Sk <- S_blocks[[k]]
-    a <- alpha_blocks[[k]]
-    Mk <- if (a > 0) {
-      a * Sk %*% solve(a * crossprod(Sk) + ridge * diag(K))
-    } else {
-      matrix(0, nrow(Sk), K)
+  fit <- .muscal_gram_finish(inner, comp, list(
+    concat_lin = "v",
+    list_lin = "V_list",
+    concat_cor = "cor_loadings",
+    cor_scores = function(fit, b) fit$s[fit$row_index[[b]], , drop = FALSE],
+    block_preproc = "block_preproc"
+  ))
+  fit$normalization <- normalization
+  fit$fit_spec$fit_call <- fit_call
+  .muscal_gram_refit(
+    fit, inner$fit_spec$refit, src,
+    data = list(row_index = ri$row_index, N = ri$N),
+    fit_fn = function(data) {
+      do.call(
+        aligned_mfa,
+        c(list(X = data$X, row_index = data$row_index, N = data$N), refit_args, fit_dots)
+      )
     }
-    cbind(Mk, sweep(Sk, 2L, colMeans(Sk)), Sk)
-  })
-  V_list <- lapply(seq_len(n_blocks), function(k) matrix(0, src$ncol[[k]], K))
-  XSc_list <- V_list
-  XV_list <- lapply(seq_len(n_blocks), function(k) matrix(0, src$nrow[[k]], K))
-  tr <- numeric(n_blocks)
-  .muscal_stream_pass(src, kinds, gram$prep, function(k, cols, Xp) {
-    P <- crossprod(Xp, rhs_list[[k]])
-    Vc <- P[, seq_len(K), drop = FALSE]
-    V_list[[k]][cols, ] <<- Vc
-    XSc_list[[k]][cols, ] <<- P[, K + seq_len(K), drop = FALSE]
-    XV_list[[k]] <<- XV_list[[k]] + Xp %*% Vc
-    tr[[k]] <<- tr[[k]] + sum(Vc * P[, 2L * K + seq_len(K), drop = FALSE])
-  })
-  sse <- vapply(seq_len(n_blocks), function(k) {
-    gram$prep[[k]]$tss - 2 * tr[[k]] + sum(crossprod(V_list[[k]]) * crossprod(S_blocks[[k]]))
-  }, numeric(1L))
-
-  .amfa_assemble_source_fit(
-    src = src, kinds = kinds, prep = gram$prep, S = S, V_list = V_list,
-    XV_list = XV_list, XSc_list = XSc_list,
-    sse = sse, row_index = row_index, alpha_blocks = alpha_blocks, N = ri$N,
-    normalization = normalization, feature_groups = NULL, feature_lambda = 0,
-    objective_trace = inner$objective_trace, ridge = ridge, strategy = "gram",
-    extra = list(
-      gram_rank = vapply(R_list, ncol, integer(1L)),
-      gram_discarded = discarded
-    ),
-    fit_call = fit_call, refit_args = refit_args, fit_dots = fit_dots
   )
 }
 

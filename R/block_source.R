@@ -317,9 +317,11 @@ length.muscal_block_source <- function(x) {
   out
 }
 
-# Square root R of a PSD Gram matrix (R R' = G) with numerically null
-# directions dropped and at most `max_rank` columns kept; R keeps the row order
-# of the block. The fraction of trace(G) left out is returned as an attribute.
+# Square root of a PSD Gram matrix G = U D^2 U': R = U D (R R' = G, same rows
+# as the block) with numerically null directions dropped and at most
+# `max_rank` columns kept. Also returns lift = U D^{-1}, which maps loadings
+# from R coordinates back to features (X' lift), the leading eigenvalue, and
+# the share and amount of trace(G) left out.
 .muscal_gram_root <- function(G, tol = 1e-10, max_rank = NULL) {
   e <- eigen(G, symmetric = TRUE)
   vals <- pmax(e$values, 0)
@@ -327,15 +329,22 @@ length.muscal_block_source <- function(x) {
   keep <- which(vals > tol * top)
   if (!is.null(max_rank)) keep <- utils::head(keep, max_rank)
   total <- sum(vals)
-  R <- if (length(keep) == 0L) {
-    matrix(0, nrow(G), 1L)
+  if (length(keep) == 0L) {
+    R <- matrix(0, nrow(G), 1L)
+    lift <- matrix(0, nrow(G), 1L)
   } else {
-    e$vectors[, keep, drop = FALSE] %*%
-      diag(sqrt(vals[keep]), nrow = length(keep), ncol = length(keep))
+    d <- sqrt(vals[keep])
+    R <- sweep(e$vectors[, keep, drop = FALSE], 2L, d, `*`)
+    lift <- sweep(e$vectors[, keep, drop = FALSE], 2L, d, `/`)
   }
-  attr(R, "discarded") <- if (total > 0) 1 - sum(vals[keep]) / total else 0
-  attr(R, "lead") <- top
-  R
+  kept <- sum(vals[keep])
+  list(
+    R = R,
+    lift = lift,
+    lead = top,
+    discarded = if (total > 0) 1 - kept / total else 0,
+    dropped_ss = max(total - kept, 0)
+  )
 }
 
 .muscal_stream_fitted_preproc <- function(kind, prep, p) {
@@ -363,33 +372,5 @@ length.muscal_block_source <- function(x) {
     names = parent$names,
     colnames = parent$colnames,
     chunk_size = parent$chunk_size
-  )
-}
-
-# Bootstrap of latent rows for a block source, drawing exactly as
-# .muscal_bootstrap_aligned_data() does for in-memory blocks.
-.muscal_bootstrap_aligned_source <- function(data) {
-  src <- data$X
-  row_index <- data$row_index
-  N <- as.integer(data$N)
-  sampled <- sample.int(N, size = N, replace = TRUE)
-
-  rows <- vector("list", length(row_index))
-  row_index_boot <- vector("list", length(row_index))
-  for (k in seq_along(row_index)) {
-    by_latent <- split(seq_along(row_index[[k]]), factor(row_index[[k]], levels = seq_len(N)))
-    picked <- by_latent[sampled]
-    rows[[k]] <- unlist(picked, use.names = FALSE)
-    row_index_boot[[k]] <- rep.int(seq_along(sampled), lengths(picked))
-  }
-  if (any(lengths(rows) == 0L)) {
-    stop("A bootstrap draw left a block with no rows; increase N coverage or retry.",
-         call. = FALSE)
-  }
-  names(row_index_boot) <- names(row_index)
-  list(
-    X = .muscal_source_subset_rows(src, rows),
-    row_index = row_index_boot,
-    N = N
   )
 }

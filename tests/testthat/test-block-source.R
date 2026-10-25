@@ -113,19 +113,14 @@ test_that("aligned_mfa Gram path reproduces the in-memory fit", {
   expect_equal(fit_src$objective_trace, fit_mem$objective_trace, tolerance = 1e-8)
   expect_equal(fit_src$alpha_blocks, fit_mem$alpha_blocks, tolerance = 1e-10)
 
-  # Loadings are the ridge regressions on the final scores.
-  S <- multivarious::scores(fit_mem)
+  # Loadings are the fit's own loadings mapped back to feature space.
   for (k in seq_along(sim$X)) {
-    Sk <- S[sim$idx[[k]], , drop = FALSE]
-    a <- fit_mem$alpha_blocks[[k]]
-    Xc <- scale(sim$X[[k]], scale = FALSE)
-    V_ref <- t(solve(a * crossprod(Sk) + fit_mem$ridge * diag(sim$K), a * crossprod(Sk, Xc)))
-    expect_equal(unname(fit_src$V_list[[k]]), unname(V_ref), tolerance = 1e-8)
-    expect_equal(unname(fit_src$V_list[[k]]), unname(fit_mem$V_list[[k]]), tolerance = 1e-4)
+    expect_equal(unname(fit_src$V_list[[k]]), unname(fit_mem$V_list[[k]]), tolerance = 1e-8)
   }
-  expect_equal(fit_src$block_fit$r2, fit_mem$block_fit$r2, tolerance = 1e-6)
-  expect_equal(unname(fit_src$cor_loadings), unname(fit_mem$cor_loadings), tolerance = 1e-6)
-  expect_equal(unname(fit_src$partial_scores), unname(fit_mem$partial_scores), tolerance = 1e-4)
+  expect_equal(unname(fit_src$v), unname(fit_mem$v), tolerance = 1e-8)
+  expect_equal(fit_src$block_fit$r2, fit_mem$block_fit$r2, tolerance = 1e-8)
+  expect_equal(unname(fit_src$cor_loadings), unname(fit_mem$cor_loadings), tolerance = 1e-8)
+  expect_equal(unname(fit_src$partial_scores), unname(fit_mem$partial_scores), tolerance = 1e-8)
 
   # Two passes over the data, never more than chunk_size columns per read.
   n_chunks <- sum(ceiling(vapply(sim$X, ncol, integer(1L)) / 25))
@@ -330,7 +325,7 @@ test_that("block-source bootstrap draws the same replicate data as in memory", {
     set.seed(seed)
     boot_mem <- muscal:::.muscal_bootstrap_aligned_data(data_mem)
     set.seed(seed)
-    boot_src <- muscal:::.muscal_bootstrap_aligned_source(data_src)
+    boot_src <- muscal:::.muscal_source_resampler(muscal:::.muscal_bootstrap_aligned_data)(data_src)
     expect_equal(unname(boot_src$row_index), unname(boot_mem$row_index))
     for (k in seq_along(sim$X)) {
       expect_equal(read_block(boot_src$X, k), unname(boot_mem$X[[k]]), ignore_attr = TRUE)
@@ -375,16 +370,16 @@ test_that("gram_rank truncates compression and reports discarded variance", {
   Q2 <- qr.Q(qr(multivarious::scores(fit_trunc)))
   expect_gt(min(svd(crossprod(Q1, Q2))$d), 0.95)
 
-  # Loadings, partial scores and R^2 are computed from the data, so they are
-  # exact for the truncated fit's scores.
+  # Truncated loadings lie in the kept right-singular subspace, and the reported
+  # R^2 is the actual R^2 of reconstructing the data with them.
   S <- multivarious::scores(fit_trunc)
   for (k in seq_along(sim$X)) {
     Sk <- S[sim$idx[[k]], , drop = FALSE]
-    a <- fit_trunc$alpha_blocks[[k]]
     Xc <- scale(sim$X[[k]], scale = FALSE)
-    V_ref <- t(solve(a * crossprod(Sk) + fit_trunc$ridge * diag(sim$K), a * crossprod(Sk, Xc)))
-    expect_equal(unname(fit_trunc$V_list[[k]]), unname(V_ref), tolerance = 1e-8)
-    r2_ref <- 1 - sum((Xc - Sk %*% t(V_ref))^2) / sum(Xc^2)
+    Vk <- unname(fit_trunc$V_list[[k]])
+    W <- svd(Xc)$v[, seq_len(fit_trunc$gram_rank[[k]]), drop = FALSE]
+    expect_equal(W %*% crossprod(W, Vk), Vk, tolerance = 1e-8)
+    r2_ref <- 1 - sum((Xc - Sk %*% t(Vk))^2) / sum(Xc^2)
     expect_equal(fit_trunc$block_fit$r2[[k]], r2_ref, tolerance = 1e-8)
   }
   expect_error(.bs_fit(src, sim$idx, sim$N, sim$K, gram_rank = 0), "gram_rank")

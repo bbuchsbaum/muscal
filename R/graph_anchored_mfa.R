@@ -117,6 +117,14 @@
 #' @param use_future Logical; if `TRUE`, block-wise computations that do not
 #'   depend on one another are performed via `furrr::future_map()` when
 #'   available.
+#' @param gram_rank,gram_tol Used when `X` is a [block_source()]: the fit is
+#'   then made out of core through each block's row Gram matrix (exact, up to
+#'   component signs; column-local preprocessing only; options that act on
+#'   individual features are rejected). See [mfa()].
+#' @param gram_rank,gram_tol Used when `X` is a [block_source()]: the fit is
+#'   then made out of core through each block's row Gram matrix (exact, up to
+#'   component signs; column-local preprocessing only; options that act on
+#'   individual features are rejected). See [mfa()].
 #' @param ... Unused (reserved for future extensions).
 #'
 #' @return An object inheriting from `multivarious::multiblock_biprojector` with
@@ -169,9 +177,14 @@ graph_anchored_mfa <- function(Y,
                                ridge = 1e-8,
                                verbose = FALSE,
                                use_future = FALSE,
+                               gram_rank = NULL,
+                               gram_tol = 1e-10,
                                ...) {
   fit_call <- match.call(expand.dots = FALSE)
   fit_dots <- list(...)
+  if (inherits(X, "muscal_block_source")) {
+    return(.gamfa_fit_gram(graph_anchored_mfa, .muscal_gram_args(), fit_call, fit_dots))
+  }
   normalization <- match.arg(normalization)
   score_constraint <- match.arg(score_constraint)
   graph_form <- match.arg(graph_form)
@@ -538,9 +551,14 @@ coupled_graph_anchored_mfa <- function(Y,
                                        ridge = 1e-8,
                                        verbose = FALSE,
                                        use_future = FALSE,
+                                       gram_rank = NULL,
+                                       gram_tol = 1e-10,
                                        ...) {
   fit_call <- match.call(expand.dots = FALSE)
   fit_dots <- list(...)
+  if (inherits(X, "muscal_block_source")) {
+    return(.gamfa_fit_gram(coupled_graph_anchored_mfa, .muscal_gram_args(), fit_call, fit_dots))
+  }
   normalization <- match.arg(normalization)
   score_constraint <- match.arg(score_constraint)
   graph_form <- match.arg(graph_form)
