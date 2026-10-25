@@ -138,7 +138,17 @@ aligned_interbattery(
 
 - couple_y:
 
-  Non-negative scalar controlling the \`V_s\` to \`T_s\` coupling.
+  Non-negative scalar controlling the \`V_s\` to \`T_s\` coupling. The
+  two set a direction trade-off. Prediction from one side works best
+  when that side is tightly coupled to \`T_s\` and the side being
+  predicted is coupled loosely, which stops noise in the target from
+  pulling the common scores. In simulations with noisy data,
+  \`couple_y\` around \`0.03\` (keeping \`couple_x = 1\`) improved \`X
+  -\> Y\` prediction by up to about 0.1 in R-squared, but cut \`Y -\>
+  X\` prediction sharply; the mirror setting does the reverse. The
+  symmetric default \`1, 1\` stays close to the best in both directions.
+  When the model is used mainly in one direction, lowering the target
+  side's coupling is worth tuning, e.g. by cross-validation.
 
 - decorrelate:
 
@@ -170,9 +180,9 @@ aligned_interbattery(
   \`decorrelate_type = "whiten"\` is ignored with a warning; the
   decorrelation penalty still acts on each subject's own score
   covariance. On noisy data the drifting \`"none"\` fit can predict
-  slightly better because the drift gradually weakens the coupling; with
-  \`"orthonormal"\` that trade-off is set explicitly through
-  \`couple_x\` / \`couple_y\`.
+  slightly better in one direction because the drift gradually weakens
+  the coupling; with \`"orthonormal"\` that trade-off is set explicitly
+  through \`couple_x\` / \`couple_y\` (see there).
 
 - max_iter:
 
