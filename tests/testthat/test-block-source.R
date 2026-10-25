@@ -30,6 +30,21 @@ library(muscal)
   list(src = src, log = log)
 }
 
+# Component signs are arbitrary and can differ between fitting paths (the
+# in-memory path's block weights come from a randomized SVD). Flip `fit`'s
+# components to agree with `ref` before comparing.
+.bs_align <- function(fit, ref) {
+  sg <- sign(colSums(multivarious::scores(fit) * multivarious::scores(ref)))
+  sg[sg == 0] <- 1
+  flip <- function(M) sweep(M, 2L, sg, `*`)
+  fit$s <- flip(fit$s)
+  fit$v <- flip(fit$v)
+  fit$V_list <- lapply(fit$V_list, flip)
+  fit$partial_scores <- lapply(fit$partial_scores, flip)
+  if (!is.null(fit$cor_loadings)) fit$cor_loadings <- flip(fit$cor_loadings)
+  fit
+}
+
 .bs_fit <- function(X, idx, N, K, ...) {
   suppressMessages(aligned_mfa(X, idx, N = N, ncomp = K, max_iter = 300, tol = 1e-12, ...))
 }
@@ -90,6 +105,7 @@ test_that("aligned_mfa Gram path reproduces the in-memory fit", {
 
   fit_mem <- .bs_fit(sim$X, sim$idx, sim$N, sim$K, score_constraint = "orthonormal")
   fit_src <- .bs_fit(counted$src, sim$idx, sim$N, sim$K, score_constraint = "orthonormal")
+  fit_src <- .bs_align(fit_src, fit_mem)
 
   expect_s3_class(fit_src, "aligned_mfa")
   expect_equal(fit_src$strategy, "gram")
@@ -136,6 +152,7 @@ test_that("aligned_mfa Gram path supports standardize and per-block preprocessin
   fit_mem <- .bs_fit(sim$X, sim$idx, sim$N, sim$K, preproc = pre, score_constraint = "orthonormal")
   fit_src <- .bs_fit(as_block_source(sim$X, chunk_size = 40), sim$idx, sim$N, sim$K,
                      preproc = pre, score_constraint = "orthonormal")
+  fit_src <- .bs_align(fit_src, fit_mem)
   expect_equal(multivarious::scores(fit_src), multivarious::scores(fit_mem), tolerance = 1e-8)
 })
 
@@ -144,6 +161,7 @@ test_that("Gram-path fits project new rows like the in-memory fit", {
   fit_mem <- .bs_fit(sim$X, sim$idx, sim$N, sim$K, score_constraint = "orthonormal")
   fit_src <- .bs_fit(as_block_source(sim$X, chunk_size = 20), sim$idx, sim$N, sim$K,
                      score_constraint = "orthonormal")
+  fit_src <- .bs_align(fit_src, fit_mem)
   new_rows <- sim$X$S2[1:5, , drop = FALSE] + 0.1
   expect_equal(
     project(fit_src, new_rows, block = "S2"),
@@ -166,12 +184,13 @@ test_that("aligned_mfa strategies interoperate and refit reuses the source", {
 
   expect_equal(fit_list_gram$strategy, "gram")
   expect_equal(multivarious::scores(fit_src_mem), multivarious::scores(fit_mem))
-  expect_equal(multivarious::scores(fit_list_gram), multivarious::scores(fit_mem), tolerance = 1e-8)
+  expect_equal(multivarious::scores(.bs_align(fit_list_gram, fit_mem)), multivarious::scores(fit_mem),
+               tolerance = 1e-8)
 
   refit <- suppressMessages(fit_list_gram$fit_spec$refit$fit_fn(fit_list_gram$fit_spec$refit$data))
   expect_equal(multivarious::scores(refit), multivarious::scores(fit_list_gram), tolerance = 1e-10)
-  expect_error(fit_list_gram$fit_spec$refit$bootstrap_fn(fit_list_gram$fit_spec$refit$data),
-               "not yet available")
+  expect_s3_class(fit_list_gram$fit_spec$refit$bootstrap_fn(fit_list_gram$fit_spec$refit$data)$X,
+                  "muscal_block_source")
 })
 
 test_that("aligned_mfa Gram path rejects unsupported settings", {
@@ -206,6 +225,7 @@ test_that("streaming path reproduces the in-memory fit with a feature prior", {
 
   fit_mem <- do.call(.bs_fit, c(list(sim$X, sim$idx, sim$N, sim$K), args))
   fit_str <- do.call(.bs_fit, c(list(counted$src, sim$idx, sim$N, sim$K), args))
+  fit_str <- .bs_align(fit_str, fit_mem)
 
   expect_equal(fit_str$strategy, "stream")
   expect_equal(multivarious::scores(fit_str), multivarious::scores(fit_mem), tolerance = 1e-8)
@@ -233,6 +253,7 @@ test_that("streaming path matches in memory without a prior, with explicit group
 
   fit_mem <- .bs_fit(sim$X, sim$idx, sim$N, sim$K, score_constraint = "orthonormal")
   fit_str <- .bs_fit(src, sim$idx, sim$N, sim$K, score_constraint = "orthonormal", strategy = "stream")
+  fit_str <- .bs_align(fit_str, fit_mem)
   expect_equal(multivarious::scores(fit_str), multivarious::scores(fit_mem), tolerance = 1e-8)
 
   groups <- data.frame(
@@ -278,7 +299,7 @@ test_that("streaming fits project, predict and refit", {
   fit_mem <- .bs_fit(sim$X, sim$idx, sim$N, sim$K, feature_groups = "colnames", feature_lambda = 1,
                      score_constraint = "orthonormal")
   new_rows <- sim$X$S1[1:4, , drop = FALSE]
-  expect_equal(project(fit, new_rows, block = "S1"), project(fit_mem, new_rows, block = "S1"),
+  expect_equal(project(.bs_align(fit, fit_mem), new_rows, block = "S1"), project(fit_mem, new_rows, block = "S1"),
                tolerance = 1e-8)
 
   refit <- suppressMessages(fit$fit_spec$refit$fit_fn(fit$fit_spec$refit$data))
@@ -299,4 +320,97 @@ test_that("block_source column names are validated and needed for named groups",
                                  feature_lambda = 1)),
     "colnames"
   )
+})
+
+test_that("block-source bootstrap draws the same replicate data as in memory", {
+  sim <- .bs_sim(seed = 31)
+  data_mem <- list(X = sim$X, row_index = sim$idx, N = sim$N)
+  data_src <- list(X = as_block_source(sim$X, chunk_size = 30), row_index = sim$idx, N = sim$N)
+  for (seed in 1:3) {
+    set.seed(seed)
+    boot_mem <- muscal:::.muscal_bootstrap_aligned_data(data_mem)
+    set.seed(seed)
+    boot_src <- muscal:::.muscal_bootstrap_aligned_source(data_src)
+    expect_equal(unname(boot_src$row_index), unname(boot_mem$row_index))
+    for (k in seq_along(sim$X)) {
+      expect_equal(read_block(boot_src$X, k), unname(boot_mem$X[[k]]), ignore_attr = TRUE)
+    }
+  }
+})
+
+test_that("infer_muscal resamples block-source fits like in-memory fits", {
+  sim <- .bs_sim(seed = 32)
+  src <- as_block_source(sim$X, chunk_size = 40)
+  fit_mem <- .bs_fit(sim$X, sim$idx, sim$N, sim$K, score_constraint = "orthonormal")
+  fit_gram <- .bs_fit(src, sim$idx, sim$N, sim$K, score_constraint = "orthonormal")
+  boot_mem <- suppressMessages(infer_muscal(fit_mem, method = "bootstrap", nrep = 3, seed = 7))
+  boot_gram <- suppressMessages(infer_muscal(fit_gram, method = "bootstrap", nrep = 3, seed = 7))
+  expect_equal(boot_gram$n_success, 3L)
+  # The first replicate's resample is drawn before any fit consumes random
+  # numbers, so it is identical across paths; later draws can differ because
+  # the in-memory path's randomized SVD consumes the stream.
+  expect_equal(boot_gram$replicates[[1]], boot_mem$replicates[[1]], tolerance = 1e-6)
+  expect_true(all(vapply(boot_gram$replicates, function(r) all(is.finite(unlist(r))), logical(1L))))
+
+  perm_mem <- suppressMessages(infer_muscal(fit_mem, method = "permutation", nrep = 3, seed = 8))
+  perm_gram <- suppressMessages(infer_muscal(fit_gram, method = "permutation", nrep = 3, seed = 8))
+  expect_equal(perm_gram$replicates[[1]], perm_mem$replicates[[1]], tolerance = 1e-6)
+  expect_equal(perm_gram$n_success, 3L)
+})
+
+test_that("gram_rank truncates compression and reports discarded variance", {
+  sim <- .bs_sim(seed = 33)
+  src <- as_block_source(sim$X, chunk_size = 35)
+  fit_exact <- .bs_fit(src, sim$idx, sim$N, sim$K, score_constraint = "orthonormal")
+  fit_full_rank <- .bs_fit(src, sim$idx, sim$N, sim$K, score_constraint = "orthonormal", gram_rank = 100)
+  fit_trunc <- .bs_fit(src, sim$idx, sim$N, sim$K, score_constraint = "orthonormal", gram_rank = 6)
+
+  expect_equal(multivarious::scores(fit_full_rank), multivarious::scores(fit_exact), tolerance = 1e-10)
+  expect_true(all(fit_exact$gram_discarded < 1e-10))
+  expect_true(all(fit_trunc$gram_rank <= 6))
+  expect_true(all(fit_trunc$gram_discarded > 0 & fit_trunc$gram_discarded < 1))
+
+  # Truncation keeps the leading structure: the same latent subspace.
+  Q1 <- qr.Q(qr(multivarious::scores(fit_exact)))
+  Q2 <- qr.Q(qr(multivarious::scores(fit_trunc)))
+  expect_gt(min(svd(crossprod(Q1, Q2))$d), 0.95)
+
+  # Loadings, partial scores and R^2 are computed from the data, so they are
+  # exact for the truncated fit's scores.
+  S <- multivarious::scores(fit_trunc)
+  for (k in seq_along(sim$X)) {
+    Sk <- S[sim$idx[[k]], , drop = FALSE]
+    a <- fit_trunc$alpha_blocks[[k]]
+    Xc <- scale(sim$X[[k]], scale = FALSE)
+    V_ref <- t(solve(a * crossprod(Sk) + fit_trunc$ridge * diag(sim$K), a * crossprod(Sk, Xc)))
+    expect_equal(unname(fit_trunc$V_list[[k]]), unname(V_ref), tolerance = 1e-8)
+    r2_ref <- 1 - sum((Xc - Sk %*% t(V_ref))^2) / sum(Xc^2)
+    expect_equal(fit_trunc$block_fit$r2[[k]], r2_ref, tolerance = 1e-8)
+  }
+  expect_error(.bs_fit(src, sim$idx, sim$N, sim$K, gram_rank = 0), "gram_rank")
+})
+
+test_that("feature_lambda_scale = 'block' is scale-free and streams exactly", {
+  sim <- .bs_sim_named(seed = 34)
+  rescaled <- sim$X
+  rescaled$S2 <- rescaled$S2 * 1000
+  args <- list(feature_groups = "colnames", feature_lambda = 1, score_constraint = "orthonormal",
+               ridge = 0)
+  fit_block <- do.call(.bs_fit, c(list(sim$X, sim$idx, sim$N, sim$K, feature_lambda_scale = "block"), args))
+  fit_block2 <- do.call(.bs_fit, c(list(rescaled, sim$idx, sim$N, sim$K, feature_lambda_scale = "block"), args))
+  expect_equal(multivarious::scores(fit_block2), multivarious::scores(fit_block), tolerance = 1e-8)
+  expect_equal(fit_block2$V_list$S2 / 1000, fit_block$V_list$S2, tolerance = 1e-8)
+
+  fit_raw <- do.call(.bs_fit, c(list(sim$X, sim$idx, sim$N, sim$K), args))
+  fit_raw2 <- do.call(.bs_fit, c(list(rescaled, sim$idx, sim$N, sim$K), args))
+  expect_gt(max(abs(multivarious::scores(fit_raw2) - multivarious::scores(fit_raw))), 1e-3)
+
+  fit_stream <- do.call(.bs_fit, c(list(as_block_source(sim$X, chunk_size = 19), sim$idx, sim$N, sim$K,
+                                        feature_lambda_scale = "block"), args))
+  expect_equal(fit_stream$strategy, "stream")
+  expect_equal(multivarious::scores(fit_stream), multivarious::scores(fit_block), tolerance = 1e-8)
+  expect_equal(fit_stream$objective_trace, unname(fit_block$objective_trace), tolerance = 1e-8)
+
+  refit <- suppressMessages(fit_stream$fit_spec$refit$fit_fn(fit_stream$fit_spec$refit$data))
+  expect_equal(multivarious::scores(refit), multivarious::scores(fit_stream), tolerance = 1e-10)
 })

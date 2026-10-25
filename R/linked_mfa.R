@@ -964,13 +964,18 @@ linked_mfa <- function(Y,
   }
   num <- matrix(0, nrow = n_groups, ncol = kdim)
   denom <- numeric(n_groups)
+  # With block-scaled groups (see .lmfa_scale_feature_groups) centers average
+  # the normalized loadings sqrt(alpha_k) V_k with the feature weights alone.
+  scale <- fg$block_scale
   for (k in seq_along(V_list)) {
     gid <- fg$group_id[[k]]
     ok <- which(!is.na(gid))
-    bw <- block_weights[k]
+    bw <- if (is.null(scale)) block_weights[k] else 1
     if (length(ok) == 0L || !is.finite(bw) || bw <= 0) next
     w <- bw * fg$weights_by_block[[k]][ok]
-    num <- num + .lmfa_rowsum_full(w * V_list[[k]][ok, , drop = FALSE], gid[ok], n_groups)
+    Vk <- V_list[[k]][ok, , drop = FALSE]
+    if (!is.null(scale)) Vk <- scale[[k]] * Vk
+    num <- num + .lmfa_rowsum_full(w * Vk, gid[ok], n_groups)
     denom <- denom + .lmfa_rowsum_full(matrix(w, ncol = 1L), gid[ok], n_groups)[, 1L]
   }
   centers <- num
@@ -1001,10 +1006,23 @@ linked_mfa <- function(Y,
     ok <- which(!is.na(gid))
     if (length(ok) == 0L) next
     ci <- match(fg$groups[gid[ok]], rownames(centers$centers))
-    D <- V_list[[k]][ok, , drop = FALSE] - centers$centers[ci, , drop = FALSE]
+    Vk <- V_list[[k]][ok, , drop = FALSE]
+    if (!is.null(fg$block_scale)) Vk <- fg$block_scale[[k]] * Vk
+    D <- Vk - centers$centers[ci, , drop = FALSE]
     pen <- pen + sum(fg$weights_by_block[[k]][ok] * rowSums(D^2))
   }
   feature_lambda * pen
+}
+
+# Opt-in scale-free feature prior: compare loadings in each block's normalized
+# units, so the penalty becomes sum_kj w_kj ||sqrt(alpha_k) V_k[j, ] - c_g||^2.
+# Rescaling a block then rescales its loadings and leaves the fit unchanged,
+# and feature_lambda is relative to the MFA-weighted data term.
+.lmfa_scale_feature_groups <- function(fg, alpha_blocks, mode = c("raw", "block")) {
+  mode <- match.arg(mode)
+  if (identical(mode, "raw") || !isTRUE(fg$enabled)) return(fg)
+  fg$block_scale <- sqrt(pmax(as.numeric(alpha_blocks), 0))
+  fg
 }
 
 .lmfa_update_V_block <- function(Sk,
@@ -1014,9 +1032,11 @@ linked_mfa <- function(Y,
                                 weights_block,
                                 centers,
                                 feature_lambda,
-                                ridge = 1e-8) {
+                                ridge = 1e-8,
+                                block_scale = NULL) {
   # Update V_k (p x K). For ungrouped features, use ridge LS.
-  # For grouped features, use ridge LS toward group center.
+  # For grouped features, use ridge LS toward group center. With a block
+  # scale s the penalty is lam ||s v - c||^2, i.e. lam s^2 ||v - c / s||^2.
   p <- ncol(Xk)
   K <- ncol(Sk)
 
@@ -1038,11 +1058,12 @@ linked_mfa <- function(Y,
     # Grouped features: ridge LS toward the group center, solved in batches of
     # features that share the same penalty weight.
     gi <- match(fg_block, rownames(centers$centers))
-    lam <- feature_lambda * weights_block
+    s <- if (is.null(block_scale)) 1 else block_scale
+    lam <- feature_lambda * weights_block * s^2
     sel <- which(!is.na(gi) & is.finite(lam) & lam > 0)
     for (l in unique(lam[sel])) {
       js <- sel[lam[sel] == l]
-      rhs <- rhs_all[, js, drop = FALSE] + l * t(centers$centers[gi[js], , drop = FALSE])
+      rhs <- rhs_all[, js, drop = FALSE] + (l / s) * t(centers$centers[gi[js], , drop = FALSE])
       V[js, ] <- t(solve(G0 + l * diag(K), rhs))
     }
   }
