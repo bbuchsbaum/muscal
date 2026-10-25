@@ -419,20 +419,23 @@ test_that("aligned_interbattery supports joint completion from both sides", {
 
 test_that("aligned_interbattery decorrelate penalty reduces within-side score covariance", {
   sim <- .sim_aib_data_correlated(seed = 17, subject_sizes = c(S1 = 18, S2 = 17, S3 = 16), noise = 0.04)
+  # Compare after the early transient: the objective falls ~60-fold over the
+  # first iterations, and at 10 iterations the comparison reflects the path
+  # from the starting point rather than the penalty.
 
   fit_base <- aligned_interbattery(
     X = sim$X,
     Y = sim$Y,
     ncomp = 2,
     decorrelate = 0,
-    max_iter = 10
+    max_iter = 30
   )
   fit_decor <- aligned_interbattery(
     X = sim$X,
     Y = sim$Y,
     ncomp = 2,
     decorrelate = 10,
-    max_iter = 10
+    max_iter = 30
   )
 
   off_x_base <- .aib_offdiag_cov_norm(fit_base$x_scores)
@@ -599,4 +602,37 @@ test_that("aligned_interbattery accepts precomputed normalized Laplacians", {
 
   expect_equal(as.matrix(fit_adj$row_graph_laplacian$S1), as.matrix(fit_norm$row_graph_laplacian$S1), tolerance = 1e-10)
   expect_equal(as.matrix(fit_adj$row_graph_laplacian$S2), as.matrix(fit_norm$row_graph_laplacian$S2), tolerance = 1e-10)
+})
+
+test_that("aligned_interbattery start does not depend on the random state", {
+  # Each subject's initial scores come from its own eigendecomposition and are
+  # fixed only up to sign; without aligning subjects to a common orientation,
+  # last-digit differences in the block weights (from the randomized SVD) flipped
+  # components between subjects and sent the fit to different solutions.
+  set.seed(11)
+  K <- 2
+  n <- 25
+  mk <- function(Z, W) Z %*% W + matrix(rnorm(nrow(Z) * ncol(W), sd = 0.5), nrow(Z))
+  Zs <- list(S1 = matrix(rnorm(n * K), n), S2 = matrix(rnorm(n * K), n))
+  Wx <- list(fmri = matrix(rnorm(K * 60), K), eeg = matrix(rnorm(K * 30), K))
+  Wy <- matrix(rnorm(K * 8), K)
+  X <- list(S1_fmri = mk(Zs$S1, Wx$fmri), S1_eeg = mk(Zs$S1, Wx$eeg),
+            S2_fmri = mk(Zs$S2, Wx$fmri), S2_eeg = mk(Zs$S2, Wx$eeg))
+  Y <- list(S1_beh = mk(Zs$S1, Wy), S2_beh = mk(Zs$S2, Wy))
+  xi <- data.frame(block = names(X), subject = c("S1", "S1", "S2", "S2"),
+                   domain = c("fmri", "eeg", "fmri", "eeg"))
+  yi <- data.frame(block = names(Y), subject = c("S1", "S2"), domain = "beh")
+
+  fits <- lapply(1:4, function(seed) {
+    set.seed(seed)
+    suppressMessages(aligned_interbattery(X, Y, x_block_info = xi, y_block_info = yi,
+                                          ncomp = K, max_iter = 100, tol = 1e-12))
+  })
+  ref <- fits[[1]]
+  for (f in fits[-1]) {
+    expect_equal(f$objective_trace, ref$objective_trace, tolerance = 1e-10)
+    sg <- sign(colSums(multivarious::scores(ref) * multivarious::scores(f)))
+    expect_equal(sweep(multivarious::scores(f), 2L, sg, `*`), multivarious::scores(ref),
+                 tolerance = 1e-10)
+  }
 })
