@@ -964,9 +964,78 @@ aligned_interbattery <- function(X,
     T_list[[subj]] <- T0
   }
 
+  T_list <- .aib_align_subject_inits(
+    T_list = T_list,
+    X_list = X_list,
+    Y_list = Y_list,
+    x_row_map = x_row_map,
+    y_row_map = y_row_map,
+    x_info = x_info,
+    y_info = y_info,
+    x_weight = x_weight,
+    y_weight = y_weight
+  )
+
   T_stack <- .aib_stack_subject_scores(T_list, subject_names)
   T_stack <- .muscal_stiefel_retract(T_stack)
   list(T_list = .aib_split_subject_scores(T_stack, .aib_make_subject_index(subject_sizes)))
+}
+
+# Each subject's start comes from its own eigendecomposition, so its components
+# are fixed only up to sign (and rotation within tied eigenvalues). Subjects are
+# coupled through shared domain loadings, so an arbitrary relative flip puts the
+# fit in a different basin, and which flip LAPACK returns can change with
+# last-digit differences in the block weights. Rotate each subject onto a
+# common orientation: align its weighted per-domain loadings X_b' T_s with the
+# running sum of the already-aligned subjects' loadings (orthogonal
+# Procrustes). The result is unique up to one global rotation.
+.aib_align_subject_inits <- function(T_list,
+                                     X_list,
+                                     Y_list,
+                                     x_row_map,
+                                     y_row_map,
+                                     x_info,
+                                     y_info,
+                                     x_weight,
+                                     y_weight) {
+  if (length(T_list) < 2L) return(T_list)
+  sides <- list(
+    x = list(info = x_info, blocks = X_list, row_map = x_row_map, weight = x_weight),
+    y = list(info = y_info, blocks = Y_list, row_map = y_row_map, weight = y_weight)
+  )
+  subject_loadings <- function(subj, T_s) {
+    out <- list()
+    for (side in names(sides)) {
+      sd <- sides[[side]]
+      rows <- which(sd$info$subject == subj)
+      for (i in rows) {
+        b <- sd$info$block[[i]]
+        map <- sd$row_map[[b]]
+        T_b <- if (is.null(map)) T_s else T_s[map, , drop = FALSE]
+        key <- paste(side, sd$info$loading[[i]], sep = "::")
+        L <- sqrt(as.numeric(sd$weight[[b]])) * crossprod(sd$blocks[[b]], T_b)
+        out[[key]] <- if (is.null(out[[key]])) L else out[[key]] + L
+      }
+    }
+    out
+  }
+
+  reference <- list()
+  for (subj in names(T_list)) {
+    L <- subject_loadings(subj, T_list[[subj]])
+    shared <- intersect(names(L), names(reference))
+    if (length(shared) > 0L) {
+      M <- Reduce(`+`, lapply(shared, function(key) crossprod(L[[key]], reference[[key]])))
+      sv <- svd(M)
+      Q <- sv$u %*% t(sv$v)
+      T_list[[subj]] <- T_list[[subj]] %*% Q
+      L <- lapply(L, function(x) x %*% Q)
+    }
+    for (key in names(L)) {
+      reference[[key]] <- if (is.null(reference[[key]])) L[[key]] else reference[[key]] + L[[key]]
+    }
+  }
+  T_list
 }
 
 .aib_update_shared_loadings <- function(blocks,
