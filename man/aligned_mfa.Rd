@@ -15,6 +15,7 @@ aligned_mfa(
   score_constraint = c("none", "orthonormal"),
   feature_groups = NULL,
   feature_lambda = 0,
+  feature_lambda_scale = c("raw", "block"),
   max_iter = 50,
   tol = 1e-06,
   ridge = 1e-08,
@@ -22,6 +23,7 @@ aligned_mfa(
   use_future = FALSE,
   strategy = c("auto", "in_memory", "gram", "stream"),
   gram_tol = 1e-10,
+  gram_rank = NULL,
   ...
 )
 }
@@ -62,6 +64,15 @@ majorization/polar step.}
 
 \item{feature_lambda}{Non-negative scalar controlling strength of the feature prior.}
 
+\item{feature_lambda_scale}{How the feature prior is measured. `"raw"`
+(default, historical) penalizes `sum w ||V_k[j, ] - c_g||^2` on the
+loadings' own scale, so useful `feature_lambda` values depend on the size
+and scale of the data. `"block"` compares loadings in each block's
+MFA-normalized units, `sum w ||sqrt(alpha_k) V_k[j, ] - c_g||^2`, which
+makes `feature_lambda` unitless (relative to the block-weighted data term)
+and the fit invariant to rescaling any block (up to the absolute `ridge`,
+which is not scale-free).}
+
 \item{max_iter}{Maximum number of alternating least-squares iterations.}
 
 \item{tol}{Relative tolerance on the objective for convergence.}
@@ -84,6 +95,12 @@ corresponding out-of-core path for either input.}
 
 \item{gram_tol}{Relative eigenvalue tolerance used to drop numerically null
 directions when compressing each block's Gram matrix (Gram path only).}
+
+\item{gram_rank}{Optional maximum number of Gram eigenpairs kept per block
+(one value, or one per block) on the Gram path. `NULL` (default) keeps all
+of them, which is exact. A smaller rank makes the fit approximate but
+bounds each compressed block at `n_k × gram_rank`; the fraction of each
+block's variance left out is returned as `gram_discarded`.}
 
 \item{...}{Unused (reserved for future extensions).}
 }
@@ -128,8 +145,10 @@ preprocessing statistics and `G_k`; (2) runs the ordinary fit on compressed
 blocks `R_k` with `R_k R_k^T = G_k` (at most `n_k` columns each); and
 (3) reads each block once more to compute the feature-space loadings
 `V_k = X_k^T S_k (S_k^T S_k + (ridge / alpha_k) I)^{-1}` from the final
-scores. Peak memory is one chunk plus the Gram matrices (`sum(n_k^2)`
-values) and the loadings. The scores match the in-memory fit; with
+scores. Peak memory is one chunk, one block's Gram matrix (`n_k^2` values,
+built and compressed one block at a time), the compressed blocks, and the
+loadings; `gram_rank` caps the compressed blocks for subjects with many
+rows. The scores match the in-memory fit; with
 `score_constraint = "none"` they can differ by a rotation within the same
 subspace because that initialization depends on an SVD sign. The returned
 loadings are the ridge regressions on the final scores rather than the last
@@ -147,8 +166,10 @@ Feature groups given by name need column names on the source
 (`block_source(colnames = )`).
 
 Both out-of-core paths support column-local preprocessing only (`NULL`,
-`multivarious::pass()`, `center()`, `standardize()`). Resampling
-(bootstrap/permutation) is not yet available for block-source fits.
+`multivarious::pass()`, `center()`, `standardize()`). Resampling works on
+block-source fits: permutations shuffle `row_index` only, and each bootstrap
+replicate is a derived source that reads the original one and keeps the
+resampled rows, so every replicate refit re-reads the data.
 }
 
 \examples{
