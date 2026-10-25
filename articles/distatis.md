@@ -127,7 +127,7 @@ assessors; their spread is not a confidence region.
 
 weighted_partial <- Reduce(`+`, Map(`*`, fit$partial_scores, fit$alpha))
 max(abs(weighted_partial - multivarious::scores(fit)))
-#> [1] 1.387779e-15
+#> [1] 1.373901e-15
 ```
 
 `plot_block_weights(fit)` and `plot_block_similarity(fit)` display the
@@ -185,7 +185,7 @@ supplementary$scalar_summaries
 #> A1         A1      0.7680306               0.830311            0.8663089
 #> A2         A2      0.8055173               1.006663            0.9252491
 max(abs(supplementary$subject_scores - fit$subject_scores[1:2, ]))
-#> [1] 1.120631e-15
+#> [1] 1.110223e-15
 ```
 
 Supplementary distances use the fit’s `squared` setting unless

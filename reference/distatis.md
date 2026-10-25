@@ -128,7 +128,7 @@ fit$alpha
 multivarious::scores(fit)
 #>   Dim1          Dim2
 #> 1 -0.5  0.000000e+00
-#> 2 -0.5  3.723435e-17
+#> 2 -0.5  3.233164e-17
 #> 3  0.5 -3.301511e-01
 #> 4  0.5  3.301511e-01
 project_distance(fit, distances[[1]])
