@@ -27,6 +27,8 @@ aligned_mcca(
   verbose = FALSE,
   use_future = FALSE,
   block_weights = NULL,
+  gram_rank = NULL,
+  gram_tol = 1e-10,
   ...
 )
 ```
@@ -100,6 +102,12 @@ aligned_mcca(
   Deprecated alias for \`alpha\`. When supplied, implicitly sets
   \`normalization = "custom"\` unless \`normalization\` is already
   explicit.
+
+- gram_rank, gram_tol:
+
+  Used when \`X\` is a \[block_source()\]: the fit is then made out of
+  core through each block's row Gram matrix (exact, up to component
+  signs; column-local preprocessing only). See \[mfa()\].
 
 - ...:
 

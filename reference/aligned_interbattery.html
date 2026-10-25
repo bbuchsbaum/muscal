@@ -129,6 +129,8 @@ systems.</p>
 <span>  ridge <span class="op">=</span> <span class="fl">1e-08</span>,</span>
 <span>  verbose <span class="op">=</span> <span class="cn">FALSE</span>,</span>
 <span>  use_future <span class="op">=</span> <span class="cn">FALSE</span>,</span>
+<span>  gram_rank <span class="op">=</span> <span class="cn">NULL</span>,</span>
+<span>  gram_tol <span class="op">=</span> <span class="fl">1e-10</span>,</span>
 <span>  <span class="va">...</span></span>
 <span><span class="op">)</span></span></code></pre></div>
     </div>
@@ -258,6 +260,14 @@ depend on one another may be performed via `furrr::future_map()` when
 available. The main alternating-least-squares loop is intrinsically
 sequential and is unaffected. Accepted here primarily for interface parity
 with the rest of the aligned/anchored family.</p></dd>
+
+
+<dt id="arg-gram-rank-gram-tol">gram_rank, gram_tol<a class="anchor" aria-label="anchor" href="#arg-gram-rank-gram-tol"></a></dt>
+<dd><p>Used when `X` and/or `Y` is a flat
+[block_source()]: each domain (the blocks that share a loading matrix) is
+read as one row-stacked block, compressed through its row Gram matrix, and
+fitted out of core (exact, up to component signs; column-local
+preprocessing only). Gram truncation (`gram_rank`) is not supported here.</p></dd>
 
 
 <dt id="arg--">...<a class="anchor" aria-label="anchor" href="#arg--"></a></dt>

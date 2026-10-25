@@ -53,7 +53,7 @@ observations (rows) but potentially different variables (columns)."><link href="
   <main id="main" class="col-md-9"><div class="page-header">
 
       <h1>Multiblock Canonical Correlation Analysis (generic)</h1>
-      <small class="dont-index">Source: <a href="https://github.com/bbuchsbaum/muscal/blob/main/R/all_generic.R" class="external-link"><code>R/all_generic.R</code></a>, <a href="https://github.com/bbuchsbaum/muscal/blob/main/R/mcca.R" class="external-link"><code>R/mcca.R</code></a></small>
+      <small class="dont-index">Source: <a href="https://github.com/bbuchsbaum/muscal/blob/main/R/all_generic.R" class="external-link"><code>R/all_generic.R</code></a>, <a href="https://github.com/bbuchsbaum/muscal/blob/main/R/gram_methods.R" class="external-link"><code>R/gram_methods.R</code></a>, <a href="https://github.com/bbuchsbaum/muscal/blob/main/R/mcca.R" class="external-link"><code>R/mcca.R</code></a></small>
       <div class="d-none name"><code>mcca.Rd</code></div>
     </div>
 
@@ -73,6 +73,19 @@ observations (rows) but potentially different variables (columns).</p>
 <span>  ridge <span class="op">=</span> <span class="fl">1e-06</span>,</span>
 <span>  block_weights <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  use_future <span class="op">=</span> <span class="cn">FALSE</span>,</span>
+<span>  <span class="va">...</span></span>
+<span><span class="op">)</span></span>
+<span></span>
+<span><span class="co"># S3 method for class 'muscal_block_source'</span></span>
+<span><span class="fu">mcca</span><span class="op">(</span></span>
+<span>  <span class="va">data</span>,</span>
+<span>  preproc <span class="op">=</span> <span class="fu">multivarious</span><span class="fu">::</span><span class="fu"><a href="https://bbuchsbaum.github.io/multivarious/reference/center.html" class="external-link">center</a></span><span class="op">(</span><span class="op">)</span>,</span>
+<span>  ncomp <span class="op">=</span> <span class="fl">2</span>,</span>
+<span>  ridge <span class="op">=</span> <span class="fl">1e-06</span>,</span>
+<span>  block_weights <span class="op">=</span> <span class="cn">NULL</span>,</span>
+<span>  use_future <span class="op">=</span> <span class="cn">FALSE</span>,</span>
+<span>  gram_rank <span class="op">=</span> <span class="cn">NULL</span>,</span>
+<span>  gram_tol <span class="op">=</span> <span class="fl">1e-10</span>,</span>
 <span>  <span class="va">...</span></span>
 <span><span class="op">)</span></span>
 <span></span>
@@ -137,6 +150,10 @@ across variable scalings.</p></dd>
 <dt id="arg--">...<a class="anchor" aria-label="anchor" href="#arg--"></a></dt>
 <dd><p>Additional arguments passed to the underlying method.</p></dd>
 
+
+<dt id="arg-gram-rank-gram-tol">gram_rank, gram_tol<a class="anchor" aria-label="anchor" href="#arg-gram-rank-gram-tol"></a></dt>
+<dd><p>Block sources only; see [mfa()].</p></dd>
+
 </dl></div>
     <div class="section level2">
     <h2 id="value">Value<a class="anchor" aria-label="anchor" href="#value"></a></h2>
@@ -152,6 +169,10 @@ across variable scalings.</p></dd>
 GCCA formulation that remains well-posed when blocks have more variables than
 rows (\(p \gg n\)) or are rank-deficient after preprocessing (e.g.,
 centering).</p>
+<p>The `mcca.muscal_block_source` method fits MCCA out of core from a
+[block_source()]. MCCA already works through each block's row Gram matrix,
+so the result matches the in-memory fit (up to component signs); each block
+is read twice. Only column-local preprocessing is supported.</p>
 <p>The <code>mcca.list</code> method applies MCCA to a list of data matrices or data frames.
 This method first converts the list to a <code>multiblock</code> object and then calls
 <code>mcca.multiblock()</code>.</p>

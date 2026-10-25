@@ -19,6 +19,19 @@ mcca(
   ...
 )
 
+# S3 method for class 'muscal_block_source'
+mcca(
+  data,
+  preproc = multivarious::center(),
+  ncomp = 2,
+  ridge = 1e-06,
+  block_weights = NULL,
+  use_future = FALSE,
+  gram_rank = NULL,
+  gram_tol = 1e-10,
+  ...
+)
+
 # S3 method for class 'list'
 mcca(
   data,
@@ -79,6 +92,10 @@ mcca(
 
   Additional arguments passed to the underlying method.
 
+- gram_rank, gram_tol:
+
+  Block sources only; see \[mfa()\].
+
 ## Value
 
 An object inheriting from class \`mcca\`. Relevant fields include \`s\`
@@ -93,6 +110,11 @@ The reference implementation in this package uses a ridge-stabilized
 MAXVAR GCCA formulation that remains well-posed when blocks have more
 variables than rows (\\p \gg n\\) or are rank-deficient after
 preprocessing (e.g., centering).
+
+The \`mcca.muscal_block_source\` method fits MCCA out of core from a
+\[block_source()\]. MCCA already works through each block's row Gram
+matrix, so the result matches the in-memory fit (up to component signs);
+each block is read twice. Only column-local preprocessing is supported.
 
 The `mcca.list` method applies MCCA to a list of data matrices or data
 frames. This method first converts the list to a `multiblock` object and

@@ -188,17 +188,20 @@ inverse of the largest eigenvalue of \`G_k\`. The Gram path therefore
 (1) reads each block once, chunk by chunk, to accumulate its
 column-local preprocessing statistics and \`G_k\`; (2) runs the ordinary
 fit on compressed blocks \`R_k\` with \`R_k R_k^T = G_k\` (at most
-\`n_k\` columns each); and (3) reads each block once more to compute the
-feature-space loadings \`V_k = X_k^T S_k (S_k^T S_k + (ridge / alpha_k)
-I)^-1\` from the final scores. Peak memory is one chunk, one block's
-Gram matrix (\`n_k^2\` values, built and compressed one block at a
-time), the compressed blocks, and the loadings; \`gram_rank\` caps the
-compressed blocks for subjects with many rows. The scores match the
-in-memory fit; with \`score_constraint = "none"\` they can differ by a
-rotation within the same subspace because that initialization depends on
-an SVD sign. The returned loadings are the ridge regressions on the
-final scores rather than the last alternating update, which differ only
-by the convergence tolerance.
+\`n_k\` columns each); and (3) reads each block once more to map the
+fitted loadings and correlation loadings back to the original features
+(with \`X_k = U_k D_k W_k^T\`, loadings \`V_R\` on \`R_k = U_k D_k\`
+become \`W_k V_R\`). Peak memory is one chunk, one block's Gram matrix
+(\`n_k^2\` values, built and compressed one block at a time), the
+compressed blocks, and the loadings; \`gram_rank\` caps the compressed
+blocks for subjects with many rows. Scores, loadings, and diagnostics
+match the in-memory fit; with \`score_constraint = "none"\` they can
+differ by a rotation within the same subspace because that
+initialization depends on an SVD sign. The same engine serves the other
+methods that accept block sources (\`mfa()\`, \`mcca()\`,
+\`aligned_mcca()\`, \`anchored_mcca()\`, \`anchored_mfa()\`,
+\`graph_anchored_mfa()\`, \`coupled_graph_anchored_mfa()\`,
+\`response_aligned_mfa()\`, \`aligned_interbattery()\`).
 
 The feature prior (\`feature_lambda \> 0\` with \`feature_groups\`)
 couples features across blocks, so the Gram shortcut does not apply. The

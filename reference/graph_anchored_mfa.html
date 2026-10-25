@@ -108,6 +108,8 @@ subjects with `D1` and `D2`, and mixtures of observed-domain patterns.</p>
 <span>  ridge <span class="op">=</span> <span class="fl">1e-08</span>,</span>
 <span>  verbose <span class="op">=</span> <span class="cn">FALSE</span>,</span>
 <span>  use_future <span class="op">=</span> <span class="cn">FALSE</span>,</span>
+<span>  gram_rank <span class="op">=</span> <span class="cn">NULL</span>,</span>
+<span>  gram_tol <span class="op">=</span> <span class="fl">1e-10</span>,</span>
 <span>  <span class="va">...</span></span>
 <span><span class="op">)</span></span></code></pre></div>
     </div>
@@ -231,6 +233,13 @@ updates.</p></dd>
 <dd><p>Logical; if `TRUE`, block-wise computations that do not
 depend on one another are performed via `furrr::future_map()` when
 available.</p></dd>
+
+
+<dt id="arg-gram-rank-gram-tol">gram_rank, gram_tol<a class="anchor" aria-label="anchor" href="#arg-gram-rank-gram-tol"></a></dt>
+<dd><p>Used when `X` is a [block_source()]: the fit is
+then made out of core through each block's row Gram matrix (exact, up to
+component signs; column-local preprocessing only; options that act on
+individual features are rejected). See [mfa()].</p></dd>
 
 
 <dt id="arg--">...<a class="anchor" aria-label="anchor" href="#arg--"></a></dt>

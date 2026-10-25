@@ -9,6 +9,19 @@ from class \``mfa`\`.
 ``` r
 mfa(data, preproc, ncomp = 2, normalization = "MFA", A = NULL, M = NULL, ...)
 
+# S3 method for class 'muscal_block_source'
+mfa(
+  data,
+  preproc = center(),
+  ncomp = 2,
+  normalization = c("MFA", "RV", "None", "Frob", "custom"),
+  A = NULL,
+  M = NULL,
+  gram_rank = NULL,
+  gram_tol = 1e-10,
+  ...
+)
+
 # S3 method for class 'list'
 mfa(
   data,
@@ -67,6 +80,18 @@ mfa(
 
   Additional arguments passed to the method.
 
+- gram_rank:
+
+  Block sources only: optional maximum number of Gram eigenpairs kept
+  per block (one value or one per block); \`NULL\` keeps all, which is
+  exact. The fraction of each block's variance left out is returned as
+  \`gram_discarded\`.
+
+- gram_tol:
+
+  Block sources only: relative eigenvalue tolerance for dropping
+  numerically null directions of each Gram matrix.
+
 - missing:
 
   Missing-data handling mode. `"error"` (default) rejects `NA` values.
@@ -96,6 +121,15 @@ mfa(
 An object of class \`mfa\`.
 
 ## Details
+
+The \`mfa.muscal_block_source\` method fits MFA out of core from a
+\[block_source()\]: each block is read once, chunk by chunk, compressed
+to its row Gram matrix, fitted in memory, and read once more to map
+loadings and correlation loadings back to the original features. Results
+match the in-memory fit (up to the sign of each component). Only
+column-local preprocessing is supported, missing values are not, and a
+custom per-feature column metric \`A\` is rejected because it acts on
+individual features.
 
 The `mfa.list` method applies the MFA algorithm to a list of data
 matrices or data frames. This method first converts the list to a
