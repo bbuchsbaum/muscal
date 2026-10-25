@@ -28,6 +28,8 @@ aligned_interbattery(
   ridge = 1e-08,
   verbose = FALSE,
   use_future = FALSE,
+  gram_rank = NULL,
+  gram_tol = 1e-10,
   ...
 )
 }
@@ -108,6 +110,12 @@ depend on one another may be performed via `furrr::future_map()` when
 available. The main alternating-least-squares loop is intrinsically
 sequential and is unaffected. Accepted here primarily for interface parity
 with the rest of the aligned/anchored family.}
+
+\item{gram_rank, gram_tol}{Used when `X` and/or `Y` is a flat
+[block_source()]: each domain (the blocks that share a loading matrix) is
+read as one row-stacked block, compressed through its row Gram matrix, and
+fitted out of core (exact, up to component signs; column-local
+preprocessing only). Gram truncation (`gram_rank`) is not supported here.}
 
 \item{...}{Unused; reserved for future extensions.}
 }

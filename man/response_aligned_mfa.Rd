@@ -29,6 +29,8 @@ response_aligned_mfa(
   ridge = 1e-08,
   verbose = FALSE,
   use_future = FALSE,
+  gram_rank = NULL,
+  gram_tol = 1e-10,
   ...
 )
 }
@@ -113,6 +115,11 @@ the Laplacian construction used for edge-based inputs.}
 
 \item{use_future}{Logical; if `TRUE`, block-wise computations are performed via
 `furrr::future_map()` when available.}
+
+\item{gram_rank, gram_tol}{Used when \code{X} is a \code{\link[=block_source]{block_source()}}:
+the fit is then made out of core through each block's row Gram matrix (exact, up
+to component signs; column-local preprocessing only; options that act on
+individual features are rejected). See \code{\link[=mfa]{mfa()}}.}
 
 \item{...}{Unused (reserved for future extensions).}
 }
