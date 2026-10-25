@@ -257,6 +257,11 @@ aligned_rrr <- function(Y,
     prev_obj <- obj
   }
 
+  canon <- .arrr_canonicalize_basis(B = B, W_list = W_list, Z_list = Z_list)
+  B <- canon$B
+  W_list <- canon$W_list
+  Z_list <- canon$Z_list
+
   score_weights <- .arrr_score_weights(block_weight, response_weights)
   score_stack <- .ramfa_stack_scores(Z_list)
   score_index <- score_stack$score_index
@@ -406,6 +411,20 @@ aligned_rrr <- function(Y,
   lhs <- kronecker(C, A) + ridge * diag(p * K)
   rhs <- as.vector(D)
   matrix(solve(lhs, rhs), nrow = p, ncol = K)
+}
+
+# The objective is invariant to rotating the (weight-orthonormal) score basis,
+# W -> W R and B -> B R, so the basis the ALS loop stops on depends on its
+# start. Rotate to the principal axes of B (orthogonal columns, decreasing
+# norm), the usual reduced-rank-regression basis, then fix signs.
+.arrr_canonicalize_basis <- function(B, W_list, Z_list) {
+  R <- svd(B, nu = 0, nv = ncol(B))$v
+  rotated <- .ramfa_orient_components(
+    B = B %*% R,
+    V_list = lapply(W_list, function(W) W %*% R),
+    Z_list = lapply(Z_list, function(Z) Z %*% R)
+  )
+  list(B = rotated$B, W_list = rotated$V_list, Z_list = rotated$Z_list)
 }
 
 .arrr_orthonormalize_score_list <- function(Z_list,
