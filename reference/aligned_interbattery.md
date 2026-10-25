@@ -42,6 +42,7 @@ aligned_interbattery(
   couple_y = 1,
   decorrelate = 0,
   decorrelate_type = c("penalty", "whiten"),
+  side_constraint = c("orthonormal", "none"),
   max_iter = 50,
   tol = 1e-06,
   ridge = 1e-08,
@@ -153,6 +154,25 @@ aligned_interbattery(
   off-diagonal covariance penalty during the side-score updates.
   Whitening mode replaces that penalty with a fitted partial whitening
   operator inside the common-to-side coupling.
+
+- side_constraint:
+
+  How the scale of the side scores \`U_s\` and \`V_s\` is fixed.
+  \`"orthonormal"\` (default) constrains each side's stacked scores to
+  be orthonormal, as the common scores \`T_s\` are; the loadings carry
+  the scale, the fit converges, and results do not depend on
+  \`max_iter\`. \`"none"\` reproduces the earlier unconstrained updates.
+  There the data fit is unchanged by \`U -\> cU\`, loadings \`-\>
+  loadings / c\` while the coupling term shrinks like \`c^2\`, so the
+  objective has no minimiser: side scores drift toward zero, loadings
+  grow, and the result depends on where \`max_iter\` stops. Under
+  \`"orthonormal"\` the pooled side scores are already white, so
+  \`decorrelate_type = "whiten"\` is ignored with a warning; the
+  decorrelation penalty still acts on each subject's own score
+  covariance. On noisy data the drifting \`"none"\` fit can predict
+  slightly better because the drift gradually weakens the coupling; with
+  \`"orthonormal"\` that trade-off is set explicitly through
+  \`couple_x\` / \`couple_y\`.
 
 - max_iter:
 

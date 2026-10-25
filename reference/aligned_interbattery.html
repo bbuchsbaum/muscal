@@ -124,6 +124,7 @@ systems.</p>
 <span>  couple_y <span class="op">=</span> <span class="fl">1</span>,</span>
 <span>  decorrelate <span class="op">=</span> <span class="fl">0</span>,</span>
 <span>  decorrelate_type <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"penalty"</span>, <span class="st">"whiten"</span><span class="op">)</span>,</span>
+<span>  side_constraint <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"orthonormal"</span>, <span class="st">"none"</span><span class="op">)</span>,</span>
 <span>  max_iter <span class="op">=</span> <span class="fl">50</span>,</span>
 <span>  tol <span class="op">=</span> <span class="fl">1e-06</span>,</span>
 <span>  ridge <span class="op">=</span> <span class="fl">1e-08</span>,</span>
@@ -236,6 +237,23 @@ whitened.</p></dd>
 a within-side off-diagonal covariance penalty during the side-score
 updates. Whitening mode replaces that penalty with a fitted partial
 whitening operator inside the common-to-side coupling.</p></dd>
+
+
+<dt id="arg-side-constraint">side_constraint<a class="anchor" aria-label="anchor" href="#arg-side-constraint"></a></dt>
+<dd><p>How the scale of the side scores `U_s` and `V_s` is
+fixed. `"orthonormal"` (default) constrains each side's stacked scores to
+be orthonormal, as the common scores `T_s` are; the loadings carry the
+scale, the fit converges, and results do not depend on `max_iter`.
+`"none"` reproduces the earlier unconstrained updates. There the data fit
+is unchanged by `U -&gt; cU`, loadings `-&gt; loadings / c` while the coupling
+term shrinks like `c^2`, so the objective has no minimiser: side scores
+drift toward zero, loadings grow, and the result depends on where
+`max_iter` stops. Under `"orthonormal"` the pooled side scores are already
+white, so `decorrelate_type = "whiten"` is ignored with a warning; the
+decorrelation penalty still acts on each subject's own score covariance.
+On noisy data the drifting `"none"` fit can predict slightly better
+because the drift gradually weakens the coupling; with `"orthonormal"`
+that trade-off is set explicitly through `couple_x` / `couple_y`.</p></dd>
 
 
 <dt id="arg-max-iter">max_iter<a class="anchor" aria-label="anchor" href="#arg-max-iter"></a></dt>
