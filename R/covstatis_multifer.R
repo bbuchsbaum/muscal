@@ -1,23 +1,46 @@
-#' Multifer Component Tests for COVSTATIS
+#' Test leading-root concentration in COVSTATIS
 #'
-#' Runs adapter-owned `multifer` component-significance tests for either the
-#' COVSTATIS interstructure/RV axes across input tables or the compromise ROI
-#' eigencomponents.
+#' Test whether the leading eigenvalue accounts for an unusually large share
+#' of the spectrum under independent ROI relabeling across tables.
 #'
 #' @param x A fitted `covstatis` object.
 #' @param data Original list of covariance/correlation matrices used to fit `x`.
-#' @param axes Which component family to test: `"interstructure"` tests axes of
-#'   the table-by-table RV/interstructure matrix, `"compromise"` tests ROI
-#'   eigencomponents of the weighted compromise matrix, and `"both"` runs both
-#'   tests and returns a named list.
-#' @param B Number of Monte Carlo draws per ladder rung.
+#' @param axes Matrix to test. `"interstructure"` uses the table-by-table
+#'   matrix of inner products, `"compromise"` uses the weighted compromise,
+#'   and `"both"` returns one test for each.
+#' @param B Maximum number of Monte Carlo draws per test.
 #' @param alpha Significance threshold passed to [multifer::infer()].
 #' @param seed Optional random seed.
 #' @param strict Logical; passed to [multifer::infer()].
 #' @param ... Additional arguments passed to [multifer::infer()].
+#' @param max_steps Only the leading root can be tested (`1`, the default).
+#' @param auto_subspace Group nearly tied leading roots in the reported unit.
+#'   Roots tied to numerical precision always share a unit.
+#' @param tie_threshold Relative eigenvalue gap used to group near ties.
+#'
+#' @details The statistic is the largest positive eigenvalue divided by the
+#'   sum of **all** positive eigenvalues of the matrix being tested, or zero
+#'   when there is no positive inertia. Both the observed statistic and every
+#'   null draw use the full spectrum, regardless of the fitted `ncomp`.
+#'
+#'   Conditional on each preprocessed table up to ROI labeling, the null
+#'   assumes the ROI labels are independently exchangeable within each table.
+#'   Each draw applies the same permutation to rows and columns of a table and
+#'   recomputes the interstructure and, for the compromise, its table weights.
+#'   With unequal variable weights this assumption concerns the weighted tables.
+#'
+#'   The p-value tests concentration under this global correspondence null.
+#'   The unit's `selected` flag records rejection of this global null. When
+#'   leading roots are tied, the reported unit spans the tied eigenspace and
+#'   the p-value still concerns the largest root alone. It supplies no estimate
+#'   of how many dimensions to retain. Subsequent axes are descriptive.
+#'   Independent ROI permutations of deflated tables can
+#'   move their shared removed subspace. Conditional dimension selection
+#'   would require a separate residual null.
 #'
 #' @return A `multifer::infer_result` object, or a named list of two such
 #'   objects when `axes = "both"`.
+#' @md
 #' @export
 infer_covstatis <- function(x,
                             data,
@@ -26,7 +49,7 @@ infer_covstatis <- function(x,
                             alpha = 0.05,
                             seed = NULL,
                             strict = TRUE,
-                            ...) {
+                            ..., max_steps = 1L, auto_subspace = TRUE, tie_threshold = 0.01) {
   if (inherits(x, "distatis")) {
     stop("DISTATIS inference is not implemented; infer_covstatis() uses a different interstructure.",
          call. = FALSE)
@@ -38,19 +61,21 @@ infer_covstatis <- function(x,
     stop("`infer_covstatis()` requires the multifer package.", call. = FALSE)
   }
   .covstatis_require_multifer_adapter_geometry()
+  if (!is.null(max_steps) &&
+      (!is.numeric(max_steps) || length(max_steps) != 1L || !isTRUE(max_steps == 1))) {
+    stop("Only the leading root is supported. Use `max_steps = 1`; residual tests require a conditional null.",
+         call. = FALSE)
+  }
 
   axes <- match.arg(axes)
   if (identical(axes, "both")) {
-    out <- list(
-      interstructure = infer_covstatis(
-        x, data = data, axes = "interstructure", B = B, alpha = alpha,
-        seed = seed, strict = strict, ...
-      ),
-      compromise = infer_covstatis(
-        x, data = data, axes = "compromise", B = B, alpha = alpha,
-        seed = seed, strict = strict, ...
-      )
-    )
+    families <- c("interstructure", "compromise")
+    out <- lapply(families, function(family) {
+      infer_covstatis(x, data, axes = family, B = B, alpha = alpha, seed = seed,
+                      strict = strict, ..., auto_subspace = auto_subspace,
+                      tie_threshold = tie_threshold)
+    })
+    names(out) <- families
     class(out) <- c("covstatis_multifer_result", "list")
     return(out)
   }
@@ -59,7 +84,7 @@ infer_covstatis <- function(x,
   adapter <- .covstatis_multifer_adapter(axes)
   model <- .covstatis_adapter_fit(payload, axes = axes)
 
-  multifer::infer(
+  out <- multifer::infer(
     adapter = adapter,
     data = payload,
     geometry = "adapter",
@@ -71,8 +96,34 @@ infer_covstatis <- function(x,
     alpha = alpha,
     seed = seed,
     strict = strict,
+    auto_subspace = auto_subspace,
+    tie_threshold = tie_threshold,
     ...
   )
+
+  # The engine sees one testable root. Use the full spectrum to describe ties
+  # at that root, including a tie across the original fit's retention boundary.
+  resolution <- length(model$roots) * .Machine$double.eps
+  gap <- if (isTRUE(auto_subspace)) max(resolution, tie_threshold) else resolution
+  units <- multifer::form_units(.covstatis_relative_roots(model$roots),
+                                group_near_ties = TRUE, tie_threshold = gap)
+  bundled <- inherits(out, "multifer_infer_bundle")
+  result <- if (bundled) out$result else out
+  unit <- units[1L, , drop = FALSE]
+  unit$selected <- result$units$selected
+  result$units <- unit
+  labels <- list(statistic = "largest positive eigenvalue / total positive inertia",
+                 null = "independent ROI relabeling within each preprocessed table",
+                 estimand = paste("leading-root concentration of the", axes, "matrix"))
+  result$mc$statistic_label <- labels$statistic
+  result$mc$null_label <- result$component_tests$null_label <- labels$null
+  result$mc$estimand_label <- labels$estimand
+  if (!bundled) return(result)
+  out$result <- result
+  out$artifacts$engine$units <- unit
+  out$artifacts$engine$roots_observed <- model$roots
+  out$artifacts$engine$labels <- labels
+  out
 }
 
 .covstatis_multifer_adapter <- function(axes = c("compromise", "interstructure")) {
@@ -81,7 +132,7 @@ infer_covstatis <- function(x,
 
   multifer::infer_adapter(
     adapter_id = paste0("muscal_covstatis_", axes),
-    adapter_version = "0.1.0",
+    adapter_version = "0.2.0",
     shape_kinds = "adapter",
     capabilities = multifer::capability_matrix(
       list(
@@ -91,7 +142,8 @@ infer_covstatis <- function(x,
       )
     ),
     roots = function(x, ...) {
-      x$roots
+      # multifer uses the number of exposed roots as the default ladder depth.
+      x$roots[1L]
     },
     domains = function(x, data = NULL, ...) {
       "global"
@@ -117,23 +169,21 @@ infer_covstatis <- function(x,
       .covstatis_roi_permutation_null(data)
     },
     component_stat = function(x, data, k, ...) {
-      if (!identical(as.integer(k), 1L)) {
-        stop("COVSTATIS adapter statistics expect `k = 1` on the current residual.",
+      if (!is.numeric(k) || length(k) != 1L || !isTRUE(k == 1)) {
+        stop("The COVSTATIS correspondence test supports only the leading root.",
              call. = FALSE)
       }
       .covstatis_leading_root_ratio(data, axes = axes)
     },
     residualize = function(x, k, data, ...) {
-      if (!identical(as.integer(k), 1L)) {
-        stop("COVSTATIS adapter residualization expects `k = 1` on the current residual.",
-             call. = FALSE)
-      }
-      .covstatis_residualize_payload(x, data, axes = axes)
+      stop("COVSTATIS residual tests require a null that preserves the removed subspace.",
+           call. = FALSE)
     },
     validity_level = "conditional",
     declared_assumptions = c(
-      "tables_exchangeable",
       "roi_labels_aligned_across_tables",
+      "roi_labels_independently_exchangeable_within_preprocessed_tables",
+      "leading_root_only",
       "roi_permutation_null"
     ),
     checked_assumptions = list(
@@ -158,11 +208,7 @@ infer_covstatis <- function(x,
   }
   tables <- lapply(data, function(mat) .pre_process_new_cov(x, as.matrix(mat)))
   names(tables) <- names(data) %||% x$block_labels %||% paste0("Table_", seq_along(tables))
-  list(
-    tables = tables,
-    ncomp = ncol(stats::coef(x)),
-    labels = x$labels
-  )
+  list(tables = tables, labels = x$labels)
 }
 
 .covstatis_adapter_fit <- function(data, axes = c("compromise", "interstructure")) {
@@ -171,73 +217,33 @@ infer_covstatis <- function(x,
     stop("Invalid COVSTATIS adapter payload.", call. = FALSE)
   }
 
-  if (identical(axes, "interstructure")) {
-    M <- .covstatis_table_matrix(data$tables)
-    C <- crossprod(M)
-    eig <- eigen((C + t(C)) / 2, symmetric = TRUE)
-    roots <- .covstatis_positive_roots(eig$values, data$ncomp)
-    vectors <- eig$vectors[, seq_len(length(roots)), drop = FALSE]
-    return(structure(
-      list(
-        roots = roots,
-        v = vectors,
-        eig = eig,
-        axes = axes
-      ),
-      class = c("covstatis_multifer_fit", "list")
-    ))
+  M <- .covstatis_table_matrix(data$tables)
+  eig <- eigen(crossprod(M), symmetric = TRUE)
+  fit <- list(axes = axes)
+  if (axes == "compromise") {
+    a <- eig$vectors[, 1L]
+    if (abs(sum(a)) < 1e-12) a <- abs(a)
+    fit$alpha <- a / sum(a)
+    compromise <- Reduce("+", Map(`*`, data$tables, fit$alpha))
+    fit$compromise <- (compromise + t(compromise)) / 2
+    eig <- eigen(fit$compromise, symmetric = TRUE)
   }
-
-  inter <- .covstatis_interstructure(data$tables)
-  compromise <- Reduce("+", Map(`*`, data$tables, inter$alpha))
-  compromise <- (compromise + t(compromise)) / 2
-  eig <- eigen(compromise, symmetric = TRUE)
-  roots <- .covstatis_positive_roots(eig$values, data$ncomp)
-  vectors <- eig$vectors[, seq_len(length(roots)), drop = FALSE]
-  structure(
-    list(
-      roots = roots,
-      v = vectors,
-      eig = eig,
-      alpha = inter$alpha,
-      compromise = compromise,
-      axes = axes
-    ),
-    class = c("covstatis_multifer_fit", "list")
-  )
+  fit$eig <- eig
+  fit$roots <- pmax(eig$values, 0)
+  fit$v <- eig$vectors
+  structure(fit, class = c("covstatis_multifer_fit", "list"))
 }
 
-.covstatis_interstructure <- function(tables) {
-  M <- .covstatis_table_matrix(tables)
-  C <- crossprod(M)
-  eigC <- eigen((C + t(C)) / 2, symmetric = TRUE)
-  alpha_vec <- eigC$vectors[, 1L]
-  alpha_vec <- alpha_vec * sign(sum(alpha_vec))
-  if (abs(sum(alpha_vec)) < 1e-12) {
-    alpha_vec <- abs(alpha_vec)
-  }
-  alpha <- alpha_vec / sum(alpha_vec)
-  list(C = C, eigC = eigC, alpha = alpha)
-}
-
-.covstatis_positive_roots <- function(values, ncomp) {
-  values <- as.numeric(values)
-  values[!is.finite(values)] <- 0
-  values <- pmax(values, 0)
-  n <- min(as.integer(ncomp), length(values))
-  if (n < 1L) {
-    stop("COVSTATIS adapter fit has no component roots.", call. = FALSE)
-  }
-  values[seq_len(n)]
+.covstatis_relative_roots <- function(roots) {
+  if (roots[[1L]] == 0) return(roots)
+  roots / roots[[1L]]
 }
 
 .covstatis_leading_root_ratio <- function(data, axes) {
-  roots <- .covstatis_adapter_fit(data, axes = axes)$roots
-  denom <- sum(roots)
-  if (!is.finite(denom) || denom <= .Machine$double.eps) {
-    return(0)
-  }
-  roots[[1L]] / denom
+  fit <- .covstatis_adapter_fit(data, axes = axes)
+  roots <- .covstatis_relative_roots(fit$roots)
+  if (roots[[1L]] == 0) return(0)
+  1 / sum(roots)
 }
 
 .covstatis_roi_permutation_null <- function(data) {
@@ -245,32 +251,6 @@ infer_covstatis <- function(x,
   out$tables <- lapply(data$tables, function(mat) {
     idx <- sample.int(nrow(mat))
     mat[idx, idx, drop = FALSE]
-  })
-  names(out$tables) <- names(data$tables)
-  out
-}
-
-.covstatis_residualize_payload <- function(fit, data, axes) {
-  out <- data
-  if (identical(axes, "interstructure")) {
-    g <- fit$v[, 1L, drop = FALSE]
-    M <- .covstatis_table_matrix(data$tables)
-    score <- M %*% g
-    M_res <- M - score %*% t(g)
-    p <- nrow(data$tables[[1L]])
-    out$tables <- lapply(seq_len(ncol(M_res)), function(i) {
-      mat <- matrix(M_res[, i], nrow = p, ncol = p)
-      (mat + t(mat)) / 2
-    })
-    names(out$tables) <- names(data$tables)
-    return(out)
-  }
-
-  v <- fit$v[, 1L, drop = FALSE]
-  P <- diag(nrow(v)) - tcrossprod(v)
-  out$tables <- lapply(data$tables, function(mat) {
-    res <- P %*% mat %*% P
-    (res + t(res)) / 2
   })
   names(out$tables) <- names(data$tables)
   out
@@ -292,10 +272,7 @@ infer_covstatis <- function(x,
     return(FALSE)
   }
   dims <- vapply(data$tables, nrow, integer(1L))
-  if (length(unique(dims)) != 1L) {
-    return(FALSE)
-  }
-  is.numeric(data$ncomp) && length(data$ncomp) == 1L && data$ncomp >= 1L
+  length(unique(dims)) == 1L && dims[[1L]] > 0L
 }
 
 .covstatis_require_multifer_adapter_geometry <- function() {

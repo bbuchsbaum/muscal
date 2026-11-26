@@ -2,7 +2,7 @@
 % Please edit documentation in R/covstatis_multifer.R
 \name{infer_covstatis}
 \alias{infer_covstatis}
-\title{Multifer Component Tests for COVSTATIS}
+\title{Test leading-root concentration in COVSTATIS}
 \usage{
 infer_covstatis(
   x,
@@ -12,35 +12,64 @@ infer_covstatis(
   alpha = 0.05,
   seed = NULL,
   strict = TRUE,
-  ...
+  ...,
+  max_steps = 1L,
+  auto_subspace = TRUE,
+  tie_threshold = 0.01
 )
 }
 \arguments{
-\item{x}{A fitted `covstatis` object.}
+\item{x}{A fitted \code{covstatis} object.}
 
-\item{data}{Original list of covariance/correlation matrices used to fit `x`.}
+\item{data}{Original list of covariance/correlation matrices used to fit \code{x}.}
 
-\item{axes}{Which component family to test: `"interstructure"` tests axes of
-the table-by-table RV/interstructure matrix, `"compromise"` tests ROI
-eigencomponents of the weighted compromise matrix, and `"both"` runs both
-tests and returns a named list.}
+\item{axes}{Matrix to test. \code{"interstructure"} uses the table-by-table
+matrix of inner products, \code{"compromise"} uses the weighted compromise,
+and \code{"both"} returns one test for each.}
 
-\item{B}{Number of Monte Carlo draws per ladder rung.}
+\item{B}{Maximum number of Monte Carlo draws per test.}
 
-\item{alpha}{Significance threshold passed to [multifer::infer()].}
+\item{alpha}{Significance threshold passed to \code{\link[multifer:infer]{multifer::infer()}}.}
 
 \item{seed}{Optional random seed.}
 
-\item{strict}{Logical; passed to [multifer::infer()].}
+\item{strict}{Logical; passed to \code{\link[multifer:infer]{multifer::infer()}}.}
 
-\item{...}{Additional arguments passed to [multifer::infer()].}
+\item{...}{Additional arguments passed to \code{\link[multifer:infer]{multifer::infer()}}.}
+
+\item{max_steps}{Only the leading root can be tested (\code{1}, the default).}
+
+\item{auto_subspace}{Group nearly tied leading roots in the reported unit.
+Roots tied to numerical precision always share a unit.}
+
+\item{tie_threshold}{Relative eigenvalue gap used to group near ties.}
 }
 \value{
-A `multifer::infer_result` object, or a named list of two such
-  objects when `axes = "both"`.
+A \code{multifer::infer_result} object, or a named list of two such
+objects when \code{axes = "both"}.
 }
 \description{
-Runs adapter-owned `multifer` component-significance tests for either the
-COVSTATIS interstructure/RV axes across input tables or the compromise ROI
-eigencomponents.
+Test whether the leading eigenvalue accounts for an unusually large share
+of the spectrum under independent ROI relabeling across tables.
+}
+\details{
+The statistic is the largest positive eigenvalue divided by the
+sum of \strong{all} positive eigenvalues of the matrix being tested, or zero
+when there is no positive inertia. Both the observed statistic and every
+null draw use the full spectrum, regardless of the fitted \code{ncomp}.
+
+Conditional on each preprocessed table up to ROI labeling, the null
+assumes the ROI labels are independently exchangeable within each table.
+Each draw applies the same permutation to rows and columns of a table and
+recomputes the interstructure and, for the compromise, its table weights.
+With unequal variable weights this assumption concerns the weighted tables.
+
+The p-value tests concentration under this global correspondence null.
+The unit's \code{selected} flag records rejection of this global null. When
+leading roots are tied, the reported unit spans the tied eigenspace and
+the p-value still concerns the largest root alone. It supplies no estimate
+of how many dimensions to retain. Subsequent axes are descriptive.
+Independent ROI permutations of deflated tables can
+move their shared removed subspace. Conditional dimension selection
+would require a separate residual null.
 }

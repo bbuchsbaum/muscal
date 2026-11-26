@@ -272,25 +272,27 @@ test_that("COVSTATIS multifer adapters declare the expected component contract",
   }
 })
 
-test_that("COVSTATIS multifer statistics match adapter-fit root ratios", {
-  res <- covstatis(subject_data, ncomp = n_comp_fit)
-  payload <- muscal:::.covstatis_multifer_payload(res, subject_data)
-
-  for (axes in c("compromise", "interstructure")) {
-    fit <- muscal:::.covstatis_adapter_fit(payload, axes = axes)
-    oracle <- fit$roots[[1L]] / sum(fit$roots)
-
-    expect_equal(
-      muscal:::.covstatis_leading_root_ratio(payload, axes = axes),
-      oracle,
-      tolerance = 1e-12
-    )
-    expect_true(all(fit$roots >= 0))
-    expect_true(all(is.finite(fit$v)))
+test_that("leading shares use all positive inertia for both COVSTATIS spectra", {
+  share <- muscal:::.covstatis_leading_root_ratio
+  tables <- rep(list(diag(c(9, 4, 1))), 3)
+  for (k in 1:3) {
+    expect_equal(share(list(tables = tables, ncomp = k), "compromise"), 9 / 14)
+  }
+  # These two tables have Gram matrix [10, 6; 6, 10], with roots 16 and 4.
+  gram_tables <- list(diag(c(3, 1)), diag(c(1, 3)))
+  for (k in 1:2) {
+    expect_equal(share(list(tables = gram_tables, ncomp = k), "interstructure"), 16 / 20)
+  }
+  signed <- rep(list(diag(c(9, 4, -1))), 3)
+  expect_equal(share(list(tables = signed, ncomp = 1), "compromise"), 9 / 13)
+  tiny <- lapply(tables, function(m) m * 1e-20)
+  expect_equal(share(list(tables = tiny, ncomp = 1), "compromise"), 9 / 14)
+  for (family in c("compromise", "interstructure")) {
+    expect_equal(share(list(tables = rep(list(matrix(0, 2, 2)), 2), ncomp = 1), family), 0)
   }
 })
 
-test_that("COVSTATIS multifer null and residual payloads remain valid", {
+test_that("the COVSTATIS adapter exposes one test and excludes residual permutations", {
   skip_if_not_installed("multifer")
   skip_if_not(muscal:::.covstatis_multifer_adapter_geometry_available())
 
@@ -300,13 +302,82 @@ test_that("COVSTATIS multifer null and residual payloads remain valid", {
   for (axes in c("compromise", "interstructure")) {
     adapter <- muscal:::.covstatis_multifer_adapter(axes)
     fit <- muscal:::.covstatis_adapter_fit(payload, axes = axes)
-    residual <- adapter$residualize(fit, 1L, payload)
+    expect_length(adapter$roots(fit), 1L)
+    expect_error(adapter$residualize(fit, 1L, payload), "preserves the removed subspace")
     null_payload <- adapter$null_action(fit, payload)
 
-    expect_true(muscal:::.covstatis_valid_payload(residual))
     expect_true(muscal:::.covstatis_valid_payload(null_payload))
-    expect_named(residual$tables, names(payload$tables))
     expect_named(null_payload$tables, names(payload$tables))
+  }
+})
+
+test_that("observed and permuted shares are independent of retained ncomp", {
+  skip_if_not(muscal:::.covstatis_multifer_adapter_geometry_available())
+  check <- function(tables, family, expected) {
+    run <- function(k) {
+      fit <- covstatis(tables, ncomp = k, normalize = FALSE, dcenter = FALSE)
+      infer_covstatis(fit, tables, axes = family, B = 63L, mc_batch_size = 8L,
+                      seed = 41, return_bundle = TRUE)
+    }
+    one <- run(1)
+    draws <- function(out) out$artifacts$engine$ladder_result$step_results[[1L]]$null_values
+    expect_equal(one$result$component_tests$statistic, expected)
+    expect_gt(diff(range(draws(one))), 0.01)
+    for (k in 2:nrow(tables[[1L]])) {
+      more <- run(k)
+      expect_identical(more$result$component_tests, one$result$component_tests)
+      expect_identical(draws(more), draws(one))
+    }
+  }
+  check(rep(list(diag(c(9, 4, 1))), 3), "compromise", 9 / 14)
+  check(list(diag(c(3, 1)), diag(c(1, 3))), "interstructure", 16 / 20)
+})
+
+test_that("one spike with an isotropic residual receives only a global test", {
+  skip_if_not(muscal:::.covstatis_multifer_adapter_geometry_available())
+  for (third in c(1, 1 - 1e-4)) {
+    S <- rep(list(diag(c(9, 1, third))), 18)
+    fit <- covstatis(S, ncomp = 3, normalize = FALSE, dcenter = FALSE)
+    out <- infer_covstatis(fit, S, axes = "both", B = 99L, seed = 41)
+    expect_equal(out$compromise$component_tests$statistic, 9 / (10 + third))
+    expect_lt(out$compromise$component_tests$p_value, 0.05)
+    for (family in out) {
+      expect_equal(nrow(family$component_tests), 1L)
+      expect_match(family$mc$null_label, "independent ROI relabeling")
+      expect_true("leading_root_only" %in% family$assumptions$declared)
+    }
+    expect_error(infer_covstatis(fit, S, max_steps = 3), "Only the leading root")
+  }
+})
+
+test_that("a tie across the retention boundary is reported as a leading subspace", {
+  skip_if_not(muscal:::.covstatis_multifer_adapter_geometry_available())
+  S <- rep(list(diag(c(9, 9, 1))), 6)
+  fit <- covstatis(S, ncomp = 1, normalize = FALSE, dcenter = FALSE)
+  out <- infer_covstatis(fit, S, B = 19L, seed = 41, return_bundle = TRUE)
+  expect_equal(out$result$component_tests$statistic, 9 / 19)
+  expect_equal(out$result$units$members, list(1:2))
+  expect_false(out$result$units$identifiable)
+  expect_identical(out$result$units, out$artifacts$engine$units)
+  expect_equal(out$artifacts$engine$roots_observed, c(9, 9, 1))
+  for (group in c(FALSE, TRUE)) {
+    out <- infer_covstatis(fit, S, B = 3L, seed = 41, auto_subspace = group, tie_threshold = 0)
+    expect_false(out$units$identifiable)
+    expect_equal(out$units$members, list(1:2))
+  }
+})
+
+test_that("units for distinct leading roots are invariant to covariance units", {
+  skip_if_not(muscal:::.covstatis_multifer_adapter_geometry_available())
+  tables <- list(diag(c(3, 1)), diag(c(2, 3)))
+  for (scale in c(1, 1e-20)) {
+    S <- lapply(tables, function(m) scale * m)
+    fit <- covstatis(S, ncomp = 1, normalize = FALSE, dcenter = FALSE)
+    out <- infer_covstatis(fit, S, axes = "both", B = 5L, seed = 41)
+    for (family in out) {
+      expect_equal(family$units$members, list(1L))
+      expect_true(family$units$identifiable)
+    }
   }
 })
 
@@ -355,7 +426,7 @@ test_that("infer_covstatis tests compromise ROI eigencomponents with multifer", 
   expect_s3_class(out, "infer_result")
   expect_equal(out$provenance$adapter_id, "muscal_covstatis_compromise")
   expect_gt(nrow(out$component_tests), 0L)
-  expect_match(out$mc$statistic_label, "adapter component_stat")
+  expect_match(out$mc$statistic_label, "total positive inertia")
 })
 
 test_that("infer_covstatis tests interstructure RV axes with multifer", {
