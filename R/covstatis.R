@@ -28,10 +28,60 @@ double_center <- function(x) {
 #' @noRd
 #' @keywords internal
 norm_crossprod <- function(S) {
-  if ((ss <- c(crossprod(c(S)))) < 1e-12) {
-    stop("Matrix has a zero Frobenius norm, cannot normalize.")
+  divisor <- .statis_frobenius(S)
+  if (!is.finite(divisor) || divisor <= 0) {
+    stop("Frobenius normalization requires a finite, positive norm.", call. = FALSE)
   }
-  S / sqrt(ss)     # ~15% quicker than sum(S^2)
+  S / divisor
+}
+
+.covstatis_weights <- function(weights, p, variables) {
+  if (is.null(weights)) return(NULL)
+  if (!is.numeric(weights) || !is.null(dim(weights)) || length(weights) != p ||
+      any(!is.finite(weights)) || any(weights < 0) || !any(weights > 0)) {
+    stop("Supply one finite nonnegative weight per variable, with at least one positive weight.",
+         call. = FALSE)
+  }
+  if (!is.null(names(weights))) {
+    if (is.null(variables) || anyNA(names(weights)) || any(!nzchar(names(weights))) ||
+        anyDuplicated(names(weights)) || !setequal(names(weights), variables)) {
+      stop("Named weights must match the variable names exactly.", call. = FALSE)
+    }
+    weights <- weights[variables]
+  }
+  stats::setNames(weights, variables)
+}
+
+.covstatis_weight_cov <- function(S, weights) {
+  if (is.null(weights)) return(S)
+  variables <- names(weights)
+  if (!is.null(variables) &&
+      ((!is.null(rownames(S)) && !identical(rownames(S), variables)) ||
+       (!is.null(colnames(S)) && !identical(colnames(S), variables)))) {
+    stop("Variable names and order must match the fitted weights on both axes.", call. = FALSE)
+  }
+  S * tcrossprod(sqrt(unname(weights)))
+}
+
+.covstatis_preprocess <- function(S, weights, dcenter, norm_method) {
+  S <- .covstatis_weight_cov(S, weights)
+  if (dcenter) S <- double_center(S)
+  if (norm_method == "frobenius") return(norm_crossprod(S))
+  if (norm_method == "mfa") {
+    eig1 <- eigen(S, symmetric = TRUE, only.values = TRUE)$values[1L]
+    if (!is.finite(eig1) || eig1 <= 0) {
+      stop("First eigenvalue too small or non-finite for MFA normalization. A positive finite value is required.",
+           call. = FALSE)
+    }
+    S <- S / eig1
+  }
+  S
+}
+
+.covstatis_table_matrix <- function(tables) {
+  size <- length(tables[[1L]])
+  # vapply simplifies scalar covariances to a vector; keep one column per table.
+  matrix(vapply(tables, c, numeric(size), USE.NAMES = FALSE), nrow = size)
 }
 
 #' Compute a matrix of pairwise inner products
@@ -48,7 +98,7 @@ norm_crossprod <- function(S) {
 compute_prodmat <- function(S, fast = TRUE, normalize = TRUE) {
   if (fast) {
     # Vectorize every matrix → columns of M
-    M <- vapply(S, c, numeric(length(S[[1]])), USE.NAMES = FALSE)
+    M <- .covstatis_table_matrix(S)
     C <- crossprod(M)               # all inner products in one go
     if (normalize) {
       diag(C) <- 1                     # enforce exact ones
@@ -76,7 +126,7 @@ compute_prodmat <- function(S, fast = TRUE, normalize = TRUE) {
 #' The `covstatis.list` method implements STATIS analysis for a list of covariance matrices.
 #' 
 #' The method operates as follows:
-#' 1. Optionally double-centers each matrix (Gower transformation)
+#' 1. Applies the supplied variable weights, then optionally double-centers each matrix (Gower transformation)
 #' 2. Optionally normalizes each matrix to unit Frobenius norm
 #' 3. Computes an RV matrix of inner products between matrices
 #' 4. Determines optimal weights (`alpha`) via first eigenvector of the RV matrix. These weights are accessible in the output and can be useful for outlier diagnostics.
@@ -103,7 +153,7 @@ compute_prodmat <- function(S, fast = TRUE, normalize = TRUE) {
 #' Xs <- lapply(Xs, cor)
 #' 
 #' # Apply COVSTATIS
-#' res <- covstatis(Xs, ncomp=3)
+#' res <- covstatis(Xs, ncomp=3, weights = c(4, rep(1, 9)))
 #' 
 #' # Project a new correlation matrix
 #' new_mat <- cor(matrix(rnorm(10*10), 10, 10))
@@ -111,7 +161,7 @@ compute_prodmat <- function(S, fast = TRUE, normalize = TRUE) {
 #' 
 #' @importFrom stats coefficients
 #' @export
-covstatis.list <- function(data, ncomp=2, normalize=TRUE, dcenter=TRUE, ...) {
+covstatis.list <- function(data, ncomp=2, normalize=TRUE, dcenter=TRUE, ..., weights = NULL) {
   # Extract additional arguments from ...
   dots <- list(...)
   norm_method <- dots$norm_method %||% (if (isTRUE(normalize)) "frobenius" else "none")
@@ -126,6 +176,8 @@ covstatis.list <- function(data, ncomp=2, normalize=TRUE, dcenter=TRUE, ...) {
   assertthat::assert_that(all(nc[1] == nr[1]))
   
   block_labels <- names(data) %||% paste0("B_", seq_along(data))
+  variables <- rownames(data[[1L]]) %||% colnames(data[[1L]]) %||% labels
+  weights <- .covstatis_weights(weights, nr[1L], variables)
   
   if (is.null(labels)) {
     labels <- row.names(data[[1]])
@@ -136,27 +188,11 @@ covstatis.list <- function(data, ncomp=2, normalize=TRUE, dcenter=TRUE, ...) {
     assertthat::assert_that(length(labels) == nr[1])
   }
   
-  # Preprocessing
-  S <- data
-  
-  if (dcenter) {
-    S <- lapply(S, double_center)
-  }
-  
-  if (norm_method == "frobenius") {
-    S <- lapply(S, norm_crossprod)
-  } else if (norm_method == "mfa") {
-    mfa_norm <- function(mat) {
-      eig1 <- eigen(mat, symmetric = TRUE, only.values = TRUE)$values[1]
-      if (eig1 <= 1e-10) {
-        stop("First eigenvalue too small or non-positive for MFA normalization.")
-      }
-      mat / eig1
-    }
-    S <- lapply(S, mfa_norm)
-  }
-
-  .fit_statis_grams(S, ncomp, norm_method, dcenter, block_labels, labels)
+  S <- lapply(data, .covstatis_preprocess, weights = weights, dcenter = dcenter,
+              norm_method = norm_method)
+  fit <- .fit_statis_grams(S, ncomp, norm_method, dcenter, block_labels, labels)
+  fit$weights <- weights
+  fit
 }
 
 # Shared fitting in Gram space. COVSTATIS keeps its historical inner-product
@@ -166,7 +202,7 @@ covstatis.list <- function(data, ncomp=2, normalize=TRUE, dcenter=TRUE, ...) {
                               tol = 1e-8, classes = "covstatis") {
   # Cache vectorized preprocessed tables for RV-space diagnostics and
   # supplementary subject projection.
-  table_matrix <- vapply(S, c, numeric(length(S[[1]])), USE.NAMES = FALSE)
+  table_matrix <- .covstatis_table_matrix(S)
 
   # RV-matrix and weights
   C <- crossprod(table_matrix)
@@ -246,28 +282,14 @@ covstatis.list <- function(data, ncomp=2, normalize=TRUE, dcenter=TRUE, ...) {
                           msg="`new_data` must have the same dimensions as training data")
   assertthat::assert_that(isSymmetric(new_data), msg="`new_data` must be symmetric")
   
-  if (x$dcenter) {
-    new_data <- double_center(new_data)
-  }
-  
-  if (x$norm_method == "frobenius") {
-    new_data <- norm_crossprod(new_data)
-  } else if (x$norm_method == "mfa") {
-    eig1 <- eigen(new_data, symmetric = TRUE, only.values = TRUE)$values[1]
-    if (eig1 <= 1e-10) {
-      stop("First eigenvalue of a new matrix is too small or non-positive for MFA normalization.")
-    }
-    new_data <- new_data / eig1
-  }
-  
-  new_data
+  .covstatis_preprocess(new_data, x$weights, x$dcenter, x$norm_method)
 }
 
 #' @md
 #' @rdname project_cov
 #' @details
 #' For `covstatis` objects, a new covariance/correlation matrix is transformed using 
-#' the same preprocessing steps (centering and normalization) as were applied during 
+#' the same variable weights, double centering and normalization as were applied during
 #' model fitting, then projected onto the model space. This returns the "partial factor scores"
 #' or ROI-level coordinates for the new subject.
 #' 
@@ -309,7 +331,7 @@ reconstruct.covstatis <- function(x, comp = 1:multivarious::ncomp(x), ...) {
 #'   If not provided, names will be taken from `new_data` or generated automatically.
 #' @details
 #' The function performs the following steps for each new matrix:
-#' 1.  Applies the same pre-processing (double-centering, normalization) as the original model.
+#' 1.  Applies the fitted variable weights, double centering and normalization to each raw matrix.
 #' 2.  Calculates ROI-level factor scores (`roi_scores`), representing the coordinates of each ROI in the compromise space.
 #' 3.  Calculates subject-level scores (`subject_scores`) in the RV/table space by
 #'     projecting the new table against the fitted interstructure axes.

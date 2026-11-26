@@ -43,21 +43,29 @@ bada <- function(data, y, subject, preproc, ncomp, ...) {
 #' covariance matrices.  Method implementations should return an object of class
 #' `\code{covstatis}`.
 #'
-#' @inheritParams bada
+#' @param data A list of covariance or correlation matrices with the same
+#'   variables in the same order on both axes.
 #' @param ncomp     Integer; number of components to compute.
 #' @param normalize Logical; if `TRUE` (default) each covariance matrix is scaled
 #'                  to have unit Frobenius norm before analysis.
 #' @param dcenter   Logical; if `TRUE` (default) each covariance matrix is double
 #'                  centred (Gower transformation) prior to analysis.
 #' @param ...       Additional arguments passed to the method.
+#' @param weights Optional vector of nonnegative finite variable weights, with
+#'   at least one positive entry. Unnamed weights follow matrix order. Named
+#'   weights are matched to variable names. Each covariance entry (i, j) is
+#'   multiplied by sqrt(w[i] * w[j]) before double centering and normalization.
+#'   The fitted model stores the weights and applies them to raw projection
+#'   matrices in the training variable order. The default gives unit weights.
 #'
 #' @return An object inheriting from class `covstatis`.
 #'
-#' @seealso [covstatis.list] for the reference implementation.
+#' @seealso \code{\link{covstatis_rm}} for repeated covariance matrices under
+#'   labeled conditions.
 #'
 #' @export
 #' @rdname covstatis
-covstatis <- function(data, ncomp = 2, normalize = TRUE, dcenter = TRUE, ...) {
+covstatis <- function(data, ncomp = 2, normalize = TRUE, dcenter = TRUE, ..., weights = NULL) {
   UseMethod("covstatis")
 }
 

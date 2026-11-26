@@ -220,10 +220,6 @@ infer_covstatis <- function(x,
   list(C = C, eigC = eigC, alpha = alpha)
 }
 
-.covstatis_table_matrix <- function(tables) {
-  vapply(tables, c, numeric(length(tables[[1L]])), USE.NAMES = FALSE)
-}
-
 .covstatis_positive_roots <- function(values, ncomp) {
   values <- as.numeric(values)
   values[!is.finite(values)] <- 0

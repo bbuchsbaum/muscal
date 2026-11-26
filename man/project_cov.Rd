@@ -28,7 +28,7 @@ Generic for projecting a new covariance matrix onto a previously fitted
 }
 \details{
 For \code{covstatis} objects, a new covariance/correlation matrix is transformed using
-the same preprocessing steps (centering and normalization) as were applied during
+the same variable weights, double centering and normalization as were applied during
 model fitting, then projected onto the model space. This returns the "partial factor scores"
 or ROI-level coordinates for the new subject.
 }

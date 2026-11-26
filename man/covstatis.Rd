@@ -5,13 +5,27 @@
 \alias{covstatis.list}
 \title{STATIS for Covariance Matrices (generic)}
 \usage{
-covstatis(data, ncomp = 2, normalize = TRUE, dcenter = TRUE, ...)
+covstatis(
+  data,
+  ncomp = 2,
+  normalize = TRUE,
+  dcenter = TRUE,
+  ...,
+  weights = NULL
+)
 
-\method{covstatis}{list}(data, ncomp = 2, normalize = TRUE, dcenter = TRUE, ...)
+\method{covstatis}{list}(
+  data,
+  ncomp = 2,
+  normalize = TRUE,
+  dcenter = TRUE,
+  ...,
+  weights = NULL
+)
 }
 \arguments{
-\item{data}{A data object for which a BaDA method is defined (see individual
-methods for details).}
+\item{data}{A list of covariance or correlation matrices with the same
+variables in the same order on both axes.}
 
 \item{ncomp}{Integer; number of components to compute.}
 
@@ -22,6 +36,13 @@ to have unit Frobenius norm before analysis.}
 centred (Gower transformation) prior to analysis.}
 
 \item{...}{Additional arguments passed to the method.}
+
+\item{weights}{Optional vector of nonnegative finite variable weights, with
+at least one positive entry. Unnamed weights follow matrix order. Named
+weights are matched to variable names. Each covariance entry (i, j) is
+multiplied by sqrt(w[i] * w[j]) before double centering and normalization.
+The fitted model stores the weights and applies them to raw projection
+matrices in the training variable order. The default gives unit weights.}
 }
 \value{
 An object inheriting from class `covstatis`.
@@ -36,7 +57,7 @@ The \code{covstatis.list} method implements STATIS analysis for a list of covari
 
 The method operates as follows:
 \enumerate{
-\item Optionally double-centers each matrix (Gower transformation)
+\item Applies the supplied variable weights, then optionally double-centers each matrix (Gower transformation)
 \item Optionally normalizes each matrix to unit Frobenius norm
 \item Computes an RV matrix of inner products between matrices
 \item Determines optimal weights (\code{alpha}) via first eigenvector of the RV matrix. These weights are accessible in the output and can be useful for outlier diagnostics.
@@ -64,7 +85,7 @@ Xs <- lapply(1:5, function(i) matrix(rnorm(10*10), 10, 10))
 Xs <- lapply(Xs, cor)
 
 # Apply COVSTATIS
-res <- covstatis(Xs, ncomp=3)
+res <- covstatis(Xs, ncomp=3, weights = c(4, rep(1, 9)))
 
 # Project a new correlation matrix
 new_mat <- cor(matrix(rnorm(10*10), 10, 10))
@@ -72,5 +93,6 @@ proj <- project_cov(res, new_mat)
 
 }
 \seealso{
-[covstatis.list] for the reference implementation.
+\code{\link{covstatis_rm}} for repeated covariance matrices under
+  labeled conditions.
 }
