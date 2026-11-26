@@ -128,9 +128,9 @@ correlation patterns across subjects.</p>
 </h2>
 <p>The algorithm has four steps:</p>
 <ol style="list-style-type: decimal">
-<li><p><strong>Preprocess</strong> each matrix — optionally
-double-center (Gower transformation) and normalize to unit Frobenius
-norm.</p></li>
+<li><p><strong>Preprocess</strong> each matrix. Apply any supplied
+variable weights, then optionally double-center (Gower transformation)
+and normalize.</p></li>
 <li><p><strong>Compute the RV matrix</strong> — a matrix of pairwise
 similarities between the input matrices (analogous to correlations
 between subjects).</p></li>
@@ -220,9 +220,17 @@ into the compromise space without refitting:</p>
 <span><span class="co">#&gt; [2,]  0.05182265 -0.40017910 -0.37447819</span></span>
 <span><span class="co">#&gt; [3,] -0.03047352 -0.07082577  0.15422777</span></span>
 <span><span class="co">#&gt; [4,] -0.29799681 -0.19379934  0.17161537</span></span></code></pre></div>
+<p>To give the first ROI four times its usual variance, set its weight
+to 4 when fitting. This doubles its covariances with the other ROIs. The
+fit stores the weights, so both projection functions take the original,
+unweighted matrix with ROIs in training order.</p>
+<div class="sourceCode" id="cb10"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="va">w</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">4</span>, <span class="fu"><a href="https://rdrr.io/r/base/rep.html" class="external-link">rep</a></span><span class="op">(</span><span class="fl">1</span>, <span class="va">n_vars</span> <span class="op">-</span> <span class="fl">1</span><span class="op">)</span><span class="op">)</span></span>
+<span><span class="va">weighted_fit</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/covstatis.html">covstatis</a></span><span class="op">(</span><span class="va">cor_list</span>, weights <span class="op">=</span> <span class="va">w</span><span class="op">)</span></span>
+<span><span class="va">weighted_proj</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/project_cov.html">project_cov</a></span><span class="op">(</span><span class="va">weighted_fit</span>, <span class="va">new_cor</span><span class="op">)</span></span></code></pre></div>
 <p>For a richer analysis of new subjects — including RV coefficients and
 distance to the compromise — use <code><a href="../reference/project_subjects.html">project_subjects()</a></code>:</p>
-<div class="sourceCode" id="cb10"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb11"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">result</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/project_subjects.html">project_subjects</a></span><span class="op">(</span><span class="va">fit</span>, <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span><span class="va">new_cor</span><span class="op">)</span>, subject_ids <span class="op">=</span> <span class="st">"New_Subject"</span><span class="op">)</span></span>
 <span><span class="va">result</span><span class="op">$</span><span class="va">scalar_summaries</span></span>
 <span><span class="co">#&gt;              subject_id rv_coefficient distance_to_compromise</span></span>
@@ -234,7 +242,7 @@ distance to the compromise — use <code><a href="../reference/project_subjects.
 <p>You can ask: “which compromise dimensions relate to an external
 variable?” Table-side covariates have one value per input table/block.
 For example, projecting a subject-level cognitive score:</p>
-<div class="sourceCode" id="cb11"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb12"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="co"># Simulated covariate (e.g., memory score per subject)</span></span>
 <span><span class="va">y</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/stats/Normal.html" class="external-link">rnorm</a></span><span class="op">(</span><span class="va">n_subjects</span><span class="op">)</span></span>
 <span><span class="va">dim_cos</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/project_covariate.html">project_table_covariate</a></span><span class="op">(</span><span class="va">fit</span>, <span class="va">y</span>, what <span class="op">=</span> <span class="st">"dimension"</span>, scale <span class="op">=</span> <span class="st">"cosine"</span><span class="op">)</span></span>
@@ -246,6 +254,55 @@ tracks the covariate. For feature-side covariates (one value per matrix
 feature), use <code><a href="../reference/project_covariate.html">project_feature_covariate()</a></code>. The generic
 wrapper <code><a href="../reference/project_covariate.html">project_covariate()</a></code> also accepts
 <code>side = "table"</code> or <code>side = "feature"</code>.</p>
+</div>
+<div class="section level2">
+<h2 id="comparing-conditions-within-subjects">Comparing conditions within subjects<a class="anchor" aria-label="anchor" href="#comparing-conditions-within-subjects"></a>
+</h2>
+<p>Use <code><a href="../reference/covstatis_rm.html">covstatis_rm()</a></code> when every subject supplies one
+covariance matrix per condition. Here each subject has a resting
+covariance and a task covariance. During the task the covariance between
+variables 2 and 3 increases, while variable 1 accounts for most of the
+common variance.</p>
+<div class="sourceCode" id="cb13"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="va">subject</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/rep.html" class="external-link">rep</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"S1"</span>, <span class="st">"S2"</span>, <span class="st">"S3"</span><span class="op">)</span>, each <span class="op">=</span> <span class="fl">2</span><span class="op">)</span></span>
+<span><span class="va">condition</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/rep.html" class="external-link">rep</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"rest"</span>, <span class="st">"task"</span><span class="op">)</span>, <span class="fl">3</span><span class="op">)</span></span>
+<span><span class="va">cells</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/lapply.html" class="external-link">lapply</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/seq.html" class="external-link">seq_along</a></span><span class="op">(</span><span class="va">subject</span><span class="op">)</span>, <span class="kw">function</span><span class="op">(</span><span class="va">i</span><span class="op">)</span> <span class="op">{</span></span>
+<span>  <span class="va">s</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/match.html" class="external-link">match</a></span><span class="op">(</span><span class="va">subject</span><span class="op">[</span><span class="va">i</span><span class="op">]</span>, <span class="fu"><a href="https://rdrr.io/r/base/unique.html" class="external-link">unique</a></span><span class="op">(</span><span class="va">subject</span><span class="op">)</span><span class="op">)</span></span>
+<span>  <span class="va">S</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/diag.html" class="external-link">diag</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">10</span> <span class="op">+</span> <span class="va">s</span>, <span class="fl">2</span>, <span class="fl">2</span><span class="op">)</span><span class="op">)</span></span>
+<span>  <span class="kw">if</span> <span class="op">(</span><span class="va">condition</span><span class="op">[</span><span class="va">i</span><span class="op">]</span> <span class="op">==</span> <span class="st">"task"</span><span class="op">)</span> <span class="va">S</span><span class="op">[</span><span class="fl">2</span>, <span class="fl">3</span><span class="op">]</span> <span class="op">&lt;-</span> <span class="va">S</span><span class="op">[</span><span class="fl">3</span>, <span class="fl">2</span><span class="op">]</span> <span class="op">&lt;-</span> <span class="va">s</span> <span class="op">/</span> <span class="fl">4</span></span>
+<span>  <span class="va">S</span></span>
+<span><span class="op">}</span><span class="op">)</span></span>
+<span><span class="va">rm_fit</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/covstatis_rm.html">covstatis_rm</a></span><span class="op">(</span><span class="va">cells</span>, <span class="va">subject</span>, <span class="va">condition</span><span class="op">)</span></span>
+<span><span class="va">rm_fit</span><span class="op">$</span><span class="va">paired_scores</span></span>
+<span><span class="co">#&gt;   subject condition Component_1</span></span>
+<span><span class="co">#&gt; 1      S1      rest  -0.1767767</span></span>
+<span><span class="co">#&gt; 2      S1      task   0.1767767</span></span>
+<span><span class="co">#&gt; 3      S2      rest  -0.3535534</span></span>
+<span><span class="co">#&gt; 4      S2      task   0.3535534</span></span>
+<span><span class="co">#&gt; 5      S3      rest  -0.5303301</span></span>
+<span><span class="co">#&gt; 6      S3      task   0.5303301</span></span>
+<span><span class="va">delta</span> <span class="op">&lt;-</span> <span class="va">rm_fit</span><span class="op">$</span><span class="va">condition_effects</span><span class="op">$</span><span class="va">task</span> <span class="op">-</span> <span class="va">rm_fit</span><span class="op">$</span><span class="va">condition_effects</span><span class="op">$</span><span class="va">rest</span></span>
+<span><span class="va">delta</span></span>
+<span><span class="co">#&gt;       Obs_1 Obs_2 Obs_3</span></span>
+<span><span class="co">#&gt; Obs_1     0   0.0   0.0</span></span>
+<span><span class="co">#&gt; Obs_2     0   0.0   0.5</span></span>
+<span><span class="co">#&gt; Obs_3     0   0.5   0.0</span></span></code></pre></div>
+<p>The leading axis of <code>rm_fit$common</code> follows variable 1.
+The mean paired change is 0.5 at entries (2, 3) and (3, 2). The paired
+scores show how strongly each subject expresses this change. With more
+conditions, each successive condition map captures a further orthogonal
+pattern of mean change.</p>
+<p>To evaluate whether a learned contrast recurs, leave a subject out of
+the fit and project that subject’s complete panel into the training
+axes.</p>
+<div class="sourceCode" id="cb14"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="va">train</span> <span class="op">&lt;-</span> <span class="va">subject</span> <span class="op">!=</span> <span class="st">"S3"</span></span>
+<span><span class="va">train_fit</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/covstatis_rm.html">covstatis_rm</a></span><span class="op">(</span><span class="va">cells</span><span class="op">[</span><span class="va">train</span><span class="op">]</span>, <span class="va">subject</span><span class="op">[</span><span class="va">train</span><span class="op">]</span>, <span class="va">condition</span><span class="op">[</span><span class="va">train</span><span class="op">]</span><span class="op">)</span></span>
+<span><span class="fu"><a href="../reference/project_subjects.html">project_subjects</a></span><span class="op">(</span><span class="va">train_fit</span>, <span class="va">cells</span><span class="op">[</span><span class="op">!</span><span class="va">train</span><span class="op">]</span>,</span>
+<span>                 subject <span class="op">=</span> <span class="va">subject</span><span class="op">[</span><span class="op">!</span><span class="va">train</span><span class="op">]</span>, condition <span class="op">=</span> <span class="va">condition</span><span class="op">[</span><span class="op">!</span><span class="va">train</span><span class="op">]</span><span class="op">)</span><span class="op">$</span><span class="va">paired_scores</span></span>
+<span><span class="co">#&gt;   subject condition Component_1</span></span>
+<span><span class="co">#&gt; 1      S3      rest  -0.5303301</span></span>
+<span><span class="co">#&gt; 2      S3      task   0.5303301</span></span></code></pre></div>
 </div>
 <div class="section level2">
 <h2 id="when-to-use-covstatis">When to use COVSTATIS<a class="anchor" aria-label="anchor" href="#when-to-use-covstatis"></a>

@@ -57,8 +57,8 @@ patterns across subjects.
 
 The algorithm has four steps:
 
-1.  **Preprocess** each matrix — optionally double-center (Gower
-    transformation) and normalize to unit Frobenius norm.
+1.  **Preprocess** each matrix. Apply any supplied variable weights,
+    then optionally double-center (Gower transformation) and normalize.
 
 2.  **Compute the RV matrix** — a matrix of pairwise similarities
     between the input matrices (analogous to correlations between
@@ -167,6 +167,18 @@ head(proj, 4)
 #> [4,] -0.29799681 -0.19379934  0.17161537
 ```
 
+To give the first ROI four times its usual variance, set its weight to 4
+when fitting. This doubles its covariances with the other ROIs. The fit
+stores the weights, so both projection functions take the original,
+unweighted matrix with ROIs in training order.
+
+``` r
+
+w <- c(4, rep(1, n_vars - 1))
+weighted_fit <- covstatis(cor_list, weights = w)
+weighted_proj <- project_cov(weighted_fit, new_cor)
+```
+
 For a richer analysis of new subjects — including RV coefficients and
 distance to the compromise — use
 [`project_subjects()`](https://bbuchsbaum.github.io/muscal/reference/project_subjects.md):
@@ -202,6 +214,63 @@ feature), use
 The generic wrapper
 [`project_covariate()`](https://bbuchsbaum.github.io/muscal/reference/project_covariate.md)
 also accepts `side = "table"` or `side = "feature"`.
+
+## Comparing conditions within subjects
+
+Use
+[`covstatis_rm()`](https://bbuchsbaum.github.io/muscal/reference/covstatis_rm.md)
+when every subject supplies one covariance matrix per condition. Here
+each subject has a resting covariance and a task covariance. During the
+task the covariance between variables 2 and 3 increases, while variable
+1 accounts for most of the common variance.
+
+``` r
+
+subject <- rep(c("S1", "S2", "S3"), each = 2)
+condition <- rep(c("rest", "task"), 3)
+cells <- lapply(seq_along(subject), function(i) {
+  s <- match(subject[i], unique(subject))
+  S <- diag(c(10 + s, 2, 2))
+  if (condition[i] == "task") S[2, 3] <- S[3, 2] <- s / 4
+  S
+})
+rm_fit <- covstatis_rm(cells, subject, condition)
+rm_fit$paired_scores
+#>   subject condition Component_1
+#> 1      S1      rest  -0.1767767
+#> 2      S1      task   0.1767767
+#> 3      S2      rest  -0.3535534
+#> 4      S2      task   0.3535534
+#> 5      S3      rest  -0.5303301
+#> 6      S3      task   0.5303301
+delta <- rm_fit$condition_effects$task - rm_fit$condition_effects$rest
+delta
+#>       Obs_1 Obs_2 Obs_3
+#> Obs_1     0   0.0   0.0
+#> Obs_2     0   0.0   0.5
+#> Obs_3     0   0.5   0.0
+```
+
+The leading axis of `rm_fit$common` follows variable 1. The mean paired
+change is 0.5 at entries (2, 3) and (3, 2). The paired scores show how
+strongly each subject expresses this change. With more conditions, each
+successive condition map captures a further orthogonal pattern of mean
+change.
+
+To evaluate whether a learned contrast recurs, leave a subject out of
+the fit and project that subject’s complete panel into the training
+axes.
+
+``` r
+
+train <- subject != "S3"
+train_fit <- covstatis_rm(cells[train], subject[train], condition[train])
+project_subjects(train_fit, cells[!train],
+                 subject = subject[!train], condition = condition[!train])$paired_scores
+#>   subject condition Component_1
+#> 1      S3      rest  -0.5303301
+#> 2      S3      task   0.5303301
+```
 
 ## When to use COVSTATIS
 

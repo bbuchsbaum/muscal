@@ -63,10 +63,24 @@ covariance matrices.  Method implementations should return an object of class
 
     <div class="section level2">
     <h2 id="ref-usage">Usage<a class="anchor" aria-label="anchor" href="#ref-usage"></a></h2>
-    <div class="sourceCode"><pre class="sourceCode r"><code><span><span class="fu">covstatis</span><span class="op">(</span><span class="va">data</span>, ncomp <span class="op">=</span> <span class="fl">2</span>, normalize <span class="op">=</span> <span class="cn">TRUE</span>, dcenter <span class="op">=</span> <span class="cn">TRUE</span>, <span class="va">...</span><span class="op">)</span></span>
+    <div class="sourceCode"><pre class="sourceCode r"><code><span><span class="fu">covstatis</span><span class="op">(</span></span>
+<span>  <span class="va">data</span>,</span>
+<span>  ncomp <span class="op">=</span> <span class="fl">2</span>,</span>
+<span>  normalize <span class="op">=</span> <span class="cn">TRUE</span>,</span>
+<span>  dcenter <span class="op">=</span> <span class="cn">TRUE</span>,</span>
+<span>  <span class="va">...</span>,</span>
+<span>  weights <span class="op">=</span> <span class="cn">NULL</span></span>
+<span><span class="op">)</span></span>
 <span></span>
 <span><span class="co"># S3 method for class 'list'</span></span>
-<span><span class="fu">covstatis</span><span class="op">(</span><span class="va">data</span>, ncomp <span class="op">=</span> <span class="fl">2</span>, normalize <span class="op">=</span> <span class="cn">TRUE</span>, dcenter <span class="op">=</span> <span class="cn">TRUE</span>, <span class="va">...</span><span class="op">)</span></span></code></pre></div>
+<span><span class="fu">covstatis</span><span class="op">(</span></span>
+<span>  <span class="va">data</span>,</span>
+<span>  ncomp <span class="op">=</span> <span class="fl">2</span>,</span>
+<span>  normalize <span class="op">=</span> <span class="cn">TRUE</span>,</span>
+<span>  dcenter <span class="op">=</span> <span class="cn">TRUE</span>,</span>
+<span>  <span class="va">...</span>,</span>
+<span>  weights <span class="op">=</span> <span class="cn">NULL</span></span>
+<span><span class="op">)</span></span></code></pre></div>
     </div>
 
     <div class="section level2">
@@ -74,8 +88,8 @@ covariance matrices.  Method implementations should return an object of class
 
 
 <dl><dt id="arg-data">data<a class="anchor" aria-label="anchor" href="#arg-data"></a></dt>
-<dd><p>A data object for which a BaDA method is defined (see individual
-methods for details).</p></dd>
+<dd><p>A list of covariance or correlation matrices with the same
+variables in the same order on both axes.</p></dd>
 
 
 <dt id="arg-ncomp">ncomp<a class="anchor" aria-label="anchor" href="#arg-ncomp"></a></dt>
@@ -95,6 +109,15 @@ centred (Gower transformation) prior to analysis.</p></dd>
 <dt id="arg--">...<a class="anchor" aria-label="anchor" href="#arg--"></a></dt>
 <dd><p>Additional arguments passed to the method.</p></dd>
 
+
+<dt id="arg-weights">weights<a class="anchor" aria-label="anchor" href="#arg-weights"></a></dt>
+<dd><p>Optional vector of nonnegative finite variable weights, with
+at least one positive entry. Unnamed weights follow matrix order. Named
+weights are matched to variable names. Each covariance entry (i, j) is
+multiplied by sqrt(w[i] * w[j]) before double centering and normalization.
+The fitted model stores the weights and applies them to raw projection
+matrices in the training variable order. The default gives unit weights.</p></dd>
+
 </dl></div>
     <div class="section level2">
     <h2 id="value">Value<a class="anchor" aria-label="anchor" href="#value"></a></h2>
@@ -103,7 +126,7 @@ centred (Gower transformation) prior to analysis.</p></dd>
     <div class="section level2">
     <h2 id="details">Details<a class="anchor" aria-label="anchor" href="#details"></a></h2>
     <p>The <code>covstatis.list</code> method implements STATIS analysis for a list of covariance matrices.</p>
-<p>The method operates as follows:</p><ol><li><p>Optionally double-centers each matrix (Gower transformation)</p></li>
+<p>The method operates as follows:</p><ol><li><p>Applies the supplied variable weights, then optionally double-centers each matrix (Gower transformation)</p></li>
 <li><p>Optionally normalizes each matrix to unit Frobenius norm</p></li>
 <li><p>Computes an RV matrix of inner products between matrices</p></li>
 <li><p>Determines optimal weights (<code>alpha</code>) via first eigenvector of the RV matrix. These weights are accessible in the output and can be useful for outlier diagnostics.</p></li>
@@ -126,7 +149,8 @@ eigenvalue is 1. <code>"none"</code> applies no normalization.</p></dd>
 </dl></div>
     <div class="section level2">
     <h2 id="see-also">See also<a class="anchor" aria-label="anchor" href="#see-also"></a></h2>
-    <div class="dont-index"><p>[covstatis.list] for the reference implementation.</p></div>
+    <div class="dont-index"><p><code><a href="covstatis_rm.html">covstatis_rm</a></code> for repeated covariance matrices under
+  labeled conditions.</p></div>
     </div>
 
     <div class="section level2">
@@ -136,7 +160,7 @@ eigenvalue is 1. <code>"none"</code> applies no normalization.</p></dd>
 <span class="r-in"><span><span class="va">Xs</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/lapply.html" class="external-link">lapply</a></span><span class="op">(</span><span class="va">Xs</span>, <span class="va">cor</span><span class="op">)</span></span></span>
 <span class="r-in"><span></span></span>
 <span class="r-in"><span><span class="co"># Apply COVSTATIS</span></span></span>
-<span class="r-in"><span><span class="va">res</span> <span class="op">&lt;-</span> <span class="fu">covstatis</span><span class="op">(</span><span class="va">Xs</span>, ncomp<span class="op">=</span><span class="fl">3</span><span class="op">)</span></span></span>
+<span class="r-in"><span><span class="va">res</span> <span class="op">&lt;-</span> <span class="fu">covstatis</span><span class="op">(</span><span class="va">Xs</span>, ncomp<span class="op">=</span><span class="fl">3</span>, weights <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">4</span>, <span class="fu"><a href="https://rdrr.io/r/base/rep.html" class="external-link">rep</a></span><span class="op">(</span><span class="fl">1</span>, <span class="fl">9</span><span class="op">)</span><span class="op">)</span><span class="op">)</span></span></span>
 <span class="r-in"><span></span></span>
 <span class="r-in"><span><span class="co"># Project a new correlation matrix</span></span></span>
 <span class="r-in"><span><span class="va">new_mat</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/stats/cor.html" class="external-link">cor</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/matrix.html" class="external-link">matrix</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/stats/Normal.html" class="external-link">rnorm</a></span><span class="op">(</span><span class="fl">10</span><span class="op">*</span><span class="fl">10</span><span class="op">)</span>, <span class="fl">10</span>, <span class="fl">10</span><span class="op">)</span><span class="op">)</span></span></span>

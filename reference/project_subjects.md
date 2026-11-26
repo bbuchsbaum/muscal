@@ -73,8 +73,8 @@ A list containing the following elements:
 
 The function performs the following steps for each new matrix:
 
-1.  Applies the same pre-processing (double-centering, normalization) as
-    the original model.
+1.  Applies the fitted variable weights, double centering and
+    normalization to each raw matrix.
 
 2.  Calculates ROI-level factor scores (`roi_scores`), representing the
     coordinates of each ROI in the compromise space.

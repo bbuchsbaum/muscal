@@ -59,6 +59,9 @@
   : Coupled Graph-Anchored Multiple Factor Analysis
 - [`covstatis()`](https://bbuchsbaum.github.io/muscal/reference/covstatis.md)
   : STATIS for Covariance Matrices (generic)
+- [`covstatis_rm()`](https://bbuchsbaum.github.io/muscal/reference/covstatis_rm.md)
+  [`project_subjects(`*`<covstatis_rm>`*`)`](https://bbuchsbaum.github.io/muscal/reference/covstatis_rm.md)
+  : Repeated-measures COVSTATIS
 - [`cv_muscal()`](https://bbuchsbaum.github.io/muscal/reference/cv_muscal.md)
   : Cross-Validate Muscal Models with Multidesign Folds
 - [`default_metrics()`](https://bbuchsbaum.github.io/muscal/reference/default_metrics.md)

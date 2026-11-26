@@ -37,7 +37,7 @@ A numeric matrix of projected scores with dimensions `nrow(new_data)` ×
 ## Details
 
 For `covstatis` objects, a new covariance/correlation matrix is
-transformed using the same preprocessing steps (centering and
-normalization) as were applied during model fitting, then projected onto
+transformed using the same variable weights, double centering and
+normalization as were applied during model fitting, then projected onto
 the model space. This returns the "partial factor scores" or ROI-level
 coordinates for the new subject.

@@ -7,18 +7,32 @@ class \``covstatis`\`.
 ## Usage
 
 ``` r
-covstatis(data, ncomp = 2, normalize = TRUE, dcenter = TRUE, ...)
+covstatis(
+  data,
+  ncomp = 2,
+  normalize = TRUE,
+  dcenter = TRUE,
+  ...,
+  weights = NULL
+)
 
 # S3 method for class 'list'
-covstatis(data, ncomp = 2, normalize = TRUE, dcenter = TRUE, ...)
+covstatis(
+  data,
+  ncomp = 2,
+  normalize = TRUE,
+  dcenter = TRUE,
+  ...,
+  weights = NULL
+)
 ```
 
 ## Arguments
 
 - data:
 
-  A data object for which a BaDA method is defined (see individual
-  methods for details).
+  A list of covariance or correlation matrices with the same variables
+  in the same order on both axes.
 
 - ncomp:
 
@@ -38,6 +52,16 @@ covstatis(data, ncomp = 2, normalize = TRUE, dcenter = TRUE, ...)
 
   Additional arguments passed to the method.
 
+- weights:
+
+  Optional vector of nonnegative finite variable weights, with at least
+  one positive entry. Unnamed weights follow matrix order. Named weights
+  are matched to variable names. Each covariance entry (i, j) is
+  multiplied by sqrt(w\[i\] \* w\[j\]) before double centering and
+  normalization. The fitted model stores the weights and applies them to
+  raw projection matrices in the training variable order. The default
+  gives unit weights.
+
 ## Value
 
 An object inheriting from class \`covstatis\`.
@@ -49,7 +73,8 @@ covariance matrices.
 
 The method operates as follows:
 
-1.  Optionally double-centers each matrix (Gower transformation)
+1.  Applies the supplied variable weights, then optionally
+    double-centers each matrix (Gower transformation)
 
 2.  Optionally normalizes each matrix to unit Frobenius norm
 
@@ -85,7 +110,8 @@ Additional arguments can be passed via `...`:
 
 ## See also
 
-\[covstatis.list\] for the reference implementation.
+[`covstatis_rm`](https://bbuchsbaum.github.io/muscal/reference/covstatis_rm.md)
+for repeated covariance matrices under labeled conditions.
 
 ## Examples
 
@@ -95,7 +121,7 @@ Xs <- lapply(1:5, function(i) matrix(rnorm(10*10), 10, 10))
 Xs <- lapply(Xs, cor)
 
 # Apply COVSTATIS
-res <- covstatis(Xs, ncomp=3)
+res <- covstatis(Xs, ncomp=3, weights = c(4, rep(1, 9)))
 
 # Project a new correlation matrix
 new_mat <- cor(matrix(rnorm(10*10), 10, 10))
