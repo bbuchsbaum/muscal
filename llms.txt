@@ -253,7 +253,7 @@ installs and the GitHub Pages build path works.
 - [`infer_bada()`](https://bbuchsbaum.github.io/muscal/reference/infer_bada.md)
   : Multifer Inference for BaDA
 - [`infer_covstatis()`](https://bbuchsbaum.github.io/muscal/reference/infer_covstatis.md)
-  : Multifer Component Tests for COVSTATIS
+  : Test leading-root concentration in COVSTATIS
 - [`infer_design_mfa()`](https://bbuchsbaum.github.io/muscal/reference/infer_design_mfa.md)
   : Subject-Level Inference for a Design-MFA Effect
 - [`infer_muscal()`](https://bbuchsbaum.github.io/muscal/reference/infer_muscal.md)

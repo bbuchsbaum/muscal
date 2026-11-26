@@ -161,10 +161,10 @@ dim(proj)
 #> [1] 12  3
 head(proj, 4)
 #>             [,1]        [,2]        [,3]
-#> [1,]  0.20633515  0.23445339 -0.05832835
-#> [2,]  0.05182265 -0.40017910 -0.37447819
-#> [3,] -0.03047352 -0.07082577  0.15422777
-#> [4,] -0.29799681 -0.19379934  0.17161537
+#> [1,] -0.20633515  0.23445339  0.05832835
+#> [2,] -0.05182265 -0.40017910  0.37447819
+#> [3,]  0.03047352 -0.07082577 -0.15422777
+#> [4,]  0.29799681 -0.19379934 -0.17161537
 ```
 
 To give the first ROI four times its usual variance, set its weight to 4
@@ -204,7 +204,7 @@ y <- rnorm(n_subjects)
 dim_cos <- project_table_covariate(fit, y, what = "dimension", scale = "cosine")
 dim_cos
 #>       Dim1       Dim2       Dim3 
-#> -0.5593003 -0.1042932 -0.1058820
+#> -0.5593003  0.1042932 -0.1058820
 ```
 
 Values near +/- 1 indicate that a compromise dimension strongly tracks

@@ -185,7 +185,7 @@ supplementary$scalar_summaries
 #> A1         A1      0.7680306               0.830311            0.8663089
 #> A2         A2      0.8055173               1.006663            0.9252491
 max(abs(supplementary$subject_scores - fit$subject_scores[1:2, ]))
-#> [1] 1.110223e-15
+#> [1] 1.221245e-15
 ```
 
 Supplementary distances use the fit’s `squared` setting unless

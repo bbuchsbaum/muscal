@@ -216,10 +216,10 @@ into the compromise space without refitting:</p>
 <span><span class="co">#&gt; [1] 12  3</span></span>
 <span><span class="fu"><a href="https://rdrr.io/r/utils/head.html" class="external-link">head</a></span><span class="op">(</span><span class="va">proj</span>, <span class="fl">4</span><span class="op">)</span></span>
 <span><span class="co">#&gt;             [,1]        [,2]        [,3]</span></span>
-<span><span class="co">#&gt; [1,]  0.20633515  0.23445339 -0.05832835</span></span>
-<span><span class="co">#&gt; [2,]  0.05182265 -0.40017910 -0.37447819</span></span>
-<span><span class="co">#&gt; [3,] -0.03047352 -0.07082577  0.15422777</span></span>
-<span><span class="co">#&gt; [4,] -0.29799681 -0.19379934  0.17161537</span></span></code></pre></div>
+<span><span class="co">#&gt; [1,] -0.20633515  0.23445339  0.05832835</span></span>
+<span><span class="co">#&gt; [2,] -0.05182265 -0.40017910  0.37447819</span></span>
+<span><span class="co">#&gt; [3,]  0.03047352 -0.07082577 -0.15422777</span></span>
+<span><span class="co">#&gt; [4,]  0.29799681 -0.19379934 -0.17161537</span></span></code></pre></div>
 <p>To give the first ROI four times its usual variance, set its weight
 to 4 when fitting. This doubles its covariances with the other ROIs. The
 fit stores the weights, so both projection functions take the original,
@@ -248,7 +248,7 @@ For example, projecting a subject-level cognitive score:</p>
 <span><span class="va">dim_cos</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/project_covariate.html">project_table_covariate</a></span><span class="op">(</span><span class="va">fit</span>, <span class="va">y</span>, what <span class="op">=</span> <span class="st">"dimension"</span>, scale <span class="op">=</span> <span class="st">"cosine"</span><span class="op">)</span></span>
 <span><span class="va">dim_cos</span></span>
 <span><span class="co">#&gt;       Dim1       Dim2       Dim3 </span></span>
-<span><span class="co">#&gt; -0.5593003 -0.1042932 -0.1058820</span></span></code></pre></div>
+<span><span class="co">#&gt; -0.5593003  0.1042932 -0.1058820</span></span></code></pre></div>
 <p>Values near +/- 1 indicate that a compromise dimension strongly
 tracks the covariate. For feature-side covariates (one value per matrix
 feature), use <code><a href="../reference/project_covariate.html">project_feature_covariate()</a></code>. The generic
